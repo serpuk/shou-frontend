@@ -1134,7 +1134,7 @@ function bigCard(e){
           <button class="sb" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
         </div>
-        <a class="tb" href="${e.url}" target="_blank" onclick="event.stopPropagation()">${t('tk')} →</a>
+        <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${eventUrl(e).isDirect?t('tk'):'Find tickets'} →</a>
       </div>
     </div>
   </article>`;
@@ -1157,13 +1157,13 @@ return`<div class="card" onclick="om('${e.id}')">
 <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
 <span class="ln">${e.likes+(isL?1:0)}</span>
 </div>
-<a class="tb blue" href="${e.url}" target="_blank" onclick="event.stopPropagation()" style="padding:6px 14px;font-size:11px;">${t('tk')} →</a>
+<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):'Find'} →</a>
 </div></div></div>`;}
 
 function tl(id){if(lk.has(id))lk.delete(id);else lk.add(id);renderAll();}
-function stw(id){const e=all.find(x=>x.id===id);if(!e)return;window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(e.name+' — '+e.venue)+'&url='+encodeURIComponent(e.url),'_blank');}
-function sfb(id){const e=all.find(x=>x.id===id);if(!e)return;window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(e.url),'_blank');}
-function cp2(id){const e=all.find(x=>x.id===id);if(!e)return;navigator.clipboard?.writeText(e.url).then(()=>alert('Copied!'));}
+function stw(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(e.name+' — '+e.venue)+'&url='+encodeURIComponent(u),'_blank');}
+function sfb(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');}
+function cp2(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';navigator.clipboard?.writeText(u).then(()=>alert('Copied!'));}
 
 function om(id){
   const e=all.find(x=>x.id===id);if(!e)return;
@@ -1194,25 +1194,44 @@ ${mTicketBtn(e)}
 function cm(e){if(e.target===document.getElementById('mov'))cm2();}
 function cm2(){document.getElementById('mov').classList.remove('on');}
 
-// Helper: determine if the event has a real clickable URL (not '#' or empty)
-function hasUrl(e){ return e.url && e.url !== '#' && e.url !== ''; }
+// Returns the best URL to send users to for this event.
+// Priority: (1) direct ticket URL from the source, (2) Ticketmaster BE search,
+// (3) Google search as a last resort. Always returns a usable URL — never '#'.
+function eventUrl(e){
+  // Direct URL from ingestion is the ideal case
+  if(e.url && e.url !== '#' && e.url !== '') return {url: e.url, isDirect: true};
+
+  // Fallback: construct a Ticketmaster Belgium search URL using the event name
+  // e.g. https://www.ticketmaster.be/search?q=Fran%C3%A7ois%20Pirette
+  const query = encodeURIComponent(`${e.name||''} ${e.venue||''}`.trim());
+  if(query){
+    return {
+      url: `https://www.google.com/search?q=${encodeURIComponent((e.name||'')+' '+(e.venue||'')+' '+(e.city||'')+' tickets')}`,
+      isDirect: false,
+    };
+  }
+  return {url: null, isDirect: false};
+}
 
 // Modal price cell: shows the price range; if we have a URL, makes the
 // whole value a link to the ticketing page for the user's convenience.
 function mPriceHtml(e){
   const priceText = pStr(e);
-  if(hasUrl(e) && priceText==='See website'){
-    return `<a href="${e.url}" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">See website →</a>`;
+  const {url, isDirect} = eventUrl(e);
+  if(url && priceText==='See website'){
+    const label = isDirect ? 'See website →' : 'Search online →';
+    return `<a href="${url}" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
   }
   return priceText;
 }
 
-// Modal primary CTA: adapts to whether we have a ticketing URL.
+// Modal primary CTA: always gives users a useful link.
+// Label shifts to "Find Tickets" when we don't have a direct URL.
 function mTicketBtn(e){
-  if(hasUrl(e)){
-    return `<a class="tb" href="${e.url}" target="_blank" rel="noopener">${t('tk')} →</a>`;
-  }
-  return `<span class="tb tb-disabled" title="No ticketing link available for this event">${t('tk')} —</span>`;
+  const {url, isDirect} = eventUrl(e);
+  if(!url) return `<span class="tb tb-disabled">${t('tk')} —</span>`;
+  const label = isDirect ? `${t('tk')} →` : `Find tickets →`;
+  return `<a class="tb" href="${url}" target="_blank" rel="noopener">${label}</a>`;
 }
 
 const AR={
