@@ -687,6 +687,35 @@ h1 .bl {
 .mact { align-items: center; }
 .mact > .tb { margin-right: auto; }  /* primary CTA pushes share buttons to the right */
 
+/* Multi-source picker — shown when an event is listed on 2+ platforms */
+.msrc-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: -6px 0 8px;  /* pulls up against the meta grid */
+  padding: 10px 0 0;
+}
+.msrc-label {
+  font-size: 11px; color: var(--bone3);
+  font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.msrc-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.src-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px; border-radius: 4px;
+  background: color-mix(in srgb, var(--src-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--src-color) 35%, transparent);
+  color: var(--src-color);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  text-decoration: none;
+  transition: all .2s;
+}
+.src-pill:hover {
+  background: color-mix(in srgb, var(--src-color) 20%, transparent);
+  border-color: var(--src-color);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 640px) {
   .mth, .mph { height: 200px; }
   .mb { padding: 22px 22px 24px; }
@@ -862,6 +891,8 @@ async function fetchEvts(){
       desc:e.desc||`${e.name||'This event'} at ${e.venue||'a great venue in Belgium'}. Don't miss this exciting live event!`,
       pop:e.pop||50,
       likes:e.likes||0,
+      // Normalize sources — API might return strings (old) or {source, url} (new)
+      sources:(e.sources||[]).map(s=>typeof s==='string'?{source:s,url:null}:s),
       originalTitle:e.originalTitle,
       originalLang:e.originalLang,
       servedLang:e.servedLang,
@@ -1183,6 +1214,7 @@ function om(id){
 <div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${e.time!=='TBA'?' · '+e.time:''}</div></div>
 <div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
 </div>
+${mSourcesRow(e)}
 <div class="mact">
 ${mTicketBtn(e)}
 <button class="shb" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
@@ -1193,6 +1225,30 @@ ${mTicketBtn(e)}
 }
 function cm(e){if(e.target===document.getElementById('mov'))cm2();}
 function cm2(){document.getElementById('mov').classList.remove('on');}
+
+// Source labels & colors for the picker pills
+const SOURCE_META = {
+  ticketmaster: { label: 'Ticketmaster',  color: '#00F2FF' },
+  uitdatabank:  { label: 'Uitdatabank',   color: '#FF0055' },
+  publiq:       { label: 'Uitdatabank',   color: '#FF0055' },
+  eventbrite:   { label: 'Eventbrite',    color: '#F05537' },
+};
+
+// Build the "Listed on" row when an event has 2+ sources with URLs.
+// For single-source events we skip this entirely — the main Get Tickets
+// button already covers that case.
+function mSourcesRow(e){
+  const withUrls = (e.sources||[]).filter(s=>s.url);
+  if (withUrls.length < 2) return '';   // show only when there's real choice
+  const pills = withUrls.map(s=>{
+    const meta = SOURCE_META[s.source] || { label: s.source, color: 'var(--bone2)' };
+    return `<a class="src-pill" href="${s.url}" target="_blank" rel="noopener" style="--src-color:${meta.color}">${meta.label} ↗</a>`;
+  }).join('');
+  return `<div class="msrc-row">
+    <span class="msrc-label">Also listed on:</span>
+    <div class="msrc-pills">${pills}</div>
+  </div>`;
+}
 
 // Returns the best URL to send users to for this event.
 // Priority: (1) direct ticket URL from the source, (2) Ticketmaster BE search,
