@@ -887,10 +887,10 @@ function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'
 async function fetchEvts(){
   document.getElementById('fw').innerHTML='<div class="loading"><div class="spin"></div><p>'+t('ld')+'</p></div>';
   try{
-    // We fetch enough events for client-side filtering to be meaningful.
-    // With ~1,800 events in the catalog today, 500 covers the top-popularity slice.
-    // When scaling past 5,000 events, move filtering server-side via query params.
-    const p=new URLSearchParams({lang:lang,limit:500,sort:'popularity'});
+    // We fetch the full catalog for client-side filtering.
+    // For ~2k events this is ~3 MB — acceptable for a fast initial load.
+    // When scaling past 10k events, move filtering server-side via query params.
+    const p=new URLSearchParams({lang:lang,limit:2000,sort:'popularity'});
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
@@ -1230,7 +1230,7 @@ function bigCard(e){
           <button class="sb" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
         </div>
-        <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${eventUrl(e).isDirect?t('tk'):'Find tickets'} →</a>
+        <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):'Find tickets'} →</a>
       </div>
     </div>
   </article>`;
@@ -1253,16 +1253,32 @@ return`<div class="card" onclick="om('${e.id}')">
 <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
 <span class="ln">${e.likes+(isL?1:0)}</span>
 </div>
-<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):'Find'} →</a>
+<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):'Find'} →</a>
 </div></div></div>`;}
 
 function tl(id){if(lk.has(id))lk.delete(id);else lk.add(id);renderAll();}
-function stw(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(e.name+' — '+e.venue)+'&url='+encodeURIComponent(u),'_blank');}
-function sfb(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');}
-function cp2(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';navigator.clipboard?.writeText(u).then(()=>alert('Copied!'));}
+// Fire-and-forget engagement tracking. Feeds popularity_score in the backend.
+// Uses sendBeacon when available (survives page navigation), falls back to fetch.
+function track(eventId, action){
+  if(!eventId || !action) return;
+  const url = API_BASE + '/api/track';
+  const payload = JSON.stringify({ eventId, action });
+  try{
+    if(navigator.sendBeacon){
+      navigator.sendBeacon(url, new Blob([payload], {type:'application/json'}));
+    } else {
+      fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:payload,keepalive:true}).catch(()=>{});
+    }
+  }catch{}
+}
+
+function stw(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(e.name+' — '+e.venue)+'&url='+encodeURIComponent(u),'_blank');}
+function sfb(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');}
+function cp2(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');navigator.clipboard?.writeText(u).then(()=>alert('Copied!'));}
 
 function om(id){
   const e=all.find(x=>x.id===id);if(!e)return;
+  track(id,'view');  // engagement signal for popularity scoring
   const cl=segCls(e.seg);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
@@ -1341,7 +1357,7 @@ function mPriceHtml(e){
   const {url, isDirect} = eventUrl(e);
   if(url && priceText==='See website'){
     const label = isDirect ? 'See website →' : 'Search online →';
-    return `<a href="${url}" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
+    return `<a href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
   }
   return priceText;
 }
@@ -1352,7 +1368,7 @@ function mTicketBtn(e){
   const {url, isDirect} = eventUrl(e);
   if(!url) return `<span class="tb tb-disabled">${t('tk')} —</span>`;
   const label = isDirect ? `${t('tk')} →` : `Find tickets →`;
-  return `<a class="tb" href="${url}" target="_blank" rel="noopener">${label}</a>`;
+  return `<a class="tb" href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')">${label}</a>`;
 }
 
 const AR={
