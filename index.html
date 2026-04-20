@@ -816,10 +816,10 @@ footer p {
   <div class="filters">
     <span class="flbl" data-k="fl">Filter:</span>
     <button class="fb on" data-c="all" onclick="sf('all',this)" data-k="fa">All</button>
-    <button class="fb" data-c="Music" onclick="sf('Music',this)" data-k="fm">Music</button>
-    <button class="fb" data-c="Arts" onclick="sf('Arts',this)" data-k="fth">Arts &amp; Theatre</button>
-    <button class="fb" data-c="Sports" onclick="sf('Sports',this)" data-k="fsp">Sports</button>
-    <button class="fb" data-c="Family" onclick="sf('Family',this)" data-k="ffa">Family</button>
+    <button class="fb" data-c="music" onclick="sf('music',this)" data-k="fm">Music</button>
+    <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
+    <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
+    <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
     <select class="fsel" onchange="setCity(this.value)" id="csel"><option value="all" data-k="ca">All Cities</option></select>
   </div>
 
@@ -898,6 +898,8 @@ async function fetchEvts(){
       id:e.id,
       name:e.name||e.title||'Untitled',
       seg:e.seg||categorizeByGenre(e.genre)||'Misc',
+      // Language-neutral category slug — use THIS for filtering, not seg (which changes per language)
+      categorySlug:e.categorySlug||categorizeToSlug(e.genre)||'other',
       genre:e.genre||'',
       city:canonicalCity(e.city),   // normalize Antwerpen 1 → Antwerp, Elsene → Brussels, etc.
       rawCity:e.city||'Belgium',    // keep original for card display if we want
@@ -1012,6 +1014,17 @@ function categorizeByGenre(g){
   if(l.includes('family')||l.includes('children'))return'Family';
   return'Misc';
 }
+// Same categorization but returns the language-neutral slug used by the API/DB.
+// Keep the two in sync if you update the category list.
+function categorizeToSlug(g){
+  if(!g)return'other';
+  const l=g.toLowerCase();
+  if(l.includes('music')||l.includes('rock')||l.includes('pop')||l.includes('jazz')||l.includes('electronic')||l.includes('techno')||l.includes('hip-hop'))return'music';
+  if(l.includes('theatre')||l.includes('comedy')||l.includes('dance')||l.includes('opera'))return'theatre';
+  if(l.includes('sport')||l.includes('football')||l.includes('basketball'))return'sports';
+  if(l.includes('family')||l.includes('children'))return'family';
+  return'other';
+}
 
 function sf(f,btn){actF=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');vis=6;applyF();}
 function setCity(c){actC=c;vis=6;applyF();}
@@ -1123,13 +1136,15 @@ function matchesAIQuery(e,c){
 function applyF(){
   const aiCriteria=aiQ?parseAIQuery(aiQ):null;
   filtered=all.filter(e=>{
-    const sm=actF==='all'||e.seg===actF||(actF==='Arts'&&(e.seg.includes('Art')||e.seg.includes('Theatre')||e.seg.includes('Comedy')));
-    const cm=actC==='all'||e.city===actC;
-    const am=matchesAIQuery(e,aiCriteria);
-    return sm&&cm&&am;
+    // Match on language-neutral slug. 'theatre' slug matches both "Arts & Theatre"
+    // as a display label and covers theatre/comedy/dance events.
+    const sm = actF==='all'
+      || e.categorySlug === actF
+      || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
+    const cm = actC==='all' || e.city===actC;
+    const am = matchesAIQuery(e,aiCriteria);
+    return sm && cm && am;
   });
-  // Show the count in whichever section header is currently visible.
-  // renderAll() handles the header-swap logic.
   const ec=document.getElementById('ec');
   if(ec) ec.textContent=t('ne2')(filtered.length);
   renderAll();
