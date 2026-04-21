@@ -470,6 +470,17 @@ h1 .bl {
 .cfa { background: rgba(255,0,85,0.1);   color: var(--magenta2); border: 1px solid rgba(255,0,85,0.3); }
 .cx  { background: rgba(255,0,85,0.1);   color: var(--magenta);  border: 1px solid rgba(255,0,85,0.3); }
 
+/* Language badge — subtle indicator that title/desc wasn't translated to user's language */
+.lang-badge {
+  display: inline-block; vertical-align: middle;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+  padding: 2px 6px; border-radius: 3px;
+  background: rgba(248,249,250,0.08); color: var(--bone3);
+  border: 1px solid rgba(248,249,250,0.12);
+  margin-left: 8px; transform: translateY(-2px);
+  font-family: 'Inter', sans-serif;
+}
+
 .etitle {
   font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 800;
   line-height: 1.2; margin-bottom: 8px; letter-spacing: -0.4px; color: var(--bone);
@@ -881,7 +892,22 @@ function applyI18n(){
 function segCls(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'cm';if(l.includes('art')||l.includes('theatre')||l.includes('comedy'))return'ca';if(l.includes('sport'))return'cs';if(l.includes('family'))return'cfa';return'cx';}
 function segEmoji(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'🎵';if(l.includes('art')||l.includes('theatre'))return'🎭';if(l.includes('sport'))return'⚽';if(l.includes('family'))return'🎠';return'✨';}
 function segThumb(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'tc1';if(l.includes('art')||l.includes('theatre'))return'tc2';if(l.includes('sport'))return'tc3';if(l.includes('family'))return'tc4';return'tc5';}
-function fmtD(d){if(!d)return'TBA';try{return new Date(d).toLocaleDateString(lang==='fr'?'fr-BE':lang==='nl'?'nl-BE':'en-GB',{day:'numeric',month:'short',year:'numeric'});}catch{return d;}}
+function fmtD(d){
+  if(!d) return 'TBA';
+  const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', en:'en-GB'};
+  const loc = localeMap[lang] || 'en-GB';
+  try { return new Date(d).toLocaleDateString(loc, {day:'numeric', month:'short', year:'numeric'}); }
+  catch { return d; }
+}
+// Small badge shown next to event titles when the served content is NOT in
+// the user's selected language. Indicates the title/description is shown
+// in its original language (e.g. "NL" or "EN") because a translation for the
+// user's chosen language hasn't been generated yet.
+function langBadge(e){
+  const served = e.servedLang || 'en';
+  if(served === lang) return '';
+  return ` <span class="lang-badge" title="Original language: ${served.toUpperCase()}">${served.toUpperCase()}</span>`;
+}
 function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'–€'+Math.round(e.mx):'');return t('see');}
 
 async function fetchEvts(){
@@ -1253,7 +1279,7 @@ function bigCard(e){
     </div>
     <div class="feat-body">
       <span class="cpill ${cl}">${e.seg}${e.genre?' · '+e.genre:''}</span>
-      <h3 class="feat-title">${e.name}</h3>
+      <h3 class="feat-title">${e.name}${langBadge(e)}</h3>
       <p class="feat-desc">${e.desc}</p>
       <div class="feat-meta">
         <span class="feat-meta-item"><span class="mi">📍</span>${e.venue}, ${e.city}</span>
@@ -1279,7 +1305,7 @@ return`<div class="card" onclick="om('${e.id}')">
 <div style="position:relative">${th(e,false)}<div class="srcpill s-tm" style="bottom:10px;left:10px;">TM</div></div>
 <div class="cb">
 <span class="cpill ${cl}">${e.seg}</span>
-<div class="ctitle">${e.name}</div>
+<div class="ctitle">${e.name}${langBadge(e)}</div>
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
 <div class="mr"><span class="mi">📍</span>${e.city}</div>
