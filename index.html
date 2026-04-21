@@ -851,11 +851,11 @@ footer p {
 const API_BASE = 'https://shou-backend.vercel.app';
 
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',ne:'No events found.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',ne:'Aucun événement trouvé.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',ne:'Geen evenementen.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',ne:'Keine Events gefunden.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',ne:'No se encontraron eventos.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',ne:'No events found.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',ne:'Aucun événement trouvé.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',ne:'Geen evenementen.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',ne:'Keine Events gefunden.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',ne:'No se encontraron eventos.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`}
 };
 
 let lang=(['fr','nl','de','es'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
@@ -882,7 +882,7 @@ function segCls(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'c
 function segEmoji(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'🎵';if(l.includes('art')||l.includes('theatre'))return'🎭';if(l.includes('sport'))return'⚽';if(l.includes('family'))return'🎠';return'✨';}
 function segThumb(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'tc1';if(l.includes('art')||l.includes('theatre'))return'tc2';if(l.includes('sport'))return'tc3';if(l.includes('family'))return'tc4';return'tc5';}
 function fmtD(d){if(!d)return'TBA';try{return new Date(d).toLocaleDateString(lang==='fr'?'fr-BE':lang==='nl'?'nl-BE':'en-GB',{day:'numeric',month:'short',year:'numeric'});}catch{return d;}}
-function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'–€'+Math.round(e.mx):'');return'See website';}
+function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'–€'+Math.round(e.mx):'');return t('see');}
 
 async function fetchEvts(){
   document.getElementById('fw').innerHTML='<div class="loading"><div class="spin"></div><p>'+t('ld')+'</p></div>';
@@ -899,7 +899,8 @@ async function fetchEvts(){
       name:e.name||e.title||'Untitled',
       seg:e.seg||categorizeByGenre(e.genre)||'Misc',
       // Language-neutral category slug — use THIS for filtering, not seg (which changes per language)
-      categorySlug:e.categorySlug||categorizeToSlug(e.genre)||'other',
+      // Fallback chain: API field → genre-based inference → label-based inference → 'other'
+      categorySlug:e.categorySlug||categorizeToSlug(e.genre)||labelToSlug(e.seg)||'other',
       genre:e.genre||'',
       city:canonicalCity(e.city),   // normalize Antwerpen 1 → Antwerp, Elsene → Brussels, etc.
       rawCity:e.city||'Belgium',    // keep original for card display if we want
@@ -910,7 +911,7 @@ async function fetchEvts(){
       url:e.url||'#',
       mn:e.mn!=null?e.mn/100:null,   // API returns cents, convert to euros
       mx:e.mx!=null?e.mx/100:null,
-      desc:e.desc||`${e.name||'This event'} at ${e.venue||'a great venue in Belgium'}. Don't miss this exciting live event!`,
+      desc:e.desc||t('descFallback')(e.name||'This event',e.venue||'Belgium'),
       pop:e.pop||50,
       likes:e.likes||0,
       // Normalize sources — API might return strings (old) or {source, url} (new)
@@ -1024,6 +1025,28 @@ function categorizeToSlug(g){
   if(l.includes('sport')||l.includes('football')||l.includes('basketball'))return'sports';
   if(l.includes('family')||l.includes('children'))return'family';
   return'other';
+}
+// Recognizes a localized display label and returns its language-neutral slug.
+// Used as a last-resort fallback when the API doesn't send categorySlug
+// (e.g. backend deployed older than frontend). Covers all 5 supported languages.
+function labelToSlug(seg){
+  if(!seg) return 'other';
+  const s=seg.toLowerCase();
+  // Music: EN/FR/NL/DE/ES
+  if(['music','musique','muziek','musik','música'].some(x=>s===x || s.startsWith(x))) return 'music';
+  // Sports
+  if(['sports','sport','deportes'].some(x=>s===x || s.startsWith(x))) return 'sports';
+  // Theatre / Arts
+  if(['theatre','théâtre','theater','teatro','arts','arts & theatre'].some(x=>s.includes(x))) return 'theatre';
+  // Comedy
+  if(['comedy','humour','humor','comedia'].some(x=>s.includes(x))) return 'comedy';
+  // Family
+  if(['family','famille','familie','familia'].some(x=>s===x || s.startsWith(x))) return 'family';
+  // Festival
+  if(['festival','festivales'].some(x=>s.includes(x))) return 'festival';
+  // Misc / Other — catch-all labels
+  if(['misc','divers','overig','sonstiges','varios'].some(x=>s.includes(x))) return 'other';
+  return 'other';
 }
 
 function sf(f,btn){actF=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');vis=6;applyF();}
@@ -1245,7 +1268,7 @@ function bigCard(e){
           <button class="sb" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
         </div>
-        <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):'Find tickets'} →</a>
+        <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
       </div>
     </div>
   </article>`;
@@ -1268,7 +1291,7 @@ return`<div class="card" onclick="om('${e.id}')">
 <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
 <span class="ln">${e.likes+(isL?1:0)}</span>
 </div>
-<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):'Find'} →</a>
+<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;}
 
 function tl(id){if(lk.has(id))lk.delete(id);else lk.add(id);renderAll();}
@@ -1370,8 +1393,8 @@ function eventUrl(e){
 function mPriceHtml(e){
   const priceText = pStr(e);
   const {url, isDirect} = eventUrl(e);
-  if(url && priceText==='See website'){
-    const label = isDirect ? 'See website →' : 'Search online →';
+  if(url && priceText===t('see')){
+    const label = isDirect ? `${t('see')} →` : `${t('search')} →`;
     return `<a href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
   }
   return priceText;
@@ -1382,7 +1405,7 @@ function mPriceHtml(e){
 function mTicketBtn(e){
   const {url, isDirect} = eventUrl(e);
   if(!url) return `<span class="tb tb-disabled">${t('tk')} —</span>`;
-  const label = isDirect ? `${t('tk')} →` : `Find tickets →`;
+  const label = isDirect ? `${t('tk')} →` : `${t('find')} →`;
   return `<a class="tb" href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')">${label}</a>`;
 }
 
