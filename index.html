@@ -334,6 +334,55 @@ h1 .bl {
   border-color: var(--magenta);
   box-shadow: 0 0 18px rgba(255,0,85,0.45);
 }
+/* Liked filter tab — slightly differentiated since it's a personal view, not a category */
+.fb.liked-tab { color: var(--magenta2); border-color: rgba(255,51,119,0.35); }
+.fb.liked-tab:hover { color: #fff; border-color: var(--magenta); }
+.fb.liked-tab.on { background: var(--magenta); color: #fff; }
+.liked-count {
+  display: inline-block;
+  margin-left: 4px;
+  min-width: 14px;
+  padding: 0 5px;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.18);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.liked-count:empty { display: none; }
+
+/* GDPR consent banner — minimal, non-blocking, dismissible */
+.gdpr-banner {
+  position: fixed; bottom: 14px; left: 14px; right: 14px; z-index: 200;
+  max-width: 540px; margin: 0 auto;
+  background: rgba(18,18,24,0.95);
+  border: 1px solid rgba(0,242,255,0.25);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(0,242,255,0.05);
+  backdrop-filter: blur(12px);
+  display: none;
+}
+.gdpr-banner.on { display: block; }
+.gdpr-banner h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--bone); }
+.gdpr-banner p  { font-size: 12.5px; line-height: 1.55; color: var(--bone2); margin-bottom: 14px; }
+.gdpr-banner .gdpr-actions { display: flex; gap: 10px; align-items: center; }
+.gdpr-banner button.gdpr-ok {
+  background: var(--magenta); color: #fff;
+  border: none; border-radius: 18px;
+  padding: 8px 18px;
+  font-size: 12px; font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; transition: all .2s;
+}
+.gdpr-banner button.gdpr-ok:hover { background: var(--magenta2); }
+.gdpr-banner a.gdpr-more {
+  color: var(--cyan); text-decoration: none; font-size: 12px;
+  font-weight: 600;
+}
+.gdpr-banner a.gdpr-more:hover { text-decoration: underline; }
 .fsel {
   background: var(--ink); border: 1px solid rgba(0,242,255,0.2);
   border-radius: 20px; padding: 7px 32px 7px 14px;
@@ -831,6 +880,7 @@ footer p {
     <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
     <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
     <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
+    <button class="fb liked-tab" data-c="liked" onclick="sf('liked',this)" data-k="fliked" title="Saved events">♥ <span class="liked-count" id="lcn"></span></button>
     <select class="fsel" onchange="setCity(this.value)" id="csel"><option value="all" data-k="ca">All Cities</option></select>
   </div>
 
@@ -845,6 +895,17 @@ footer p {
 
 <div class="mov" id="mov" onclick="cm(event)">
   <div class="modal"><button class="mcl" onclick="cm2()">✕</button><div id="mc"></div></div>
+</div>
+
+<!-- GDPR / storage consent banner. Shown once on first visit; dismissing -->
+<!-- it sets a flag in localStorage that gates other localStorage writes.   -->
+<div class="gdpr-banner" id="gdpr">
+  <h4 data-k="gdprT">Quick note about storage</h4>
+  <p data-k="gdprB">Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.</p>
+  <div class="gdpr-actions">
+    <button class="gdpr-ok" onclick="acceptConsent()" data-k="gdprY">Got it</button>
+    <a class="gdpr-more" href="https://github.com/serpuk/shou-frontend#privacy" target="_blank" rel="noopener" data-k="gdprN">Read more</a>
+  </div>
 </div>
 
 <footer>
@@ -862,15 +923,79 @@ footer p {
 const API_BASE = 'https://shou-backend.vercel.app';
 
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',ne:'No events found.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',ne:'Aucun événement trouvé.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',ne:'Geen evenementen.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',ne:'Keine Events gefunden.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',ne:'No se encontraron eventos.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',fliked:'Liked',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',atL:'Your liked events',ne:'No events found.',neL:'Tap ♥ on events to save them here.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more'},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',fliked:'Favoris',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',atL:'Vos favoris',ne:'Aucun événement trouvé.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus'},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',fliked:'Favorieten',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',atL:'Jouw favorieten',ne:'Geen evenementen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info'},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',fliked:'Favoriten',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren'},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',fliked:'Favoritos',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',atL:'Tus favoritos',ne:'No se encontraron eventos.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más'}
 };
 
 let lang=(['fr','nl','de','es'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
-let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=new Set();
+
+// --------------------------------------------------------------------------
+// LIKES, CONSENT, AND ANONYMOUS SESSION ID
+//
+// Three pieces of local state, all stored in localStorage when the user has
+// consented (see GDPR banner below). If the user has not consented, we hold
+// the data in memory only and it's lost on reload.
+//
+// localStorage keys:
+//   - shou_consent     : '1' once the user has dismissed the GDPR banner
+//   - shou_likes       : JSON array of event IDs the user has liked
+//   - shou_anon_id     : UUID identifying this anonymous user across sessions
+// --------------------------------------------------------------------------
+
+const LS = {
+  CONSENT: 'shou_consent',
+  LIKES:   'shou_likes',
+  ANONID:  'shou_anon_id',
+};
+
+function hasConsent() {
+  try { return localStorage.getItem(LS.CONSENT) === '1'; } catch { return false; }
+}
+
+function loadLikes() {
+  try {
+    if (!hasConsent()) return new Set();
+    const raw = localStorage.getItem(LS.LIKES);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch { return new Set(); }
+}
+
+function saveLikes(set) {
+  try {
+    if (!hasConsent()) return;
+    localStorage.setItem(LS.LIKES, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+// Get-or-create the anonymous session UUID. Generated lazily on first need.
+// Used by the /api/track endpoint to attribute behavior to this device.
+function getAnonId() {
+  if (!hasConsent()) return null;
+  try {
+    let id = localStorage.getItem(LS.ANONID);
+    if (id) return id;
+    // UUIDv4 via crypto.randomUUID (available in all modern browsers).
+    id = (crypto.randomUUID?.() || fallbackUuid());
+    localStorage.setItem(LS.ANONID, id);
+    return id;
+  } catch { return null; }
+}
+
+// Fallback UUID generator for ancient browsers. Best-effort, doesn't need
+// to be cryptographically secure for tracking purposes.
+function fallbackUuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+  });
+}
+
+let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes();
 const t=k=>T[lang][k]||T.en[k]||k;
 
 function setLang(l){lang=l;document.querySelectorAll('.lb').forEach(b=>b.classList.remove('on'));document.querySelector(`.lb[onclick="setLang('${l}')"]`).classList.add('on');applyI18n();fetchEvts();}
@@ -1188,6 +1313,7 @@ function applyF(){
     // Match on language-neutral slug. 'theatre' slug matches both "Arts & Theatre"
     // as a display label and covers theatre/comedy/dance events.
     const sm = actF==='all'
+      || (actF === 'liked' && lk.has(e.id))
       || e.categorySlug === actF
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
     const cm = actC==='all' || e.city===actC;
@@ -1205,8 +1331,23 @@ function renderAll(){
   // there's no concept of "trending" once the user has narrowed to a category.
   // Instead, put all filtered events in the main grid.
   const isFiltering = actF!=='all' || actC!=='all' || aiQ;
+  const isLiked = actF === 'liked';
   const trendingHeader = document.querySelector('.sh:first-of-type');
   const allHeader = document.querySelector('.sh:nth-of-type(2)');
+  const allHeaderTitle = allHeader ? allHeader.querySelector('.st') : null;
+
+  // Adjust the "All Events" title for liked mode
+  if (allHeaderTitle) {
+    allHeaderTitle.textContent = isLiked ? t('atL') : t('at');
+    allHeaderTitle.dataset.k    = isLiked ? 'atL' : 'at';
+  }
+
+  // Adjust the empty-state message for liked mode (so it's friendly, not negative)
+  const empMsg = emp.querySelector('p[data-k]');
+  if (empMsg) {
+    empMsg.textContent = isLiked ? t('neL') : t('ne');
+    empMsg.dataset.k    = isLiked ? 'neL' : 'ne';
+  }
 
   if(!filtered.length){
     fw.innerHTML='';
@@ -1320,13 +1461,34 @@ return`<div class="card" onclick="om('${e.id}')">
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;}
 
-function tl(id){if(lk.has(id))lk.delete(id);else lk.add(id);renderAll();}
-// Fire-and-forget engagement tracking. Feeds popularity_score in the backend.
+function tl(id){
+  const wasLiked = lk.has(id);
+  if (wasLiked) lk.delete(id); else lk.add(id);
+  saveLikes(lk);
+  // Fire-and-forget tracking; respects consent (track() checks anonId).
+  track(id, wasLiked ? 'unlike' : 'like');
+  updateLikedCount();
+  renderAll();
+}
+
+// Updates the small badge on the "Liked" filter button.
+function updateLikedCount(){
+  const el = document.getElementById('lcn');
+  if (el) el.textContent = lk.size > 0 ? String(lk.size) : '';
+}
+// Fire-and-forget engagement tracking. Two purposes:
+//   1. Bumps aggregate counter on events (view_count, click_count, share_count)
+//   2. If user has consented, writes a per-session row to user_events
+//      tied to the anonymous session UUID (used for personalized recs later).
 // Uses sendBeacon when available (survives page navigation), falls back to fetch.
 function track(eventId, action){
   if(!eventId || !action) return;
   const url = API_BASE + '/api/track';
-  const payload = JSON.stringify({ eventId, action });
+  const payload = JSON.stringify({
+    eventId,
+    action,
+    anonSessionId: getAnonId() || undefined,  // null/undefined → backend skips user_events row
+  });
   try{
     if(navigator.sendBeacon){
       navigator.sendBeacon(url, new Blob([payload], {type:'application/json'}));
@@ -1374,9 +1536,9 @@ function cm2(){document.getElementById('mov').classList.remove('on');}
 // Source labels & colors for the picker pills
 const SOURCE_META = {
   ticketmaster:     { label: 'Ticketmaster',  color: '#00F2FF' },
-  agenda_brussels:  { label: 'agenda.brussels', color: '#FFD166' },
   uitdatabank:      { label: 'Uitdatabank',   color: '#FF0055' },
   publiq:           { label: 'Uitdatabank',   color: '#FF0055' },
+  agenda_brussels:  { label: 'agenda.brussels', color: '#FFD166' },
   eventbrite:       { label: 'Eventbrite',    color: '#F05537' },
   resident_advisor: { label: 'Resident Advisor', color: '#FFB800' },
   bandsintown:      { label: 'Bandsintown',   color: '#00E676' },
@@ -1516,7 +1678,32 @@ const SAMPLE=[
   {id:'s8',name:'Brussels Jazz Marathon',seg:'Music',genre:'Jazz',city:'Brussels',venue:'Multiple Venues',date:'2025-05-23',time:'all day',img:null,url:'https://www.brusselsjazzmarathon.be',mn:0,mx:0,desc:"100+ concerts across 20+ stages celebrating every jazz style from traditional to contemporary fusion.",pop:80,likes:1654},
 ];
 
+// --------------------------------------------------------------------------
+// GDPR / CONSENT BANNER
+// Shown on first visit if no consent flag is present. Accepting writes the
+// flag, allowing other localStorage writes (likes, anon session ID). The
+// app works without consent — just doesn't persist anything across reloads.
+// --------------------------------------------------------------------------
+function acceptConsent() {
+  try { localStorage.setItem(LS.CONSENT, '1'); } catch {}
+  const banner = document.getElementById('gdpr');
+  if (banner) banner.classList.remove('on');
+  // If we accepted mid-session, persist any in-memory likes that accumulated
+  // before the user clicked OK.
+  saveLikes(lk);
+  // And generate the anon session ID now so subsequent tracks() include it.
+  getAnonId();
+}
+
+function maybeShowConsentBanner() {
+  if (hasConsent()) return;
+  const banner = document.getElementById('gdpr');
+  if (banner) banner.classList.add('on');
+}
+
 setLang(lang);
+maybeShowConsentBanner();
+updateLikedCount();
 fetchEvts();
 </script>
 </body>
