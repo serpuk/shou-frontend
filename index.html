@@ -1480,7 +1480,10 @@ function updateLikedCount(){
 //   1. Bumps aggregate counter on events (view_count, click_count, share_count)
 //   2. If user has consented, writes a per-session row to user_events
 //      tied to the anonymous session UUID (used for personalized recs later).
-// Uses sendBeacon when available (survives page navigation), falls back to fetch.
+//
+// Uses `fetch` with `keepalive: true` so the request survives page navigation,
+// equivalent guarantee to sendBeacon. Explicitly omits credentials to avoid
+// the CORS-credentials handshake — the endpoint never reads cookies/auth.
 function track(eventId, action){
   if(!eventId || !action) return;
   const url = API_BASE + '/api/track';
@@ -1490,11 +1493,14 @@ function track(eventId, action){
     anonSessionId: getAnonId() || undefined,  // null/undefined → backend skips user_events row
   });
   try{
-    if(navigator.sendBeacon){
-      navigator.sendBeacon(url, new Blob([payload], {type:'application/json'}));
-    } else {
-      fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:payload,keepalive:true}).catch(()=>{});
-    }
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: payload,
+      keepalive: true,
+      credentials: 'omit',   // explicit: no cookies — avoids CORS credential preflight checks
+      mode: 'cors',
+    }).catch(()=>{});
   }catch{}
 }
 
