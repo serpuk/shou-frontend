@@ -1758,10 +1758,55 @@ function tl(id){
   const wasLiked = lk.has(id);
   if (wasLiked) lk.delete(id); else lk.add(id);
   saveLikes(lk);
+  // Mirror to user_likes table when signed in. RLS policy "Users manage own likes"
+  // scopes this to auth.uid() = user_id, so no extra security check needed.
+  // Fire-and-forget: failures are logged but don't undo the localStorage change.
+  // (Considered optimistic rollback; rejected for now — divergence is rare and
+  // self-heals on next page load via refreshLikesFromServer.)
+  syncLikeToServer(id, !wasLiked);
   // Fire-and-forget tracking; respects consent (track() checks anonId).
   track(id, wasLiked ? 'unlike' : 'like');
   updateLikedCount();
   renderAll();
+}
+
+// Push a single like/unlike to user_likes. No-op when signed out.
+function syncLikeToServer(eventId, isNowLiked) {
+  if (!currentSession) return;
+  const userId = currentSession.user.id;
+  if (isNowLiked) {
+    // INSERT with ON CONFLICT DO NOTHING — safe to call repeatedly.
+    sb.from('user_likes')
+      .upsert({ user_id: userId, event_id: eventId }, { onConflict: 'user_id,event_id', ignoreDuplicates: true })
+      .then(({ error }) => { if (error) console.warn('user_likes insert failed:', error.message); });
+  } else {
+    sb.from('user_likes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('event_id', eventId)
+      .then(({ error }) => { if (error) console.warn('user_likes delete failed:', error.message); });
+  }
+}
+
+// On sign-in (or page load when already signed in), pull the user's likes
+// from user_likes and overwrite the local Set. This makes user_likes the
+// authoritative source on signed-in devices, and means a user can sign in
+// on device B and see likes they made on device A.
+async function refreshLikesFromServer() {
+  if (!currentSession) return;
+  try {
+    const { data, error } = await sb
+      .from('user_likes')
+      .select('event_id')
+      .eq('user_id', currentSession.user.id);
+    if (error) { console.warn('refreshLikesFromServer failed:', error.message); return; }
+    lk = new Set((data || []).map(r => r.event_id));
+    saveLikes(lk);            // mirror to localStorage so reload is fast
+    updateLikedCount();
+    renderAll();
+  } catch (err) {
+    console.warn('refreshLikesFromServer error:', err);
+  }
 }
 
 // Updates the small badge on the "Liked" filter button.
@@ -2094,8 +2139,12 @@ async function handleAuthStateChange(event, session) {
   currentSession = session || null;
 
   if (event === 'SIGNED_IN' && session) {
-    // Wait for ensure_profile + merge to finish, then render.
+    // First-time housekeeping: profile row + anon→user merge + likes migration.
     await ensureProfileAndMerge();
+    // Pull the user's authoritative likes from user_likes (overwrites local Set).
+    // Important: do this AFTER ensureProfileAndMerge so the freshly-migrated
+    // localStorage likes are included.
+    await refreshLikesFromServer();
     renderAuthSurface();
     // Close any open modals; we just signed them in.
     closeSignInModal();
@@ -2104,16 +2153,20 @@ async function handleAuthStateChange(event, session) {
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
     } catch {}
-    // Re-render the page so the Liked tab empty state (if visible) drops
-    // the "sign in to keep them across devices" line.
+    // Re-render: Liked tab empty state drops sign-in nudge, likes counter updates.
     renderAll();
   } else if (event === 'SIGNED_OUT') {
+    // Keep localStorage as-is — user's likes don't visually disappear on sign-out.
+    // They'll fall back to anonymous-mode persistence.
     renderAuthSurface();
     renderAll();
   } else if (event === 'INITIAL_SESSION') {
-    // Fired on every page load. If a session exists, treat like SIGNED_IN
-    // but skip the merge (it was already done at first sign-in).
-    if (session) renderAuthSurface();
+    // Fired on every page load. If a session exists, this is a returning user.
+    // Sync likes from server so device A and device B stay consistent.
+    if (session) {
+      renderAuthSurface();
+      await refreshLikesFromServer();
+    }
   }
 }
 
