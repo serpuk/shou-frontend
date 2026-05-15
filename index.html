@@ -93,20 +93,196 @@ nav::after {
   font-size: 15px; letter-spacing: 2.5px;
   color: var(--bone);
 }
-.navr { display: flex; gap: 6px; }
-.lb {
+.navr { display: flex; gap: 10px; align-items: center; }
+
+/* ── LANGUAGE DROPDOWN ── */
+.langbox { position: relative; }
+.lb-btn {
+  display: inline-flex; align-items: center; gap: 7px;
   background: transparent; border: 1px solid rgba(0,242,255,0.2);
-  border-radius: 20px; padding: 6px 14px;
+  border-radius: 20px; padding: 6px 12px 6px 14px;
   color: var(--bone3); font-family: 'Inter', sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: 1px;
   cursor: pointer; transition: all .2s;
 }
-.lb:hover { border-color: rgba(0,242,255,0.5); color: var(--cyan); }
-.lb.on {
-  background: rgba(255,0,85,0.15); border-color: rgba(255,0,85,0.5);
-  color: var(--magenta);
-  box-shadow: 0 0 12px rgba(255,0,85,0.3);
+.lb-btn:hover { border-color: rgba(0,242,255,0.5); color: var(--cyan); }
+.lb-btn.open { border-color: var(--cyan); color: var(--cyan); }
+.lb-caret { opacity: .7; transition: transform .2s; }
+.lb-btn.open .lb-caret { transform: rotate(180deg); }
+
+.lang-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: rgba(18,18,24,0.97);
+  border: 1px solid rgba(0,242,255,0.25);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 150px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.55);
+  backdrop-filter: blur(12px);
+  display: none;
+  z-index: 100;
 }
+.lang-menu.on { display: block; }
+.lm-item {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none;
+  padding: 8px 12px; border-radius: 8px;
+  color: var(--bone2); font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.lm-item:hover { background: rgba(0,242,255,0.08); color: var(--bone); }
+.lm-item.active { color: var(--magenta); font-weight: 700; }
+
+/* ── AUTH SURFACE (sign-in button OR avatar+menu when signed in) ── */
+.authbox { position: relative; }
+.signin-btn {
+  background: rgba(255,0,85,0.12);
+  border: 1px solid rgba(255,0,85,0.4);
+  border-radius: 20px; padding: 7px 16px;
+  color: var(--magenta);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer; transition: all .2s;
+}
+.signin-btn:hover {
+  background: var(--magenta); color: #fff;
+  box-shadow: 0 0 18px rgba(255,0,85,0.45);
+}
+.avatar-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
+  border: none;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-btn:hover { transform: scale(1.05); box-shadow: 0 0 18px rgba(0,242,255,0.4); }
+.avatar-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: rgba(18,18,24,0.97);
+  border: 1px solid rgba(0,242,255,0.25);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 200px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.55);
+  backdrop-filter: blur(12px);
+  display: none;
+  z-index: 100;
+}
+.avatar-menu.on { display: block; }
+.am-email {
+  font-size: 11px; color: var(--bone3);
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+.am-item {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none;
+  padding: 8px; border-radius: 6px;
+  color: var(--bone2); font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.am-item:hover { background: rgba(255,0,85,0.1); color: var(--magenta); }
+
+/* ── SIGN-IN MODAL ── */
+.signin-mov {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.signin-mov.on { display: flex; }
+.signin-modal {
+  background: rgba(18,18,24,0.98);
+  border: 1px solid rgba(0,242,255,0.3);
+  border-radius: var(--radius);
+  padding: 36px 32px 28px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(255,0,85,0.06);
+  position: relative;
+}
+.signin-modal .mcl {
+  position: absolute; top: 14px; right: 14px;
+  background: transparent; border: none;
+  color: var(--bone3); font-size: 20px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.signin-modal .mcl:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
+.signin-modal h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--bone);
+  margin-bottom: 8px;
+}
+.signin-modal .sub {
+  font-size: 13px; color: var(--bone2); line-height: 1.55;
+  margin-bottom: 22px;
+}
+.signin-modal .em-field {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--bone);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  margin-bottom: 14px;
+  transition: all .15s;
+}
+.signin-modal .em-field:focus {
+  outline: none;
+  border-color: var(--cyan);
+  background: rgba(0,242,255,0.04);
+}
+.signin-modal .send-btn {
+  width: 100%;
+  background: var(--magenta);
+  color: #fff; border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer; transition: all .2s;
+}
+.signin-modal .send-btn:hover:not(:disabled) {
+  background: var(--magenta2); box-shadow: 0 0 22px rgba(255,0,85,0.5);
+}
+.signin-modal .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.signin-modal .err {
+  font-size: 12px; color: var(--magenta2);
+  margin-top: 10px; line-height: 1.4;
+  display: none;
+}
+.signin-modal .err.on { display: block; }
+.signin-modal .sent-state {
+  display: none; text-align: center;
+}
+.signin-modal .sent-state.on { display: block; }
+.signin-modal .sent-state .checkmark {
+  display: inline-block;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgba(0,242,255,0.12);
+  border: 1px solid rgba(0,242,255,0.3);
+  color: var(--cyan);
+  font-size: 28px; line-height: 56px;
+  margin-bottom: 16px;
+}
+.signin-modal .sent-state h3 { margin-bottom: 6px; }
+.signin-modal .sent-state .em-shown { color: var(--cyan); font-weight: 700; }
+.signin-modal .form-state.hidden,
+.signin-modal .sent-state.hidden { display: none; }
 
 /* ── HERO ── */
 .hero {
@@ -818,6 +994,12 @@ footer p {
   .grid { grid-template-columns: 1fr; }
 }
 </style>
+
+<!-- Supabase JS client — used for auth flows and user-scoped writes (likes via
+     RLS, ensure_profile RPC). Loaded from jsDelivr, version pinned to avoid
+     surprise breakages. The anon key is safe to expose: it's the public role,
+     RLS scopes all access on the server side. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -829,11 +1011,25 @@ footer p {
     <span class="logo-text">shou</span>
   </div>
   <div class="navr">
-    <button class="lb" onclick="setLang('fr')">FR</button>
-    <button class="lb" onclick="setLang('nl')">NL</button>
-    <button class="lb" onclick="setLang('de')">DE</button>
-    <button class="lb" onclick="setLang('es')">ES</button>
-    <button class="lb on" onclick="setLang('en')">EN</button>
+    <div class="langbox">
+      <button class="lb-btn" id="langBtn" onclick="toggleLangMenu(event)" aria-haspopup="true" aria-expanded="false">
+        <span id="langLabel">EN</span>
+        <svg class="lb-caret" width="10" height="10" viewBox="0 0 10 10"><path d="M1 3 L5 7 L9 3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div class="lang-menu" id="langMenu">
+        <button class="lm-item" onclick="setLang('en')" data-l="en">English</button>
+        <button class="lm-item" onclick="setLang('fr')" data-l="fr">Français</button>
+        <button class="lm-item" onclick="setLang('nl')" data-l="nl">Nederlands</button>
+        <button class="lm-item" onclick="setLang('de')" data-l="de">Deutsch</button>
+        <button class="lm-item" onclick="setLang('es')" data-l="es">Español</button>
+      </div>
+    </div>
+    <!-- Auth surface: replaced at runtime depending on session state.
+         Signed out → "Sign in" button opening modal.
+         Signed in  → avatar circle with initials + dropdown (sign out). -->
+    <div class="authbox" id="authbox">
+      <button class="signin-btn" onclick="openSignInModal()" data-k="signIn">Sign in</button>
+    </div>
   </div>
 </nav>
 
@@ -897,6 +1093,35 @@ footer p {
   <div class="modal"><button class="mcl" onclick="cm2()">✕</button><div id="mc"></div></div>
 </div>
 
+<!-- Sign-in modal: email + magic link. Two states (form / "check your email"). -->
+<div class="signin-mov" id="signinMov" onclick="closeSignInModalIfBackdrop(event)">
+  <div class="signin-modal">
+    <button class="mcl" onclick="closeSignInModal()" aria-label="Close">✕</button>
+
+    <!-- State 1: Email entry form -->
+    <div class="form-state" id="signinFormState">
+      <h3 data-k="siT">Sign in to shou</h3>
+      <p class="sub" data-k="siS">We'll email you a magic link. No password needed — click the link and you're in.</p>
+      <input type="email" class="em-field" id="signinEmail" placeholder="you@example.com" autocomplete="email" data-k-ph="siP">
+      <button class="send-btn" id="signinSend" onclick="sendMagicLink()" data-k="siB">Send magic link</button>
+      <p class="err" id="signinErr"></p>
+    </div>
+
+    <!-- State 2: "Check your email" confirmation -->
+    <div class="sent-state" id="signinSentState">
+      <div class="checkmark">✓</div>
+      <h3 data-k="siCT">Check your email</h3>
+      <p class="sub">
+        <span data-k="siCB">We sent a sign-in link to</span>
+        <br><span class="em-shown" id="signinSentEmail"></span>
+      </p>
+      <p class="sub" style="font-size:12px;color:var(--bone3);margin-top:8px" data-k="siCH">
+        Open the link on this device to sign in. The link expires in 1 hour.
+      </p>
+    </div>
+  </div>
+</div>
+
 <!-- GDPR / storage consent banner. Shown once on first visit; dismissing -->
 <!-- it sets a flag in localStorage that gates other localStorage writes.   -->
 <div class="gdpr-banner" id="gdpr">
@@ -922,12 +1147,35 @@ footer p {
 // ──────────────────────────────────────────────────────────────────
 const API_BASE = 'https://shou-backend.vercel.app';
 
+// --------------------------------------------------------------------------
+// SUPABASE CLIENT
+// --------------------------------------------------------------------------
+// The anon key is safe to expose in client-side code: it represents the
+// public role, and RLS policies on the database scope all access. No
+// privileged operations should be possible with this key.
+const SUPABASE_URL  = 'https://mpbrfnlmtdxnipyarsss.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wYnJmbmxtdGR4bmlweWFyc3NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTU4MDMsImV4cCI6MjA5MjA3MTgwM30.r2QJY9QBfWpo8ItIJ06nTt4Wk38g2mD52AXPJmaPN_o';
+
+// The supabase-js UMD bundle exposes a global `supabase` namespace.
+// We rename our client to `sb` to avoid collision with that namespace.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,   // auto-handles ?code=...&access_token=... on page load
+  },
+});
+
+// Holds the current Supabase session, or null if signed out.
+// Mutated by handleAuthStateChange and the bootstrap flow.
+let currentSession = null;
+
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',fliked:'Liked',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',atL:'Your liked events',ne:'No events found.',neL:'Tap ♥ on events to save them here.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more'},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',fliked:'Favoris',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',atL:'Vos favoris',ne:'Aucun événement trouvé.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus'},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',fliked:'Favorieten',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',atL:'Jouw favorieten',ne:'Geen evenementen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info'},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',fliked:'Favoriten',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren'},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',fliked:'Favoritos',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',atL:'Tus favoritos',ne:'No se encontraron eventos.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más'}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',fliked:'Liked',ca:'All Cities',ft:'🔥 Trending now',at:'All Events',atL:'Your liked events',ne:'No events found.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again."},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',fliked:'Favoris',ca:'Toutes les villes',ft:'🔥 Tendance',at:'Tous les événements',atL:'Vos favoris',ne:'Aucun événement trouvé.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.'},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',fliked:'Favorieten',ca:'Alle steden',ft:'🔥 Trending',at:'Alle evenementen',atL:'Jouw favorieten',ne:'Geen evenementen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.'},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',fliked:'Favoriten',ca:'Alle Städte',ft:'🔥 Jetzt angesagt',at:'Alle Events',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.'},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',fliked:'Favoritos',ca:'Todas las ciudades',ft:'🔥 Tendencia',at:'Todos los eventos',atL:'Tus favoritos',ne:'No se encontraron eventos.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.'}
 };
 
 let lang=(['fr','nl','de','es'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
@@ -998,7 +1246,47 @@ function fallbackUuid() {
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes();
 const t=k=>T[lang][k]||T.en[k]||k;
 
-function setLang(l){lang=l;document.querySelectorAll('.lb').forEach(b=>b.classList.remove('on'));document.querySelector(`.lb[onclick="setLang('${l}')"]`).classList.add('on');applyI18n();fetchEvts();}
+// --------------------------------------------------------------------------
+// LANGUAGE DROPDOWN
+// --------------------------------------------------------------------------
+function setLang(l) {
+  lang = l;
+  // Update the dropdown button label to the chosen language's ISO code (uppercase).
+  const lbl = document.getElementById('langLabel');
+  if (lbl) lbl.textContent = l.toUpperCase();
+  // Mark the active item in the menu.
+  document.querySelectorAll('.lm-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.l === l);
+  });
+  closeLangMenu();
+  applyI18n();
+  fetchEvts();
+}
+
+function toggleLangMenu(ev) {
+  ev.stopPropagation();
+  const btn = document.getElementById('langBtn');
+  const menu = document.getElementById('langMenu');
+  if (!btn || !menu) return;
+  const willOpen = !menu.classList.contains('on');
+  // Close any other dropdowns first
+  closeAvatarMenu();
+  menu.classList.toggle('on', willOpen);
+  btn.classList.toggle('open', willOpen);
+  btn.setAttribute('aria-expanded', String(willOpen));
+}
+
+function closeLangMenu() {
+  document.getElementById('langMenu')?.classList.remove('on');
+  const btn = document.getElementById('langBtn');
+  if (btn) { btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+}
+
+// Click anywhere outside the dropdown to close it.
+document.addEventListener('click', e => {
+  if (!e.target.closest('.langbox')) closeLangMenu();
+  if (!e.target.closest('.authbox')) closeAvatarMenu();
+});
 function applyI18n(){
   document.querySelectorAll('[data-k]').forEach(el=>{
     const v=t(el.dataset.k);
@@ -1342,11 +1630,16 @@ function renderAll(){
     allHeaderTitle.dataset.k    = isLiked ? 'atL' : 'at';
   }
 
-  // Adjust the empty-state message for liked mode (so it's friendly, not negative)
+  // Adjust the empty-state message for liked mode (so it's friendly, not negative).
+  // When on the Liked tab AND signed out, add a soft nudge to sign in.
   const empMsg = emp.querySelector('p[data-k]');
   if (empMsg) {
-    empMsg.textContent = isLiked ? t('neL') : t('ne');
-    empMsg.dataset.k    = isLiked ? 'neL' : 'ne';
+    if (isLiked && !currentSession) {
+      empMsg.innerHTML = `${t('neL')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neLSignIn')}</span>`;
+    } else {
+      empMsg.textContent = isLiked ? t('neL') : t('ne');
+    }
+    empMsg.dataset.k = isLiked ? 'neL' : 'ne';
   }
 
   if(!filtered.length){
@@ -1707,10 +2000,242 @@ function maybeShowConsentBanner() {
   if (banner) banner.classList.add('on');
 }
 
+// ==========================================================================
+// AUTH FLOW
+// ==========================================================================
+// Magic-link sign-in via Supabase Auth. End-to-end flow:
+//   1. User clicks "Sign in" → openSignInModal()
+//   2. Enters email, clicks "Send magic link" → sendMagicLink()
+//   3. Supabase emails them a link with embedded auth tokens
+//   4. User clicks link → returns to https://shou.be/?code=... (or hash)
+//      → supabase-js detectSessionInUrl handles the token automatically
+//      → onAuthStateChange fires with SIGNED_IN event
+//   5. handleAuthStateChange runs: stores session, ensures profile,
+//      merges anonymous data, switches UI to signed-in mode
+//   6. URL is cleaned (removed auth params)
+// ==========================================================================
+
+// ------------------------------------------------------------------
+// Modal control
+// ------------------------------------------------------------------
+function openSignInModal() {
+  // Reset modal to form state when opening fresh.
+  document.getElementById('signinFormState')?.classList.remove('hidden');
+  document.getElementById('signinSentState')?.classList.remove('on');
+  document.getElementById('signinErr')?.classList.remove('on');
+  document.getElementById('signinErr').textContent = '';
+  document.getElementById('signinSend').disabled = false;
+  document.getElementById('signinSend').textContent = t('siB');
+  document.getElementById('signinMov')?.classList.add('on');
+  // Focus the email input for keyboard-first users.
+  setTimeout(() => document.getElementById('signinEmail')?.focus(), 100);
+}
+
+function closeSignInModal() {
+  document.getElementById('signinMov')?.classList.remove('on');
+}
+
+function closeSignInModalIfBackdrop(ev) {
+  // Only close if user clicked the dark backdrop, not the modal content.
+  if (ev.target.id === 'signinMov') closeSignInModal();
+}
+
+// ------------------------------------------------------------------
+// Send magic link
+// ------------------------------------------------------------------
+async function sendMagicLink() {
+  const emailEl = document.getElementById('signinEmail');
+  const sendBtn = document.getElementById('signinSend');
+  const errEl   = document.getElementById('signinErr');
+  const email   = emailEl.value.trim().toLowerCase();
+
+  // Basic email shape check. Server-side validation is the real one,
+  // this is just to avoid pointless round-trips.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = t('siErrInvalidEmail');
+    errEl.classList.add('on');
+    return;
+  }
+
+  errEl.classList.remove('on');
+  sendBtn.disabled = true;
+  sendBtn.textContent = t('siSending');
+
+  try {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: {
+        // After clicking the link, user lands back here.
+        // The detectSessionInUrl option on the client picks up the token.
+        emailRedirectTo: window.location.origin + window.location.pathname,
+        // Allow new users — sign-up via magic link is fine for shou.
+        shouldCreateUser: true,
+      },
+    });
+
+    if (error) throw error;
+
+    // Switch to "check your email" state
+    document.getElementById('signinSentEmail').textContent = email;
+    document.getElementById('signinFormState').classList.add('hidden');
+    document.getElementById('signinSentState').classList.add('on');
+  } catch (err) {
+    errEl.textContent = t('siErrFailed') + ' ' + (err.message || '');
+    errEl.classList.add('on');
+    sendBtn.disabled = false;
+    sendBtn.textContent = t('siB');
+  }
+}
+
+// ------------------------------------------------------------------
+// React to auth state changes (sign in, sign out, token refresh).
+// ------------------------------------------------------------------
+async function handleAuthStateChange(event, session) {
+  currentSession = session || null;
+
+  if (event === 'SIGNED_IN' && session) {
+    // Wait for ensure_profile + merge to finish, then render.
+    await ensureProfileAndMerge();
+    renderAuthSurface();
+    // Close any open modals; we just signed them in.
+    closeSignInModal();
+    // Clean up the URL — remove any auth params Supabase added.
+    try {
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    } catch {}
+    // Re-render the page so the Liked tab empty state (if visible) drops
+    // the "sign in to keep them across devices" line.
+    renderAll();
+  } else if (event === 'SIGNED_OUT') {
+    renderAuthSurface();
+    renderAll();
+  } else if (event === 'INITIAL_SESSION') {
+    // Fired on every page load. If a session exists, treat like SIGNED_IN
+    // but skip the merge (it was already done at first sign-in).
+    if (session) renderAuthSurface();
+  }
+}
+
+sb.auth.onAuthStateChange(handleAuthStateChange);
+
+// ------------------------------------------------------------------
+// First-time sign-in housekeeping:
+//   - ensure_profile()      : creates a profile row if it doesn't exist
+//   - merge_anon_user_data(): reassigns the user's anonymous tracking data
+// Both are idempotent server-side, so calling them twice is harmless.
+// We also migrate localStorage likes into user_likes here.
+// ------------------------------------------------------------------
+async function ensureProfileAndMerge() {
+  try {
+    // 1. Profile row (idempotent)
+    const { error: pErr } = await sb.rpc('ensure_profile');
+    if (pErr) console.warn('ensure_profile failed:', pErr.message);
+
+    // 2. Merge anonymous tracking data via the existing RPC
+    const anonId = getAnonId();
+    if (anonId) {
+      const { error: mErr } = await sb.rpc('merge_anon_user_data', { p_anon_session_id: anonId });
+      if (mErr) console.warn('merge_anon_user_data failed:', mErr.message);
+    }
+
+    // 3. Migrate localStorage likes into user_likes table.
+    // Each like is a row keyed by (user_id, event_id). On conflict do nothing —
+    // the like already exists for this user.
+    if (lk && lk.size > 0) {
+      const rows = Array.from(lk).map(eventId => ({ event_id: eventId }));
+      // Supabase JS handles user_id from auth.uid() implicitly via RLS.
+      // Actually — we need to specify it. Use the session user_id.
+      rows.forEach(r => r.user_id = currentSession.user.id);
+      const { error: likeErr } = await sb
+        .from('user_likes')
+        .upsert(rows, { onConflict: 'user_id,event_id', ignoreDuplicates: true });
+      if (likeErr) console.warn('like migration failed:', likeErr.message);
+    }
+  } catch (err) {
+    console.warn('Auth housekeeping error:', err);
+  }
+}
+
+// ------------------------------------------------------------------
+// Sign out
+// ------------------------------------------------------------------
+async function signOut() {
+  closeAvatarMenu();
+  try {
+    await sb.auth.signOut();
+    // onAuthStateChange will fire SIGNED_OUT and renderAuthSurface().
+  } catch (err) {
+    console.warn('Sign out error:', err);
+  }
+}
+
+// ------------------------------------------------------------------
+// Render the header auth surface based on current session state.
+// Signed out → "Sign in" button.
+// Signed in  → avatar circle with user initials + dropdown.
+// ------------------------------------------------------------------
+function renderAuthSurface() {
+  const box = document.getElementById('authbox');
+  if (!box) return;
+
+  if (!currentSession) {
+    box.innerHTML = `<button class="signin-btn" onclick="openSignInModal()">${t('signIn')}</button>`;
+    return;
+  }
+
+  // Derive initials from email (display_name will come later when we have
+  // a profile-edit UI). For "alice@example.com" → "AL".
+  const email = currentSession.user.email || '';
+  const initials = email.slice(0, 2).toUpperCase();
+
+  box.innerHTML = `
+    <button class="avatar-btn" onclick="toggleAvatarMenu(event)" aria-label="Account menu">${initials}</button>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="am-email">${escapeHtml(email)}</div>
+      <button class="am-item" onclick="signOut()">${t('signOut')}</button>
+    </div>
+  `;
+}
+
+function toggleAvatarMenu(ev) {
+  ev.stopPropagation();
+  const menu = document.getElementById('avatarMenu');
+  if (!menu) return;
+  closeLangMenu();
+  menu.classList.toggle('on');
+}
+
+function closeAvatarMenu() {
+  document.getElementById('avatarMenu')?.classList.remove('on');
+}
+
+// HTML-escape user-supplied strings (emails) before injecting into innerHTML.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+// Enter key in the email field triggers send
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement?.id === 'signinEmail') {
+    e.preventDefault();
+    sendMagicLink();
+  }
+  // ESC closes the sign-in modal
+  if (e.key === 'Escape' && document.getElementById('signinMov')?.classList.contains('on')) {
+    closeSignInModal();
+  }
+});
+
 setLang(lang);
 maybeShowConsentBanner();
 updateLikedCount();
 fetchEvts();
+// Render auth surface on first paint based on whatever session might be
+// restored from localStorage. onAuthStateChange will also fire INITIAL_SESSION.
+renderAuthSurface();
 </script>
 </body>
 </html>
