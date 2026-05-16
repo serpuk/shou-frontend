@@ -1533,7 +1533,7 @@ async function fetchForYou() {
       forYouIds = new Map();
       return;
     }
-    forYouIds = new Map((data || []).map(r => [r.event_id, Number(r.score)]));
+    forYouIds = new Map((data || []).map(r => [r.rec_event_id, Number(r.rec_score)]));
   } catch (err) {
     console.warn('get_recommendations exception:', err);
     forYouIds = new Map();
