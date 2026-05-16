@@ -1504,6 +1504,18 @@ function sf(f,btn){
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   vis=6;
+  // Clear any active AI search when a filter is clicked. Filter buttons and
+  // AI search are mutually-exclusive ways of narrowing the catalog — having
+  // both active at once produced confusing intersection behavior (e.g. "rock
+  // this month" + Sports → 0 events, even though there ARE sports events).
+  // The Clear button on the AI panel handles the reverse direction.
+  if (aiQ) {
+    aiQ = '';
+    const aiInput = document.getElementById('ai');
+    if (aiInput) aiInput.value = '';
+    const aiPanel = document.getElementById('aip');
+    if (aiPanel) aiPanel.classList.remove('show');
+  }
   // For "foryou", fetch fresh recommendations from the server before rendering.
   // For all other filters, applyF is sync.
   if (f === 'foryou') {
@@ -2039,17 +2051,20 @@ function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
 function clearAI(){
   aiQ=''; vis=6;
-  document.getElementById('ai').value='';
-  document.getElementById('aip').classList.remove('on');
+  const aiInput = document.getElementById('ai');
+  if (aiInput) aiInput.value='';
+  const panel = document.getElementById('aip');
+  if (panel) panel.classList.remove('show');
   applyF();
 }
 function showAI(q){
   // 1) Actually filter events by the query
   aiQ=q; vis=6; applyF();
 
-  // 2) Show a concise summary panel with result count + clear button + optional tip
+  // 2) Show a concise summary panel with active-search badge + clear button + tip.
+  // Panel becomes visible via the 'show' class (matches the .aip.show CSS rule).
   const p=document.getElementById('aip'),t2=document.getElementById('ait');
-  p.classList.add('on');
+  p.classList.add('show');
   t2.innerHTML='<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
 
   setTimeout(()=>{
