@@ -956,6 +956,12 @@ h1 .bl {
   border-color: var(--src-color);
   transform: translateY(-1px);
 }
+/* Small dimmer badge showing the count when one source has multiple listings */
+.src-count {
+  opacity: 0.6;
+  font-weight: 600;
+  margin-left: 2px;
+}
 
 @media (max-width: 640px) {
   .mth, .mph { height: 200px; }
@@ -1982,12 +1988,35 @@ const SOURCE_META = {
 // Build the "Listed on" row when an event has 2+ sources with URLs.
 // For single-source events we skip this entirely — the main Get Tickets
 // button already covers that case.
+//
+// Dedupe behavior: an event can have multiple source rows from the same
+// platform (e.g. agenda.brussels lists 2 sessions of a workshop separately,
+// our ingest merges into 1 shou event by title+venue+date). We collapse
+// duplicates by source NAME so the user sees "AGENDA.BRUSSELS" once. If
+// there were multiple distinct URLs from one source, we show a small count
+// badge so the user knows there's >1 listing — clicking goes to the first.
 function mSourcesRow(e){
-  const withUrls = (e.sources||[]).filter(s=>s.url);
-  if (withUrls.length < 2) return '';   // show only when there's real choice
-  const pills = withUrls.map(s=>{
-    const meta = SOURCE_META[s.source] || { label: s.source, color: 'var(--bone2)' };
-    return `<a class="src-pill" href="${s.url}" target="_blank" rel="noopener" style="--src-color:${meta.color}">${meta.label} ↗</a>`;
+  // First, drop any source row without a URL.
+  const withUrls = (e.sources||[]).filter(s => s.url);
+
+  // Group by source name. Map<source, [url1, url2, ...]>.
+  const bySource = new Map();
+  for (const s of withUrls) {
+    if (!bySource.has(s.source)) bySource.set(s.source, []);
+    bySource.get(s.source).push(s.url);
+  }
+  // Need 2+ DISTINCT SOURCES (or 1 source with multiple URLs) to render.
+  // Single-source single-URL events skip this row entirely.
+  const uniqueSources = [...bySource.keys()];
+  if (uniqueSources.length < 2 && (bySource.get(uniqueSources[0])?.length ?? 0) < 2) {
+    return '';
+  }
+  const pills = uniqueSources.map(srcName => {
+    const urls = bySource.get(srcName);
+    const meta = SOURCE_META[srcName] || { label: srcName, color: 'var(--bone2)' };
+    // If multiple URLs from one source, show a small "(N)" count badge.
+    const countBadge = urls.length > 1 ? ` <span class="src-count">(${urls.length})</span>` : '';
+    return `<a class="src-pill" href="${urls[0]}" target="_blank" rel="noopener" style="--src-color:${meta.color}">${meta.label}${countBadge} ↗</a>`;
   }).join('');
   return `<div class="msrc-row">
     <span class="msrc-label">Also listed on:</span>
