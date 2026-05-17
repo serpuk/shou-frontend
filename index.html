@@ -736,6 +736,29 @@ h1 .bl {
 .sb.lk { color: var(--magenta); border-color: rgba(255,0,85,0.5); box-shadow: 0 0 10px rgba(255,0,85,0.3); }
 .ln { font-size: 11px; color: var(--bone3); margin-left: 1px; }
 
+/* Card-level like button — pill-shaped, matches Get Tickets button height.
+   Used in smCard. The big card (.featured) keeps the smaller .sb for now
+   because it has more buttons in its row (X, FB, copy-link). */
+.like-btn {
+  background: var(--glass); border: 1px solid rgba(255,0,85,0.25); border-radius: 8px;
+  padding: 9px 14px; font-family: 'Inter', sans-serif; cursor: pointer;
+  color: var(--bone2); transition: all .2s;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: 1px;
+}
+.like-btn .like-heart { font-size: 15px; line-height: 1; }
+.like-btn .like-count { color: var(--bone3); font-weight: 700; }
+.like-btn:hover {
+  background: rgba(255,0,85,0.08); border-color: rgba(255,0,85,0.5);
+  color: var(--magenta);
+}
+.like-btn:hover .like-count { color: var(--bone2); }
+.like-btn.lk {
+  color: var(--magenta); border-color: rgba(255,0,85,0.6);
+  box-shadow: 0 0 12px rgba(255,0,85,0.25);
+}
+.like-btn.lk .like-count { color: var(--magenta); }
+
 /* ── TICKET BUTTON ── */
 .tb {
   background: var(--magenta); border: none; border-radius: 8px;
@@ -2009,6 +2032,8 @@ function mimgFail(id,tc,em){
 }
 function bigCard(e){
   const cl=segCls(e.seg),isL=lk.has(e.id),pop=Math.min(99,Math.round(e.pop));
+  const priceText = pStr(e);
+  const hasRealPrice = priceText !== t('see');
   return`<article class="featured" onclick="om('${e.id}')">
     <div class="feat-media">
       ${th(e,true)}
@@ -2024,7 +2049,7 @@ function bigCard(e){
       <div class="feat-meta">
         <span class="feat-meta-item"><span class="mi">📍</span>${e.venue}, ${e.city}</span>
         <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${e.time!=='TBA'?' · '+e.time:''}</span>
-        <span class="feat-meta-item"><span class="mi">🎫</span>${pStr(e)}</span>
+        ${hasRealPrice?`<span class="feat-meta-item"><span class="mi">🎫</span>${priceText}</span>`:''}
       </div>
       <div class="feat-actions">
         <div class="socs">
@@ -2040,8 +2065,16 @@ function bigCard(e){
   </article>`;
 }
 
-function smCard(e){const cl=segCls(e.seg),isL=lk.has(e.id);
-return`<div class="card" onclick="om('${e.id}')">
+function smCard(e){
+  const cl=segCls(e.seg),isL=lk.has(e.id);
+  // Hide the price row when it would just say "See website" — that's filler
+  // on a card preview. Users see Get Tickets which is the actionable choice.
+  // Keep the row for events with actual price info (€20, €15-30, etc).
+  const priceText = pStr(e);
+  const hasRealPrice = priceText !== t('see');
+  // Time formatting: append "· HH:MM" when we have a real time, skip 'TBA'.
+  const timeStr = (e.time && e.time !== 'TBA') ? ' · ' + e.time : '';
+  return`<div class="card" onclick="om('${e.id}')">
 <div style="position:relative">${th(e,false)}<div class="srcpill s-tm" style="bottom:10px;left:10px;">TM</div></div>
 <div class="cb">
 <span class="cpill ${cl}">${e.seg}</span>
@@ -2049,16 +2082,17 @@ return`<div class="card" onclick="om('${e.id}')">
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
 <div class="mr"><span class="mi">📍</span>${e.city}</div>
-<div class="mr"><span class="mi">📅</span>${fmtD(e.date)}</div>
-<div class="mr"><span class="mi">🎫</span>${pStr(e)}</div>
+<div class="mr"><span class="mi">📅</span>${fmtD(e.date)}${timeStr}</div>
+${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
-<div class="socs">
-<button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
-<span class="ln">${e.likes+(isL?1:0)}</span>
-</div>
-<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')" style="padding:6px 14px;font-size:11px;">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
-</div></div></div>`;}
+<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" aria-label="Like">
+  <span class="like-heart">♥</span>
+  <span class="like-count">${e.likes+(isL?1:0)}</span>
+</button>
+<a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
+</div></div></div>`;
+}
 
 function tl(id){
   const wasLiked = lk.has(id);
