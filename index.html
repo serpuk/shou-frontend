@@ -515,10 +515,10 @@ h1 .bl {
 .fb.liked-tab:hover { color: #fff; border-color: var(--magenta); }
 .fb.liked-tab.on { background: var(--magenta); color: #fff; }
 
-/* For You filter tab — distinct cyan accent for the personalized algorithmic view */
-.fb.foryou-tab { color: var(--cyan); border-color: rgba(60,217,217,0.35); }
-.fb.foryou-tab:hover { color: #fff; border-color: var(--cyan); }
-.fb.foryou-tab.on { background: var(--cyan); color: #001A1A; }
+/* Live now filter — red accent reads as "active broadcast / happening now". */
+.fb.live-tab { color: #ff5050; border-color: rgba(255,80,80,0.35); }
+.fb.live-tab:hover { color: #fff; border-color: #ff5050; }
+.fb.live-tab.on { background: #ff5050; color: #fff; }
 .liked-count {
   display: inline-block;
   margin-left: 4px;
@@ -1084,11 +1084,11 @@ footer p {
   <div class="filters">
     <span class="flbl" data-k="fl">Filter:</span>
     <button class="fb on" data-c="all" onclick="sf('all',this)" data-k="fa">All</button>
+    <button class="fb live-tab" data-c="live" onclick="sf('live',this)" data-k="flive" title="Happening now">🔴 <span data-k="flive">Live now</span></button>
     <button class="fb" data-c="music" onclick="sf('music',this)" data-k="fm">Music</button>
     <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
     <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
     <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
-    <button class="fb foryou-tab" data-c="foryou" onclick="sf('foryou',this)" data-k="ffy" id="foryouBtn" title="Personalized recommendations" style="display:none">✨ <span data-k="ffy">For You</span></button>
     <button class="fb liked-tab" data-c="liked" onclick="sf('liked',this)" data-k="fliked" title="Saved events">♥ <span class="liked-count" id="lcn"></span></button>
     <select class="fsel" onchange="setCity(this.value)" id="csel"><option value="all" data-k="ca">All Cities</option></select>
   </div>
@@ -1184,12 +1184,12 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
 let currentSession = null;
 
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again."},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atFY:'Recommandés pour vous',atL:'Vos favoris',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.'},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Trending',at:'Alle evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.'},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.'},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atFY:'Recomendados para ti',atL:'Tus favoritos',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.'},
-  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Concerti, club, festival, teatro e altro — la guida after-dark per Bruxelles, Anversa, Gand e oltre.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'club nights',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atFY:'Consigliati per te',atL:'I tuoi preferiti',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Una nota sull\'archiviazione',gdprB:'Shou salva i tuoi eventi preferiti sul tuo dispositivo così puoi ritrovarli più tardi. Conserviamo anche dati anonimi sugli eventi che visiti per migliorare i consigli — mai collegati al tuo nome né condivisi.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.'}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again."},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',flive:'En direct',atLive:'🔴 En ce moment',neLive:'Aucun événement en cours pour le moment. Revenez dans un instant.',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atFY:'Recommandés pour vous',atL:'Vos favoris',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.'},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',flive:'Live nu',atLive:'🔴 Nu bezig',neLive:'Geen evenementen op dit moment. Kom zo terug.',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Trending',at:'Alle evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.'},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',flive:'Live jetzt',atLive:'🔴 Gerade jetzt',neLive:'Aktuell keine Events. Schau gleich wieder vorbei.',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.'},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',flive:'En vivo',atLive:'🔴 Ahora mismo',neLive:'No hay eventos en este momento. Vuelve en un rato.',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atFY:'Recomendados para ti',atL:'Tus favoritos',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.'},
+  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Concerti, club, festival, teatro e altro — la guida after-dark per Bruxelles, Anversa, Gand e oltre.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'club nights',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',flive:'In diretta',atLive:'🔴 In questo momento',neLive:'Nessun evento in corso. Riprova tra poco.',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atFY:'Consigliati per te',atL:'I tuoi preferiti',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Una nota sull\'archiviazione',gdprB:'Shou salva i tuoi eventi preferiti sul tuo dispositivo così puoi ritrovarli più tardi. Conserviamo anche dati anonimi sugli eventi che visiti per migliorare i consigli — mai collegati al tuo nome né condivisi.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.'}
 };
 
 let lang=(['fr','nl','de','es','it'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
@@ -1274,6 +1274,40 @@ let forYouFetching = false;
 //
 // Cached in localStorage for 24h to avoid hitting the endpoint on every page load.
 let userGeo = null;
+
+// Minimum like count for the home feed to switch from Trending to For You.
+// Below this, recommendations are barely better than random; trending is
+// genuinely more useful. 5 is a reasonable threshold to start with.
+const FORYOU_MIN_LIKES = 5;
+
+// Live now: events that have started in the last 4 hours OR start in the
+// next 4 hours. Returns true if event is "happening now-ish".
+//
+// Time zone: events have start_date (YYYY-MM-DD) and start_time (HH:MM)
+// stored as Brussels local time strings. The user's clock is also local,
+// so we can naively combine them without offset math.
+function isEventLive(e) {
+  if (!e.date) return false;
+  // Construct an event start Date. If no time, assume "all day" → treat as live if today.
+  let eventStart;
+  if (e.time) {
+    eventStart = new Date(`${e.date}T${e.time}`);
+  } else {
+    eventStart = new Date(`${e.date}T00:00`);
+  }
+  if (isNaN(eventStart.getTime())) return false;
+  const now = new Date();
+  const HOUR = 60 * 60 * 1000;
+  // "Live now" window:
+  //   start_time is within ±4 hours of now (covers about-to-start AND in-progress)
+  //   OR (no time, just date) and date is today
+  if (!e.time) {
+    const today = now.toISOString().slice(0,10);
+    return e.date === today;
+  }
+  const diff = eventStart.getTime() - now.getTime();
+  return diff >= -4 * HOUR && diff <= 4 * HOUR;
+}
 
 // Load cached geo from localStorage if it's fresh (<24h old).
 function loadCachedGeo() {
@@ -1600,10 +1634,7 @@ function sf(f,btn){
   btn.classList.add('on');
   vis=6;
   // Clear any active AI search when a filter is clicked. Filter buttons and
-  // AI search are mutually-exclusive ways of narrowing the catalog — having
-  // both active at once produced confusing intersection behavior (e.g. "rock
-  // this month" + Sports → 0 events, even though there ARE sports events).
-  // The Clear button on the AI panel handles the reverse direction.
+  // AI search are mutually-exclusive ways of narrowing the catalog.
   if (aiQ) {
     aiQ = '';
     const aiInput = document.getElementById('ai');
@@ -1611,13 +1642,7 @@ function sf(f,btn){
     const aiPanel = document.getElementById('aip');
     if (aiPanel) aiPanel.classList.remove('show');
   }
-  // For "foryou", fetch fresh recommendations from the server before rendering.
-  // For all other filters, applyF is sync.
-  if (f === 'foryou') {
-    fetchForYou().then(() => applyF());
-  } else {
-    applyF();
-  }
+  applyF();
 }
 
 // Fetch personalized recommendations from the Supabase get_recommendations RPC.
@@ -1661,19 +1686,26 @@ function populateNearMeOption() {
   if (!userGeo || !userGeo.available) return;
   const sel = document.getElementById('csel');
   if (!sel) return;
-  // Skip if already added
-  if (sel.querySelector('option[value="near"]')) return;
-  const opt = document.createElement('option');
-  opt.value = 'near';
-  opt.textContent = t('cNear');   // localized "Near me"
-  opt.dataset.k = 'cNear';
-  // Insert as the first option so users see it before "All Cities"
-  sel.insertBefore(opt, sel.firstChild);
-  // Auto-default to Near me on first geo arrival, only if the user hasn't
-  // already picked a city. (actC === 'all' is the initial state.)
-  if (actC === 'all') {
-    sel.value = 'near';
-    setCity('near');
+  // Idempotent: only insert if not already there
+  if (!sel.querySelector('option[value="near"]')) {
+    const opt = document.createElement('option');
+    opt.value = 'near';
+    opt.textContent = t('cNear');   // localized "Near me"
+    opt.dataset.k = 'cNear';
+    // Insert as the first option so users see it before "All Cities"
+    sel.insertBefore(opt, sel.firstChild);
+    // Auto-default to Near me on first geo arrival, only if the user hasn't
+    // already picked a city. (actC === 'all' is the initial state.)
+    if (actC === 'all') {
+      setCity('near');
+    }
+  }
+  // Always sync the dropdown's visible selection to our state. This handles
+  // the case where fetchEvts rebuilt the cities list (wiping the selection)
+  // while actC is still 'near' — without this, the dropdown silently shows
+  // "All Cities" while our state says 'near'.
+  if (actC && sel.value !== actC) {
+    sel.value = actC;
   }
 }
 function loadMore(){vis+=6;renderAll();}
@@ -1784,16 +1816,28 @@ function matchesAIQuery(e,c){
 function applyF(){
   const aiCriteria=aiQ?parseAIQuery(aiQ):null;
   const isNearMe = actC === 'near' && userGeo && userGeo.available;
+  // "Smart default" — when the user clicks All AND is signed in AND has enough
+  // signal, the home feed becomes For You instead of plain Trending. The
+  // recommendations were fetched in advance by maybeFetchForYou() so this is
+  // synchronous: if forYouIds has entries, we use them.
+  const isPersonalizedHome = (
+    actF === 'all' &&
+    !aiQ &&
+    currentSession &&
+    lk.size >= FORYOU_MIN_LIKES &&
+    forYouIds.size > 0
+  );
+
   filtered=all.filter(e=>{
-    // Match on language-neutral slug. 'theatre' slug matches both "Arts & Theatre"
-    // as a display label and covers theatre/comedy/dance events.
+    // Category match. 'all' matches everything (the home feed shows everything,
+    // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
       || (actF === 'liked' && lk.has(e.id))
-      || (actF === 'foryou' && forYouIds.has(e.id))
+      || (actF === 'live' && isEventLive(e))
       || e.categorySlug === actF
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
-    // City filter: 'all' shows everything, 'near' shows everything but
-    // sorted by distance (handled below). An explicit city name filters to it.
+    // City filter: 'all' and 'near' both show all cities, but 'near' sorts
+    // by distance. An explicit city name filters to that city.
     const cm = actC==='all' || actC==='near' || e.city===actC;
     const am = matchesAIQuery(e,aiCriteria);
     return sm && cm && am;
@@ -1801,40 +1845,45 @@ function applyF(){
 
   // SORT LOGIC
   // ---------------------------------------------------------------------
-  // When "Near me" is active, primary sort is the distance band (20km → 50km → rest).
-  // Within each band, secondary sort depends on the active mode:
-  //   - For You    → recommendation score (preserve personalized ranking)
-  //   - Trending   → popularity score (preserve "what's hot")
-  //   - Filter/AI  → chronological (intent-driven; user wants actionable dates)
-  //
-  // When "Near me" is NOT active, only the mode-specific sort applies.
-  if (actF === 'foryou') {
-    // For You always sorts by score, with optional band as outer key
-    if (isNearMe) {
-      filtered.sort((a, b) => {
-        const ba = eventDistanceBand(a), bb = eventDistanceBand(b);
-        if (ba !== bb) return ba - bb;
-        return (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0);
-      });
-    } else {
-      filtered.sort((a, b) => (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0));
-    }
-  } else if (isNearMe) {
-    // Trending + filter + AI all use Near me with secondary by mode.
-    // Trending = popularity (highest first); filter/AI = chronological (soonest first).
-    const isFilterOrSearch = actF !== 'all' || aiQ;
+  // When "Near me" is active, distance band is the primary sort.
+  // Within each band (and when Near me is off), secondary sort depends on mode:
+  //   - Personalized home  → recommendation score
+  //   - Trending home      → popularity score
+  //   - Live now           → chronological (soonest first — these are time-sensitive)
+  //   - Category filter    → chronological (intent-driven; want actionable dates)
+  //   - AI search          → chronological
+  //   - Liked              → chronological (user knows their list; date order is friendliest)
+  // ---------------------------------------------------------------------
+  const isLiveNow      = actF === 'live';
+  const isCategoryOrAI = (actF !== 'all' && actF !== 'liked') || aiQ;
+  const isLiked        = actF === 'liked';
+
+  // Pick the secondary sort comparator
+  let secondary;
+  if (isPersonalizedHome) {
+    secondary = (a, b) => (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0);
+  } else if (isLiveNow || isCategoryOrAI || isLiked) {
+    // Chronological for any explicit filter or time-sensitive view.
+    // Tiebreak by time within same date.
+    secondary = (a, b) => {
+      const d = String(a.date || '').localeCompare(String(b.date || ''));
+      if (d !== 0) return d;
+      return String(a.time || '').localeCompare(String(b.time || ''));
+    };
+  } else {
+    // Trending home: popularity score, highest first.
+    secondary = (a, b) => (b.pop || 0) - (a.pop || 0);
+  }
+
+  if (isNearMe) {
     filtered.sort((a, b) => {
       const ba = eventDistanceBand(a), bb = eventDistanceBand(b);
       if (ba !== bb) return ba - bb;
-      if (isFilterOrSearch) {
-        // Chronological: parse dates lazily; assume YYYY-MM-DD-comparable strings.
-        return String(a.date || '').localeCompare(String(b.date || ''));
-      }
-      // Trending: by popularity, highest first
-      return (b.pop || 0) - (a.pop || 0);
+      return secondary(a, b);
     });
+  } else {
+    filtered.sort(secondary);
   }
-  // Else: no Near me, no For You — current ordering (popularity from fetchEvts) is fine.
 
   const ec=document.getElementById('ec');
   if(ec) ec.textContent=t('ne2')(filtered.length);
@@ -1847,17 +1896,31 @@ function renderAll(){
   // there's no concept of "trending" once the user has narrowed to a category.
   // Instead, put all filtered events in the main grid.
   const isFiltering = actF!=='all' || actC!=='all' || aiQ;
-  const isLiked = actF === 'liked';
-  const isForYou = actF === 'foryou';
+  const isLiked     = actF === 'liked';
+  const isLive      = actF === 'live';
+  const isPersonalizedHome = (
+    actF === 'all' &&
+    !aiQ &&
+    currentSession &&
+    lk.size >= FORYOU_MIN_LIKES &&
+    forYouIds.size > 0
+  );
   const trendingHeader = document.querySelector('.sh:first-of-type');
   const allHeader = document.querySelector('.sh:nth-of-type(2)');
   const allHeaderTitle = allHeader ? allHeader.querySelector('.st') : null;
 
-  // Adjust the "All Events" title for the active personal view.
+  // Adjust the "All Events" title for the active mode.
+  // Personalized home → "Recommended for you"
+  // Live now → "Happening now"
+  // Liked → "Your liked events"
+  // Otherwise → "All events"
   if (allHeaderTitle) {
-    if (isForYou) {
+    if (isPersonalizedHome) {
       allHeaderTitle.textContent = t('atFY');
       allHeaderTitle.dataset.k    = 'atFY';
+    } else if (isLive) {
+      allHeaderTitle.textContent = t('atLive');
+      allHeaderTitle.dataset.k    = 'atLive';
     } else if (isLiked) {
       allHeaderTitle.textContent = t('atL');
       allHeaderTitle.dataset.k    = 'atL';
@@ -1870,12 +1933,9 @@ function renderAll(){
   // Adjust the empty-state message for the active mode.
   const empMsg = emp.querySelector('p[data-k]');
   if (empMsg) {
-    if (isForYou) {
-      // Two scenarios when foryou is empty:
-      //  - User has no signal yet (likes empty + no view_event rows). Tell them to like things.
-      //  - User has signal but recommender returned 0 (rare). Same advice — like more.
-      empMsg.innerHTML = `${t('neFY')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neFYSub')}</span>`;
-      empMsg.dataset.k = 'neFY';
+    if (isLive) {
+      empMsg.textContent = t('neLive');
+      empMsg.dataset.k = 'neLive';
     } else if (isLiked && !currentSession) {
       empMsg.innerHTML = `${t('neL')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neLSignIn')}</span>`;
       empMsg.dataset.k = 'neL';
@@ -2504,16 +2564,23 @@ function renderAuthSurface() {
   const box = document.getElementById('authbox');
   if (!box) return;
 
-  // Show/hide the For You button based on sign-in state.
-  // Recommendations require an authenticated user (the RPC enforces auth.uid()
-  // matching p_user_id). If user signs out while on the For You tab, drop them
-  // back to All so they're not stuck on an empty tab.
-  const foryouBtn = document.getElementById('foryouBtn');
-  if (foryouBtn) {
-    foryouBtn.style.display = currentSession ? '' : 'none';
-    if (!currentSession && actF === 'foryou') {
-      const allBtn = document.querySelector('.fb[data-c="all"]');
-      if (allBtn) sf('all', allBtn);
+  // Smart-default For You: when a signed-in user has enough likes, fetch
+  // recommendations in the background. The home feed automatically uses them
+  // as soon as forYouIds is populated. No button to click — just adapts.
+  //
+  // When user signs out, drop the recommendations so the home feed reverts
+  // to plain trending. Re-apply the filter so the change is immediately visible.
+  if (currentSession) {
+    if (lk.size >= FORYOU_MIN_LIKES && forYouIds.size === 0 && !forYouFetching) {
+      // Fire-and-forget. When it resolves, re-apply filter to swap in ranking.
+      fetchForYou().then(() => {
+        if (forYouIds.size > 0) applyF();
+      });
+    }
+  } else {
+    if (forYouIds.size > 0) {
+      forYouIds = new Map();
+      applyF();
     }
   }
 
