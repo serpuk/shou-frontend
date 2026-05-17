@@ -1429,7 +1429,7 @@ async function fetchEvts(){
     // We fetch the full catalog for client-side filtering.
     // For ~2k events this is ~3 MB — acceptable for a fast initial load.
     // When scaling past 10k events, move filtering server-side via query params.
-    const p=new URLSearchParams({lang:lang,limit:2000,sort:'popularity'});
+    const p=new URLSearchParams({lang:lang,limit:500,sort:'popularity'});
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
