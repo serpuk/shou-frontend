@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/:path((?!api/).*)",
+      "has": [
+        { "type": "query", "key": "event" },
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?<ua>.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Pinterest|Applebot|redditbot|SkypeUriPreview|vkShare|Embedly|outbrain).*)"
+        }
+      ],
+      "destination": "/api/og"
+    }
+  ]
+}
