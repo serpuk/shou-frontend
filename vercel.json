@@ -1,13 +1,14 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/:path((?!api/).*)",
+      "source": "/:path*",
       "has": [
         { "type": "query", "key": "event" },
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?<ua>.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Pinterest|Applebot|redditbot|SkypeUriPreview|vkShare|Embedly|outbrain).*)"
+          "value": "(?<ua>.*(facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|Pinterest|Embedly).*)"
         }
       ],
       "destination": "https://shou-backend.vercel.app/api/og"
