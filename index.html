@@ -877,17 +877,35 @@ h1 .bl {
   overflow-y: auto; position: relative;
   box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(0,242,255,0.1);
   padding: 0;  /* padding moved to .mb so the image can go full-bleed */
+  /* Smooth scroll-into-view when opening on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 .mcl {
-  position: absolute; top: 14px; right: 14px; z-index: 3;
-  background: rgba(10,10,12,0.7); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 50%; width: 34px; height: 34px;
-  color: var(--bone); font-size: 14px; cursor: pointer;
+  /* Position fixed relative to the viewport, not absolute relative to the
+     scrolling modal content. This keeps the X visible no matter how far
+     the user scrolls inside the modal — critical on mobile where the modal
+     can be much taller than the screen. */
+  position: fixed;
+  top: 16px; right: 16px; z-index: 250;
+  background: rgba(10,10,12,0.85); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%; width: 40px; height: 40px;
+  color: var(--bone); font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all .2s;
+  /* Ensure tap target is at least 44x44 on touch devices (Apple guideline). */
 }
-.mcl:hover { border-color: var(--magenta); color: var(--magenta); background: rgba(10,10,12,0.85); }
+.mcl:hover { border-color: var(--magenta); color: var(--magenta); background: rgba(10,10,12,0.95); }
+.mcl:active { transform: scale(0.94); }
+
+/* On mobile: bigger close button + safer position to clear notch / status bar */
+@media (max-width: 640px) {
+  .mcl {
+    top: max(16px, env(safe-area-inset-top, 16px));
+    right: 16px;
+    width: 44px; height: 44px; font-size: 18px;
+  }
+}
 
 /* Modal image — full bleed, centered, consistent height */
 .mth {
@@ -2279,6 +2297,14 @@ ${mTicketBtn(e)}
 <button class="shb" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
 </div></div>`;
   document.getElementById('mov').classList.add('on');
+  // Lock body scroll while modal is open. On mobile especially, leaving the
+  // body scrollable while the modal is up can cause confusing pull-to-refresh
+  // behavior and makes the modal feel less anchored.
+  document.body.style.overflow = 'hidden';
+  // Reset modal scroll to top — defensive against opening successive events
+  // where the previous one left scroll position non-zero.
+  const modalEl = document.querySelector('#mov .modal');
+  if (modalEl) modalEl.scrollTop = 0;
 
   // Update the URL — adds a history entry so browser back closes the modal.
   // Skip when we're restoring from URL (don't add a duplicate history entry)
@@ -2300,6 +2326,8 @@ function cm(e){if(e.target===document.getElementById('mov'))cm2();}
 
 function cm2(){
   document.getElementById('mov').classList.remove('on');
+  // Restore body scroll
+  document.body.style.overflow = '';
   // Restore the URL (drop ?event= param). Only push history if we're not
   // already at the bare URL (e.g. user navigated via back button which
   // already updated the URL).
