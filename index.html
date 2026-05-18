@@ -1895,8 +1895,8 @@ function loadMore(){vis+=6;renderAll();}
 // keywords as OPTIONAL signals (not required filters).
 function parseAIQuery(q){
   if(!q) return null;
-  const l=q.toLowerCase();
-  const criteria={genres:[],cities:[],timeframe:null,keywords:[],free:false};
+  const l=q.toLowerCase().trim();
+  const criteria={genres:[],cities:[],timeframe:null,keywords:[],free:false,textQuery:null};
 
   // Category & genre detection — strong filter: matched events must hit one of these
   const genreMap={
@@ -1936,9 +1936,34 @@ function parseAIQuery(q){
   // Free / gratuit / gratis
   if(l.includes('free')||l.includes('gratuit')||l.includes('gratis')) criteria.free=true;
 
-  // We deliberately don't collect free-form keywords as hard filters.
-  // Users type "live concerts this month" meaning "show me stuff this month",
-  // not "only events with the literal word 'concerts' in the title."
+  // Text-query fallback: when the user typed something that DIDN'T match any
+  // of the structured criteria above (no genre, no city, no timeframe, no
+  // free), they probably meant a specific entity — artist name, venue,
+  // event title, etc. Use the raw query as a substring filter against
+  // searchable fields.
+  //
+  // We deliberately keep this gated on "no structured match" so queries
+  // like "live concerts this month" (where the user expressed intent via
+  // "this month") don't get over-filtered by matching the literal phrase
+  // "live concerts" against title text.
+  //
+  // For mixed queries like "coldplay tonight": timeframe=tonight matches
+  // AND we'd ideally also filter by "coldplay". A pragmatic rule: if there
+  // are timeframe/free criteria but no genre/city, AND the query has
+  // meaningful leftover words after stripping known patterns, use those
+  // leftover words as text query.
+  const hasStructured = criteria.genres.length || criteria.cities.length;
+  if (!hasStructured) {
+    // Strip known timeframe and modifier words, leaving the entity-like rest.
+    const cleaned = l
+      .replace(/\b(tonight|tomorrow|weekend|saturday|sunday|this week|this month|cette semaine|deze week|ce mois|deze maand|free|gratuit|gratis|in|at|on|the|a|with|for)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (cleaned.length >= 2) {
+      criteria.textQuery = cleaned;
+    }
+  }
+
   return criteria;
 }
 
@@ -1990,6 +2015,18 @@ function matchesAIQuery(e,c){
   // Free match — only events with an explicit 0 price qualify
   // (null prices mean "unknown," not "free")
   if(c.free && !(e.mn===0||e.is_free===true)) return false;
+
+  // Text query: substring match against title, description, venue, genre.
+  // Only applied when no structured genre/city criteria matched — see
+  // parseAIQuery for the rationale. Treats multi-word queries as AND:
+  // every word must appear somewhere in the event's searchable text.
+  if (c.textQuery) {
+    const hay = `${e.name||''} ${e.desc||''} ${e.venue||''} ${e.genre||''}`.toLowerCase();
+    const words = c.textQuery.split(/\s+/).filter(w => w.length >= 2);
+    for (const word of words) {
+      if (!hay.includes(word)) return false;
+    }
+  }
 
   return true;
 }
@@ -2092,11 +2129,13 @@ function renderAll(){
   const allHeaderTitle = allHeader ? allHeader.querySelector('.st') : null;
 
   // Adjust the "All Events" title for the active mode.
+  // AI search → "Results for 'query'"   (highest priority — search is the
+  //   most specific intent the user has expressed)
   // Personalized home → "Recommended for you"
   // Live now → "Happening now"
   // Liked → "Your liked events"
   // Category filter → "Music events" / "Arts & Theatre" / "Sports events" / "Family events"
-  // Otherwise (search, near-only, etc.) → "All events"
+  // Otherwise → "All events"
   if (allHeaderTitle) {
     const categoryHeaders = {
       music: 'atMusic',
@@ -2104,7 +2143,15 @@ function renderAll(){
       sports: 'atSports',
       family: 'atFamily',
     };
-    if (isPersonalizedHome) {
+    if (aiQ) {
+      // Truncate long queries for layout sanity. The full query is still
+      // visible in the search bar and the suggestions banner.
+      const shown = aiQ.length > 40 ? aiQ.slice(0, 39) + '…' : aiQ;
+      allHeaderTitle.textContent = `Results for "${shown}"`;
+      // Clear i18n key so setLang() doesn't overwrite our dynamic header
+      // when the user changes language while a search is active.
+      allHeaderTitle.dataset.k = '';
+    } else if (isPersonalizedHome) {
       allHeaderTitle.textContent = t('atFY');
       allHeaderTitle.dataset.k    = 'atFY';
     } else if (isLive) {
