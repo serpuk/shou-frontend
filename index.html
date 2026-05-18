@@ -930,6 +930,38 @@ h1 .bl {
 .mcl:hover { border-color: var(--magenta); color: var(--magenta); background: rgba(10,10,12,0.95); }
 .mcl:active { transform: scale(0.94); }
 
+/* Prev/next event navigation arrows — desktop only. On mobile, swipe is
+   the primary navigation. The arrows sit on the left/right edges of the
+   .mov overlay (which fills the viewport), vertically centered. */
+.mnav {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  width: 56px; height: 56px;
+  background: rgba(10,10,12,0.85); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
+  color: var(--bone); font-size: 32px; line-height: 1;
+  cursor: pointer; z-index: 250;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  padding: 0;
+  /* Slight padding offset so the chevron glyph is visually centered;
+     the ‹ ›  characters have asymmetric whitespace baked in. */
+  font-family: 'Inter', sans-serif; font-weight: 300;
+}
+.mnav-prev { left: 24px; padding-right: 4px; }
+.mnav-next { right: 24px; padding-left: 4px; }
+.mnav:hover {
+  border-color: var(--cyan); color: var(--cyan);
+  background: rgba(10,10,12,0.95);
+}
+.mnav:active { transform: translateY(-50%) scale(0.94); }
+
+/* Hide nav arrows on mobile — swipe handles it there and the arrows would
+   compete for screen real estate with the content. */
+@media (max-width: 800px) {
+  .mnav { display: none; }
+}
+
 /* On mobile: bigger close button + safer position to clear notch / status bar */
 @media (max-width: 640px) {
   .mcl {
@@ -996,10 +1028,17 @@ h1 .bl {
   color: #7FF; border-bottom-color: var(--cyan);
 }
 /* Modal action bars — split into primary (like + tickets) and share groups.
-   Primary becomes sticky-to-bottom on mobile for thumb-reach; on desktop
-   both sit inline. */
+   Primary becomes sticky-to-bottom inside the scrolling modal so Get Tickets
+   is always reachable, regardless of viewport size. */
 .mact-primary {
   display: flex; align-items: center; gap: 12px;
+  position: sticky; bottom: 0;
+  margin-left: -32px; margin-right: -32px;      /* extend beyond .mb padding (28px 32px) */
+  padding: 14px 32px;
+  background: linear-gradient(to top, var(--ink2) 75%, rgba(20,20,24,0));
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  z-index: 5;
 }
 .mact-primary > .tb { flex: 1; justify-content: center; }   /* Get Tickets fills available */
 .mact-primary > .like-btn { flex-shrink: 0; }              /* Heart keeps natural width */
@@ -1061,20 +1100,15 @@ h1 .bl {
   .mtitle { font-size: 22px; }
   .mdet { grid-template-columns: 1fr; gap: 12px; padding: 12px 0; }
 
-  /* Sticky bottom action bar — like + Get Tickets always visible.
-     Uses position:sticky inside the modal's scroll container (.modal has
-     overflow-y:auto). The bar follows the user as they scroll content. */
+  /* On phones, .mb has tighter padding (22px) so the full-bleed extension
+     needs to match. Also add safe-area-inset-bottom so the bar clears the
+     home indicator on iPhone X+. */
   .mact-primary {
-    position: sticky; bottom: 0;
-    margin-left: -22px; margin-right: -22px;     /* extend full-bleed beyond .mb padding */
+    margin-left: -22px; margin-right: -22px;
     padding: 12px 22px;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, var(--ink2) 75%, rgba(20,20,24,0));
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(255,255,255,0.06);
-    z-index: 5;
   }
-  /* Share buttons stay inline. */
+  /* Share buttons right-aligned on mobile to balance the layout. */
   .mact-share {
     justify-content: flex-end;
   }
@@ -1214,6 +1248,8 @@ footer p {
 
 <div class="mov" id="mov" onclick="cm(event)">
   <button class="mcl" onclick="cm2()" aria-label="Close">✕</button>
+  <button class="mnav mnav-prev" onclick="swipeToOffset(-1)" aria-label="Previous event">‹</button>
+  <button class="mnav mnav-next" onclick="swipeToOffset(1)" aria-label="Next event">›</button>
   <div class="modal"><div id="mc"></div></div>
 </div>
 
@@ -2484,6 +2520,10 @@ ${mSourcesRow(e)}
 ${mTicketBtn(e)}
 </div></div>`;
   document.getElementById('mov').classList.add('on');
+  // Update nav arrow visibility based on position in the filtered list.
+  // Hide prev when at first event, hide next when at last. Avoids
+  // confusing no-op clicks.
+  updateNavArrows();
   // Lock body scroll while modal is open. On mobile especially, leaving the
   // body scrollable while the modal is up can cause confusing pull-to-refresh
   // behavior and makes the modal feel less anchored.
@@ -2591,6 +2631,25 @@ function findCurrentEventIndex() {
   return filtered.findIndex(e => e.id === id);
 }
 
+// Show/hide the prev/next nav arrows based on the current event's position
+// within the filtered list. Hide prev at the first event, next at the last.
+// Called from om() and after each swipe completes.
+function updateNavArrows() {
+  const prev = document.querySelector('.mnav-prev');
+  const next = document.querySelector('.mnav-next');
+  if (!prev || !next) return;
+  const idx = findCurrentEventIndex();
+  if (idx < 0) {
+    // Event not in filtered list (e.g. opened from a shared URL while a
+    // category filter is active and the event doesn't match). Hide both.
+    prev.style.display = 'none';
+    next.style.display = 'none';
+    return;
+  }
+  prev.style.display = idx > 0 ? '' : 'none';
+  next.style.display = idx < filtered.length - 1 ? '' : 'none';
+}
+
 function swipeToOffset(offset) {
   const idx = findCurrentEventIndex();
   if (idx < 0) return;
@@ -2678,6 +2737,27 @@ function initSwipeNav() {
     // dx < 0 = swipe left (finger moved left) = next event
     swipeToOffset(dx > 0 ? -1 : 1);
   }, { passive: true });
+
+  // Keyboard navigation — left/right arrow keys navigate between events
+  // when the modal is open. Ignored when an input/textarea has focus so
+  // we don't hijack typing in the AI search box.
+  document.addEventListener('keydown', (ev) => {
+    if (!mov.classList.contains('on')) return;
+    const target = ev.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
+    if (ev.key === 'ArrowLeft') {
+      ev.preventDefault();
+      swipeToOffset(-1);
+    } else if (ev.key === 'ArrowRight') {
+      ev.preventDefault();
+      swipeToOffset(1);
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      cm2();
+    }
+  });
 }
 
 // Wire up after DOM is ready
