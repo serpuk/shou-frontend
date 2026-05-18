@@ -879,7 +879,23 @@ h1 .bl {
   padding: 0;  /* padding moved to .mb so the image can go full-bleed */
   /* Smooth scroll-into-view when opening on mobile */
   -webkit-overflow-scrolling: touch;
+  /* Hide horizontal overflow during slide-out animation so content doesn't
+     show outside the modal as it translates. */
+  overflow-x: hidden;
 }
+
+/* Swipe transition states for #mc.
+   The container slides out in the swipe direction, then a new content
+   snaps to the opposite side and slides back to center. ~220ms each leg
+   feels snappy without being instant. */
+#mc {
+  transition: transform 220ms ease-out, opacity 220ms ease-out;
+  will-change: transform, opacity;
+}
+#mc.swipe-out-left  { transform: translateX(-100%); opacity: 0.4; }
+#mc.swipe-out-right { transform: translateX( 100%); opacity: 0.4; }
+#mc.swipe-in-left   { transform: translateX(-100%); opacity: 0; transition: none; }
+#mc.swipe-in-right  { transform: translateX( 100%); opacity: 0; transition: none; }
 .mcl {
   /* Absolute relative to .mov (position:fixed inset:0 → viewport-sized).
      Placed BELOW the page nav (which is 70px tall + has its own
@@ -2387,8 +2403,8 @@ ${mTicketBtn(e)}
   // body scrollable while the modal is up can cause confusing pull-to-refresh
   // behavior and makes the modal feel less anchored.
   document.body.style.overflow = 'hidden';
-  // Reset modal scroll to top — defensive against opening successive events
-  // where the previous one left scroll position non-zero.
+  // Reset modal scroll to top. Done unconditionally — during swipe transitions
+  // the content is offscreen at this moment, so the user doesn't see the jump.
   const modalEl = document.querySelector('#mov .modal');
   if (modalEl) modalEl.scrollTop = 0;
 
@@ -2497,13 +2513,56 @@ function swipeToOffset(offset) {
   if (nextIdx < 0 || nextIdx >= filtered.length) return;  // at edge
   const nextEvent = filtered[nextIdx];
   if (!nextEvent) return;
-  // Update URL without adding a history entry (replace, since we're still
-  // in the modal context). If we pushState'd each swipe, back button would
-  // walk through every event the user passed through — annoying.
-  urlRoutingSelfDriven = true;
-  history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.id));
-  urlRoutingSelfDriven = false;
-  om(nextEvent.id, { fromUrl: true });  // fromUrl: avoid double pushState
+
+  const mc = document.getElementById('mc');
+  if (!mc) return;
+
+  // Animation direction: swiping LEFT means user wants the NEXT event,
+  // so outgoing slides off to the LEFT and the new event comes in from
+  // the RIGHT. Vice versa for swipe right.
+  const goingForward = offset > 0;
+  const outClass = goingForward ? 'swipe-out-left' : 'swipe-out-right';
+  const inFromClass = goingForward ? 'swipe-in-right' : 'swipe-in-left';
+
+  // Clear any leftover animation classes from a previous swipe.
+  mc.classList.remove('swipe-out-left','swipe-out-right','swipe-in-left','swipe-in-right');
+
+  // 1. Slide current content out
+  mc.classList.add(outClass);
+
+  // After the slide-out finishes, swap content and animate in from
+  // opposite side. transitionend is the most reliable signal but we add a
+  // safety timeout in case it doesn't fire (e.g. tab backgrounded).
+  let swapped = false;
+  const doSwap = (ev) => {
+    // transitionend fires for each animated property; only act on transform
+    if (ev && ev.propertyName && ev.propertyName !== 'transform') return;
+    if (swapped) return;
+    swapped = true;
+    mc.removeEventListener('transitionend', doSwap);
+
+    // Update URL via replaceState (don't pollute history with each swipe)
+    urlRoutingSelfDriven = true;
+    history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.id));
+    urlRoutingSelfDriven = false;
+
+    // Snap the container to the opposite side (no transition — instant)
+    mc.classList.remove(outClass);
+    mc.classList.add(inFromClass);
+
+    // Render new content while content is offscreen
+    om(nextEvent.id, { fromUrl: true, skipScrollReset: true });
+
+    // Next frame: remove the offscreen class. The CSS transition kicks in
+    // and the container slides back to center.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        mc.classList.remove(inFromClass);
+      });
+    });
+  };
+  mc.addEventListener('transitionend', doSwap);
+  setTimeout(doSwap, 260);  // safety net if transitionend doesn't fire
 }
 
 function initSwipeNav() {
