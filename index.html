@@ -881,11 +881,10 @@ h1 .bl {
   -webkit-overflow-scrolling: touch;
 }
 .mcl {
-  /* Position fixed relative to the viewport, not absolute relative to the
-     scrolling modal content. This keeps the X visible no matter how far
-     the user scrolls inside the modal — critical on mobile where the modal
-     can be much taller than the screen. */
-  position: fixed;
+  /* Absolute relative to .mov (which is position:fixed inset:0 → fills
+     viewport). This sidesteps the backdrop-filter containing-block issue
+     that broke fixed-positioned children of the modal. */
+  position: absolute;
   top: 16px; right: 16px; z-index: 250;
   background: rgba(10,10,12,0.85); backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.2);
@@ -893,7 +892,6 @@ h1 .bl {
   color: var(--bone); font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all .2s;
-  /* Ensure tap target is at least 44x44 on touch devices (Apple guideline). */
 }
 .mcl:hover { border-color: var(--magenta); color: var(--magenta); background: rgba(10,10,12,0.95); }
 .mcl:active { transform: scale(0.94); }
@@ -1144,7 +1142,8 @@ footer p {
 </main>
 
 <div class="mov" id="mov" onclick="cm(event)">
-  <div class="modal"><button class="mcl" onclick="cm2()">✕</button><div id="mc"></div></div>
+  <button class="mcl" onclick="cm2()" aria-label="Close">✕</button>
+  <div class="modal"><div id="mc"></div></div>
 </div>
 
 <!-- Sign-in modal: email + magic link. Two states (form / "check your email"). -->
