@@ -881,11 +881,12 @@ h1 .bl {
   -webkit-overflow-scrolling: touch;
 }
 .mcl {
-  /* Absolute relative to .mov (which is position:fixed inset:0 → fills
-     viewport). This sidesteps the backdrop-filter containing-block issue
-     that broke fixed-positioned children of the modal. */
+  /* Absolute relative to .mov (position:fixed inset:0 → viewport-sized).
+     Placed BELOW the page nav (which is 70px tall + has its own
+     backdrop-filter) so the X is always in clear space, regardless of
+     stacking-context weirdness from backdrop-filter on the nav. */
   position: absolute;
-  top: 16px; right: 16px; z-index: 250;
+  top: 84px; right: 16px; z-index: 250;
   background: rgba(10,10,12,0.85); backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 50%; width: 40px; height: 40px;
@@ -899,7 +900,9 @@ h1 .bl {
 /* On mobile: bigger close button + safer position to clear notch / status bar */
 @media (max-width: 640px) {
   .mcl {
-    top: max(16px, env(safe-area-inset-top, 16px));
+    /* On phone, nav is taller because of safe-area, plus padding. Use
+       a more generous offset and respect the notch. */
+    top: calc(70px + 16px);
     right: 16px;
     width: 44px; height: 44px; font-size: 18px;
   }
@@ -1056,7 +1059,7 @@ footer p {
 <div class="hero-bg"></div>
 
 <nav>
-  <div class="logo">
+  <div class="logo" onclick="goHome()" style="cursor:pointer" role="link" tabindex="0" aria-label="Home" onkeydown="if(event.key==='Enter')goHome()">
     <div class="logo-mark"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M23 10 C23 7, 19 7, 16 7 C12 7, 9 9, 9 12 C9 16, 14 16, 17 17 C21 18, 24 19, 24 22 C24 25, 20 26, 16 26 C12 26, 9 24, 9 22" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg></div>
     <span class="logo-text">shou</span>
   </div>
@@ -1718,6 +1721,36 @@ async function fetchForYou() {
   }
 }
 function setCity(c){actC=c;vis=6;applyF();}
+
+// Return the user to a clean home state. Triggered by clicking the shou logo.
+// - Closes any open modal (and clears ?event= from URL)
+// - Resets the active category filter to "All"
+// - Clears any active AI search
+// - Resets city to default ("near" if geo available, else "all")
+// - Scrolls back to the top
+function goHome() {
+  // Close any open modal — this also resets the URL.
+  const mov = document.getElementById('mov');
+  if (mov?.classList.contains('on')) {
+    cm2();
+  }
+  // Reset filter to "All"
+  const allBtn = document.querySelector('.fb[data-c="all"]');
+  if (allBtn && actF !== 'all') {
+    sf('all', allBtn);
+  } else if (aiQ) {
+    // sf clears aiQ as a side-effect, but if we're already on 'all',
+    // we still want to clear any active AI query manually.
+    aiQ = '';
+    const aiInput = document.getElementById('ai');
+    if (aiInput) aiInput.value = '';
+    const aiPanel = document.getElementById('aip');
+    if (aiPanel) aiPanel.classList.remove('show');
+    applyF();
+  }
+  // Smooth scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 // Inject the "Near me" option into the city dropdown when geo is available.
 // Called both from the geo fetch promise and from fetchEvts after cities are
