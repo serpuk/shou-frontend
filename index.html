@@ -995,8 +995,17 @@ h1 .bl {
 .dir-link:hover {
   color: #7FF; border-bottom-color: var(--cyan);
 }
-.mact {
-  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;
+/* Modal action bars — split into primary (like + tickets) and share groups.
+   Primary becomes sticky-to-bottom on mobile for thumb-reach; on desktop
+   both sit inline. */
+.mact-primary {
+  display: flex; align-items: center; gap: 12px;
+}
+.mact-primary > .tb { flex: 1; justify-content: center; }   /* Get Tickets fills available */
+.mact-primary > .like-btn { flex-shrink: 0; }              /* Heart keeps natural width */
+
+.mact-share {
+  display: flex; gap: 8px; align-items: center;
 }
 .shb {
   background: var(--glass2); border: 1px solid rgba(255,255,255,0.08);
@@ -1010,8 +1019,6 @@ h1 .bl {
   flex-shrink: 0;
 }
 .shb:hover { background: rgba(0,242,255,0.08); border-color: rgba(0,242,255,0.3); color: var(--cyan); }
-.mact { align-items: center; }
-.mact > .tb { margin-right: auto; }  /* primary CTA pushes share buttons to the right */
 
 /* Multi-source picker — shown when an event is listed on 2+ platforms */
 .msrc-row {
@@ -1053,6 +1060,24 @@ h1 .bl {
   .mb { padding: 22px 22px 24px; }
   .mtitle { font-size: 22px; }
   .mdet { grid-template-columns: 1fr; gap: 12px; padding: 12px 0; }
+
+  /* Sticky bottom action bar — like + Get Tickets always visible.
+     Uses position:sticky inside the modal's scroll container (.modal has
+     overflow-y:auto). The bar follows the user as they scroll content. */
+  .mact-primary {
+    position: sticky; bottom: 0;
+    margin-left: -22px; margin-right: -22px;     /* extend full-bleed beyond .mb padding */
+    padding: 12px 22px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, var(--ink2) 75%, rgba(20,20,24,0));
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    z-index: 5;
+  }
+  /* Share buttons stay inline. */
+  .mact-share {
+    justify-content: flex-end;
+  }
 }
 
 /* ── FOOTER ── */
@@ -2446,15 +2471,17 @@ function om(id, _opts){
 <div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
 </div>
 ${mSourcesRow(e)}
-<div class="mact">
-${mTicketBtn(e)}
+<div class="mact-share">
+<button class="shb" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
+<button class="shb" onclick="sfb('${e.id}')" title="${t('fb2')}">f</button>
+<button class="shb" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
+</div>
+<div class="mact-primary">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">${isL ? '♥' : '♡'}</span>
   <span class="like-count">${e.likes+(isL?1:0)}</span>
 </button>
-<button class="shb" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
-<button class="shb" onclick="sfb('${e.id}')" title="${t('fb2')}">f</button>
-<button class="shb" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
+${mTicketBtn(e)}
 </div></div>`;
   document.getElementById('mov').classList.add('on');
   // Lock body scroll while modal is open. On mobile especially, leaving the
