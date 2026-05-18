@@ -1928,8 +1928,9 @@ function renderAll(){
     lk.size >= FORYOU_MIN_LIKES &&
     forYouIds.size > 0
   );
-  const trendingHeader = document.querySelector('.sh:first-of-type');
-  const allHeader = document.querySelector('.sh:nth-of-type(2)');
+  const sectionHeaders = document.querySelectorAll('.sh');
+  const trendingHeader = sectionHeaders[0] || null;
+  const allHeader      = sectionHeaders[1] || null;
   const allHeaderTitle = allHeader ? allHeader.querySelector('.st') : null;
 
   // Adjust the "All Events" title for the active mode.
