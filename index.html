@@ -1531,6 +1531,10 @@ async function fetchEvts(){
     document.getElementById('sv').textContent=[...new Set(all.map(e=>e.venue))].length;
     document.getElementById('sc').textContent=cities.length;
     applyF();
+    // If the page was loaded with ?event=<id>, auto-open that event's modal.
+    // Has to run AFTER the catalog populates, since om() looks up the event
+    // in the `all` array. Safe to call when no param is present (no-op).
+    maybeOpenEventFromUrl();
   }catch(ex){
     document.getElementById('err').textContent='Live data unavailable: '+ex.message+'. Showing sample events.';
     document.getElementById('err').classList.add('on');
@@ -2194,13 +2198,63 @@ function track(eventId, action){
   }catch{}
 }
 
-function stw(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(e.name+' — '+e.venue)+'&url='+encodeURIComponent(u),'_blank');}
-function sfb(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');}
-function cp2(id){const e=all.find(x=>x.id===id);if(!e)return;const u=eventUrl(e).url||'https://shou.be';track(id,'share');navigator.clipboard?.writeText(u).then(()=>alert('Copied!'));}
-
-function om(id){
+// Share buttons: link to shou's per-event URL (not the upstream ticket URL).
+// This brings shared traffic into shou where users see the event in context
+// alongside other recommendations. Get Tickets remains the direct upstream
+// link — share is for spreading shou, ticket button is for the conversion.
+function stw(id){
   const e=all.find(x=>x.id===id);if(!e)return;
-  track(id,'view');  // engagement signal for popularity scoring
+  const u=eventCanonicalUrl(id);
+  track(id,'share');
+  const tweet = e.name + (e.venue ? ' — ' + e.venue : '');
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweet)+'&url='+encodeURIComponent(u),'_blank');
+}
+function sfb(id){
+  const e=all.find(x=>x.id===id);if(!e)return;
+  const u=eventCanonicalUrl(id);
+  track(id,'share');
+  window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
+}
+function cp2(id){
+  const e=all.find(x=>x.id===id);if(!e)return;
+  const u=eventCanonicalUrl(id);
+  track(id,'share');
+  navigator.clipboard?.writeText(u).then(()=>alert('Copied!'));
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Per-event URLs.
+//
+// shou is a SPA — there's one HTML page. To support sharing a specific event
+// (e.g. "look at this concert"), we use the URL's query string: ?event=<id>.
+// When a user opens an event modal, we pushState the URL so it's bookmarkable
+// and shareable. When the modal closes, we restore the previous URL. The
+// browser's back button closes the modal naturally because we use pushState.
+//
+// Limitation: this is client-side routing. Facebook/X don't see custom OG
+// meta tags for individual events (the static <head> shows generic shou meta).
+// Proper preview cards would need server-side rendering — separate work item.
+// ──────────────────────────────────────────────────────────────────────
+
+// Build the canonical URL for a specific event (used by share buttons).
+// Returns an absolute https URL so external sharers always get a valid link.
+function eventCanonicalUrl(id) {
+  const base = window.location.origin + window.location.pathname;
+  return base + '?event=' + encodeURIComponent(id);
+}
+
+// True if we're currently navigating programmatically (push/pop) so the
+// popstate handler doesn't double-fire on our own pushState calls.
+let urlRoutingSelfDriven = false;
+
+function om(id, _opts){
+  const e=all.find(x=>x.id===id);if(!e)return;
+  // Track engagement signal for popularity scoring. Skip when the modal was
+  // opened by URL restoration (e.g. on page load with ?event=...) — that's
+  // not the same as a user clicking a card.
+  if (!_opts?.fromUrl) {
+    track(id,'view');
+  }
   const cl=segCls(e.seg);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
@@ -2225,9 +2279,69 @@ ${mTicketBtn(e)}
 <button class="shb" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
 </div></div>`;
   document.getElementById('mov').classList.add('on');
+
+  // Update the URL — adds a history entry so browser back closes the modal.
+  // Skip when we're restoring from URL (don't add a duplicate history entry)
+  // or when the URL already shows this event.
+  if (!_opts?.fromUrl) {
+    const currentParams = new URLSearchParams(window.location.search);
+    if (currentParams.get('event') !== id) {
+      urlRoutingSelfDriven = true;
+      const newUrl = eventCanonicalUrl(id);
+      history.pushState({ event: id }, '', newUrl);
+      // Update page title for browser tab + share previews
+      document.title = `${e.name} — shou`;
+      urlRoutingSelfDriven = false;
+    }
+  }
 }
+
 function cm(e){if(e.target===document.getElementById('mov'))cm2();}
-function cm2(){document.getElementById('mov').classList.remove('on');}
+
+function cm2(){
+  document.getElementById('mov').classList.remove('on');
+  // Restore the URL (drop ?event= param). Only push history if we're not
+  // already at the bare URL (e.g. user navigated via back button which
+  // already updated the URL).
+  const currentParams = new URLSearchParams(window.location.search);
+  if (currentParams.has('event') && !urlRoutingSelfDriven) {
+    urlRoutingSelfDriven = true;
+    history.pushState({}, '', window.location.pathname);
+    document.title = 'shou — live tonight';
+    urlRoutingSelfDriven = false;
+  }
+}
+
+// Handle browser back/forward buttons. If the new URL has ?event=, open that
+// modal. Otherwise close any open modal.
+window.addEventListener('popstate', () => {
+  if (urlRoutingSelfDriven) return;
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get('event');
+  const modal = document.getElementById('mov');
+  if (eventId) {
+    om(eventId, { fromUrl: true });
+  } else if (modal?.classList.contains('on')) {
+    modal.classList.remove('on');
+    document.title = 'shou — live tonight';
+  }
+});
+
+// On initial page load: if URL has ?event=<id>, open that modal once the
+// events catalog has loaded. fetchEvts populates `all`, then this runs.
+function maybeOpenEventFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get('event');
+  if (!eventId) return;
+  if (!all.length) return;  // catalog not loaded yet — caller will retry
+  const exists = all.find(x => x.id === eventId);
+  if (exists) {
+    om(eventId, { fromUrl: true });
+  } else {
+    // Bad/stale URL — strip the param silently so it doesn't litter.
+    history.replaceState({}, '', window.location.pathname);
+  }
+}
 
 // Source labels & colors for the picker pills
 const SOURCE_META = {
