@@ -2521,9 +2521,10 @@ ${mTicketBtn(e)}
 </div></div>`;
   document.getElementById('mov').classList.add('on');
   // Update nav arrow visibility based on position in the filtered list.
-  // Hide prev when at first event, hide next when at last. Avoids
-  // confusing no-op clicks.
-  updateNavArrows();
+  // Hide prev when at first event, hide next when at last. Pass id directly
+  // because URL update happens further down — at this point window.location
+  // doesn't yet reflect the event we're opening.
+  updateNavArrows(id);
   // Lock body scroll while modal is open. On mobile especially, leaving the
   // body scrollable while the modal is up can cause confusing pull-to-refresh
   // behavior and makes the modal feel less anchored.
@@ -2634,11 +2635,21 @@ function findCurrentEventIndex() {
 // Show/hide the prev/next nav arrows based on the current event's position
 // within the filtered list. Hide prev at the first event, next at the last.
 // Called from om() and after each swipe completes.
-function updateNavArrows() {
+//
+// Takes the event id as an explicit param rather than reading from URL,
+// because om() updates the URL AFTER inserting modal content — if we read
+// the URL during initial open, we'd get the previous event's id (or none).
+function updateNavArrows(eventId) {
   const prev = document.querySelector('.mnav-prev');
   const next = document.querySelector('.mnav-next');
   if (!prev || !next) return;
-  const idx = findCurrentEventIndex();
+  // Fallback to URL lookup when called without an explicit id (e.g. from
+  // legacy call sites — keeps the function safe to reuse).
+  if (!eventId) {
+    const params = new URLSearchParams(window.location.search);
+    eventId = params.get('event');
+  }
+  const idx = eventId ? filtered.findIndex(e => e.id === eventId) : -1;
   if (idx < 0) {
     // Event not in filtered list (e.g. opened from a shared URL while a
     // category filter is active and the event doesn't match). Hide both.
