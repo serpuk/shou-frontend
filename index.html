@@ -746,7 +746,11 @@ h1 .bl {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 800; letter-spacing: 1px;
 }
-.like-btn .like-heart { font-size: 32px; line-height: 1; }
+.like-btn .like-heart {
+  font-size: 32px; line-height: 1;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
 .like-btn .like-count { color: var(--bone3); font-weight: 700; }
 .like-btn:hover {
   background: rgba(255,0,85,0.08); border-color: rgba(255,0,85,0.5);
@@ -758,6 +762,19 @@ h1 .bl {
   box-shadow: 0 0 12px rgba(255,0,85,0.25);
 }
 .like-btn.lk .like-count { color: var(--magenta); }
+
+/* Pulse animation triggered when transitioning to liked state.
+   The heart bounces: 1 → 1.4 → 0.9 → 1 over 400ms. Matches Instagram's
+   "pop" timing pretty closely. */
+@keyframes likePulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.4); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.like-btn.just-liked .like-heart {
+  animation: likePulse 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
 
 /* ── TICKET BUTTON ── */
 .tb {
@@ -2178,15 +2195,15 @@ function smCard(e){
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
-<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" aria-label="Like">
-  <span class="like-heart">♥</span>
+<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
+  <span class="like-heart">${isL ? '♥' : '♡'}</span>
   <span class="like-count">${e.likes+(isL?1:0)}</span>
 </button>
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;
 }
 
-function tl(id){
+function tl(id, btnEl){
   const wasLiked = lk.has(id);
   if (wasLiked) lk.delete(id); else lk.add(id);
   saveLikes(lk);
@@ -2200,6 +2217,42 @@ function tl(id){
   track(id, wasLiked ? 'unlike' : 'like');
   updateLikedCount();
   renderAll();
+
+  // Update modal's like button too. renderAll() only re-renders cards;
+  // if the user is liking from inside the modal, the modal's button needs
+  // its glyph and class refreshed manually.
+  updateModalLikeButton(id);
+
+  // Trigger pulse animation on the like → unlike action (not the reverse,
+  // since unliking is more of a "remove" gesture, not an affirmation).
+  // The re-render replaced the original button DOM, so find the new one
+  // by matching id in the onclick attribute. Apply just-liked class for
+  // animation, remove after it completes so subsequent likes re-trigger.
+  if (!wasLiked) {
+    document.querySelectorAll(`.like-btn[onclick*="${id}"]`).forEach(fresh => {
+      fresh.classList.remove('just-liked');
+      void fresh.offsetWidth;  // forces a reflow so the animation re-fires
+      fresh.classList.add('just-liked');
+      setTimeout(() => fresh.classList.remove('just-liked'), 500);
+    });
+  }
+}
+
+// Refresh the modal's like button to match current liked-state. Used after
+// toggling so the modal heart matches the cards.
+function updateModalLikeButton(id) {
+  const modal = document.getElementById('mov');
+  if (!modal?.classList.contains('on')) return;
+  const btn = modal.querySelector(`.like-btn[onclick*="${id}"]`);
+  if (!btn) return;
+  const isL = lk.has(id);
+  const e = all.find(x => x.id === id);
+  if (!e) return;
+  btn.classList.toggle('lk', isL);
+  const heart = btn.querySelector('.like-heart');
+  const count = btn.querySelector('.like-count');
+  if (heart) heart.textContent = isL ? '♥' : '♡';
+  if (count) count.textContent = String(e.likes + (isL ? 1 : 0));
 }
 
 // Push a single like/unlike to user_likes. No-op when signed out.
@@ -2376,6 +2429,7 @@ function om(id, _opts){
     track(id,'view');
   }
   const cl=segCls(e.seg);
+  const isL=lk.has(e.id);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
     ? `<img id="${fid}" class="mth" src="${e.img}" onerror="mimgFail('${fid}','${segThumb(e.seg)}','${segEmoji(e.seg)}')">`
@@ -2394,6 +2448,10 @@ function om(id, _opts){
 ${mSourcesRow(e)}
 <div class="mact">
 ${mTicketBtn(e)}
+<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
+  <span class="like-heart">${isL ? '♥' : '♡'}</span>
+  <span class="like-count">${e.likes+(isL?1:0)}</span>
+</button>
 <button class="shb" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
 <button class="shb" onclick="sfb('${e.id}')" title="${t('fb2')}">f</button>
 <button class="shb" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
