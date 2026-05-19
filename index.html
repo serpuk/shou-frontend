@@ -1201,6 +1201,15 @@ footer p {
     <input class="si" id="ai" type="text" placeholder="ask — e.g. techno in ghent this weekend…" onkeydown="if(event.key==='Enter')doAI()" oninput="aiInputTyped(this.value)" onfocus="maybeOpenHistory()" autocomplete="off">
     <button class="sbtn" onclick="doAI()" data-k="ab">ask shou ↗</button>
   </div>
+  <!-- Location indicator: shown only when geolocation is available AND the
+       user has opted in. Toggling turns the location signal on/off for AI
+       search ("near me" queries use it; explicit cities ignore it). -->
+  <div id="aiLocBadge" style="display:none;margin-bottom:14px;font-size:11px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;">
+    <button id="aiLocToggle" onclick="toggleAILocation()" style="background:transparent;border:1px solid rgba(0,242,255,0.25);border-radius:20px;padding:5px 12px;color:var(--bone3);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;">
+      <span id="aiLocIcon">📍</span>
+      <span id="aiLocText">searches use your location</span>
+    </button>
+  </div>
   <div class="chips fu3">
     <span class="chip" onclick="qAI('techno this weekend')">🎧 <span data-k="c1">techno tonight</span></span>
     <span class="chip" onclick="qAI('rock this month')">🎸 <span data-k="c2">live concerts</span></span>
@@ -1447,6 +1456,59 @@ function pushToSearchHistory(query) {
   saveSearchHistory(history);
 }
 let aiHistory = loadSearchHistory();
+
+// Location-aware AI search opt-in. Defaults to true when geo is available;
+// user can disable via the location toggle below the search bar. Choice
+// persists across sessions (localStorage). When false, lat/lng are NOT sent
+// to /api/search even if userGeo is loaded.
+const AI_USE_LOCATION_KEY = 'shou_ai_use_location';
+function loadUseLocation() {
+  const v = localStorage.getItem(AI_USE_LOCATION_KEY);
+  // Default: true (location-aware ON when available). Explicit "false" string
+  // is the only way to disable.
+  return v !== 'false';
+}
+let aiUseLocation = loadUseLocation();
+
+function toggleAILocation() {
+  aiUseLocation = !aiUseLocation;
+  try { localStorage.setItem(AI_USE_LOCATION_KEY, String(aiUseLocation)); } catch {}
+  updateAILocBadge();
+  // Invalidate prefetch cache since location materially changes results
+  aiPrefetchCache.clear();
+}
+
+function updateAILocBadge() {
+  const badge = document.getElementById('aiLocBadge');
+  const btn   = document.getElementById('aiLocToggle');
+  const icon  = document.getElementById('aiLocIcon');
+  const text  = document.getElementById('aiLocText');
+  if (!badge || !btn || !icon || !text) return;
+
+  // Only render the badge when geolocation is actually available.
+  const hasGeo = userGeo && userGeo.available && userGeo.latitude != null;
+  if (!hasGeo) {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.style.display = 'block';
+
+  if (aiUseLocation) {
+    btn.style.borderColor = 'var(--cyan)';
+    btn.style.color = 'var(--cyan)';
+    btn.style.background = 'rgba(0,242,255,0.06)';
+    icon.textContent = '📍';
+    text.textContent = 'searches use your location';
+    btn.title = 'Click to ignore location in AI search';
+  } else {
+    btn.style.borderColor = 'rgba(0,242,255,0.2)';
+    btn.style.color = 'var(--bone3)';
+    btn.style.background = 'transparent';
+    icon.textContent = '📍';
+    text.textContent = 'location off';
+    btn.title = 'Click to use your location in AI search';
+  }
+}
 // "For You" recommendations cache. Map<event_id, score> — populated when the
 // user clicks the For You tab. Empty until then. We re-fetch whenever the user
 // returns to the tab so likes-since-last-fetch are reflected.
@@ -3090,6 +3152,13 @@ async function showAI(q) {
       likedIds: Array.from(lk),
       userId: currentSession?.user?.id || null,
     };
+    // Include user location when available AND the user hasn't opted out
+    // via the location toggle. Same query with/without location may
+    // legitimately return different results.
+    if (aiUseLocation && userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null) {
+      body.lat = Number(userGeo.latitude);
+      body.lng = Number(userGeo.longitude);
+    }
     const res = await fetch(API_BASE + '/api/search', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3163,15 +3232,20 @@ async function showAI(q) {
 function aiPrefetch(q) {
   q = String(q || '').trim();
   if (q.length < 3 || aiPrefetchCache.has(q)) return;
+  const body = {
+    query: q,
+    lang: lang || 'en',
+    likedIds: Array.from(lk),
+    userId: currentSession?.user?.id || null,
+  };
+  if (aiUseLocation && userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null) {
+    body.lat = Number(userGeo.latitude);
+    body.lng = Number(userGeo.longitude);
+  }
   fetch(API_BASE + '/api/search', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      query: q,
-      lang: lang || 'en',
-      likedIds: Array.from(lk),
-      userId: currentSession?.user?.id || null,
-    }),
+    body:    JSON.stringify(body),
   })
     .then(r => r.ok ? r.json() : null)
     .then(data => {
@@ -3203,31 +3277,44 @@ function aiInputTyped(value) {
 function openSearchHistoryDropdown() {
   // Refresh from storage in case another tab modified it
   aiHistory = loadSearchHistory();
+  if (aiHistory.length === 0) {
+    closeSearchHistoryDropdown();
+    return;
+  }
+
+  const input = document.getElementById('ai');
+  if (!input) return;
+
   let dd = document.getElementById('aiHistoryDropdown');
   if (!dd) {
     dd = document.createElement('div');
     dd.id = 'aiHistoryDropdown';
-    dd.style.cssText = `
-      position:absolute; top:calc(100% + 8px); left:0; right:0;
-      background:#121218;
-      border:1px solid rgba(0,242,255,0.3);
-      border-radius:14px;
-      padding:6px;
-      max-height:300px;
-      overflow-y:auto;
-      box-shadow:0 16px 48px rgba(0,0,0,0.7), 0 0 24px rgba(0,242,255,0.08);
-      backdrop-filter:blur(20px);
-      z-index:1000;
-      display:none;
-    `;
-    // Append to the .sw wrapper (relative parent) so positioning works
-    const sw = document.querySelector('.sw');
-    if (sw) sw.appendChild(dd);
+    // Attach to body, not .sw — bypasses stacking-context issues. Body-level
+    // z-index always wins over anything nested elsewhere.
+    document.body.appendChild(dd);
   }
-  if (aiHistory.length === 0) {
-    dd.style.display = 'none';
-    return;
-  }
+
+  // Position based on the input element's bounding rect. We use position:fixed
+  // and update on scroll/resize. Width matches the search wrapper (.sw) so
+  // visually it looks like an attached dropdown.
+  const sw = input.closest('.sw') || input;
+  const rect = sw.getBoundingClientRect();
+  dd.style.cssText = `
+    position:fixed;
+    top:${rect.bottom + 8}px;
+    left:${rect.left}px;
+    width:${rect.width}px;
+    background:#121218;
+    border:1px solid rgba(0,242,255,0.3);
+    border-radius:14px;
+    padding:6px;
+    max-height:300px;
+    overflow-y:auto;
+    box-shadow:0 16px 48px rgba(0,0,0,0.7), 0 0 24px rgba(0,242,255,0.08);
+    z-index:9999;
+    display:block;
+  `;
+
   dd.innerHTML = `
     <div style="font-size:10px;color:var(--bone3);letter-spacing:1.5px;text-transform:uppercase;padding:8px 12px 6px;">Recent searches</div>
     ${aiHistory.map(q => {
@@ -3235,7 +3322,21 @@ function openSearchHistoryDropdown() {
       return `<button onclick="qAI(this.dataset.q)" data-q="${safe}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;padding:9px 12px;border-radius:8px;color:var(--bone2);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(0,242,255,0.08)';this.style.color='var(--bone)'" onmouseout="this.style.background='transparent';this.style.color='var(--bone2)'"><span style="color:var(--bone3);font-size:11px;">↻</span><span>${safe}</span></button>`;
     }).join('')}
   `;
-  dd.style.display = 'block';
+
+  // Reposition on scroll/resize so the dropdown stays anchored to the input.
+  // We attach the listeners once and clean up when the dropdown closes.
+  if (!dd.dataset.repositionWired) {
+    const reposition = () => {
+      if (dd.style.display === 'none') return;
+      const r = sw.getBoundingClientRect();
+      dd.style.top = `${r.bottom + 8}px`;
+      dd.style.left = `${r.left}px`;
+      dd.style.width = `${r.width}px`;
+    };
+    window.addEventListener('scroll', reposition, { passive: true });
+    window.addEventListener('resize', reposition);
+    dd.dataset.repositionWired = '1';
+  }
 }
 function closeSearchHistoryDropdown() {
   const dd = document.getElementById('aiHistoryDropdown');
@@ -3559,7 +3660,10 @@ fetchEvts();
 // Fire-and-forget geo fetch. When it resolves, fetchEvts has likely also
 // completed, so populateNearMeOption can update the dropdown immediately.
 // If geo arrives first, populate later from inside fetchEvts. Either order works.
-fetchUserGeo().then(() => populateNearMeOption());
+fetchUserGeo().then(() => {
+  populateNearMeOption();
+  updateAILocBadge();
+});
 // Render auth surface on first paint based on whatever session might be
 // restored from localStorage. onAuthStateChange will also fire INITIAL_SESSION.
 renderAuthSurface();
