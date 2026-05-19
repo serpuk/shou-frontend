@@ -3263,9 +3263,21 @@ function aiPrefetch(q) {
     .catch(() => { /* silent — prefetch failures are non-blocking */ });
 }
 
-// Called from the input's "input" event. Debounces so we only prefetch when
-// the user pauses typing.
+// Called from the input's "input" event. Two responsibilities:
+//   1. If the input is now empty (user backspaced everything out), show the
+//      history dropdown — same as if they just focused an empty input.
+//   2. Otherwise, debounce-prefetch so the next "Ask Shou" click is instant.
 function aiInputTyped(value) {
+  // Backspace-to-empty case: show history dropdown. Without this, the only
+  // way to see history is to blur and re-focus, which is unintuitive.
+  if (String(value || '').trim() === '') {
+    if (aiPrefetchTimer) clearTimeout(aiPrefetchTimer);
+    maybeOpenHistory();
+    return;
+  }
+  // Otherwise hide history (user is composing a fresh query) and start
+  // the prefetch debounce.
+  closeSearchHistoryDropdown();
   if (aiPrefetchTimer) clearTimeout(aiPrefetchTimer);
   aiPrefetchTimer = setTimeout(() => aiPrefetch(value), AI_PREFETCH_DEBOUNCE_MS);
 }
