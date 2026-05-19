@@ -3353,11 +3353,19 @@ function maybeOpenHistory() {
   }
 }
 
-// Close history dropdown when clicking anywhere except inside the search box
-// or the dropdown itself.
-document.addEventListener('click', (e) => {
+// Close history dropdown when clicking outside the search box AND outside
+// the dropdown itself. Uses mousedown rather than click so we can stop
+// propagation cleanly on the search box without losing keyboard handlers.
+//
+// Race we're avoiding: user clicks the input → focus fires → dropdown opens.
+// Then click bubbles to document → if anything in that path closes the
+// dropdown, we'd see the dropdown flicker open and close on a single click.
+document.addEventListener('mousedown', (e) => {
   const sw = document.querySelector('.sw');
-  if (!sw || !sw.contains(e.target)) {
+  const dd = document.getElementById('aiHistoryDropdown');
+  const insideSw = sw && sw.contains(e.target);
+  const insideDd = dd && dd.contains(e.target);
+  if (!insideSw && !insideDd) {
     closeSearchHistoryDropdown();
   }
 });
