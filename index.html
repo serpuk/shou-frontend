@@ -1386,15 +1386,9 @@ footer p {
       </select>
     </div>
   </div>
-  <!-- Location indicator: shown only when geolocation is available AND the
-       user has opted in. Toggling turns the location signal on/off for AI
-       search ("near me" queries use it; explicit cities ignore it). -->
-  <div id="aiLocBadge" style="display:none;margin-bottom:14px;font-size:11px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;">
-    <button id="aiLocToggle" onclick="toggleAILocation()" style="background:transparent;border:1px solid rgba(255,153,102,0.25);border-radius:20px;padding:5px 12px;color:var(--bone3);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;">
-      <span id="aiLocIcon">📍</span>
-      <span id="aiLocText">Near you</span>
-    </button>
-  </div>
+  <!-- Location is now controlled via the "Near me" option in the city pill
+       above. When the user selects "Near me", AI search uses their lat/lng
+       so distance-aware queries ("concerts near me") work correctly. -->
   <div class="chips fu3">
     <span class="chip" onclick="qAI('techno this weekend')">🎧 <span data-k="c1">techno tonight</span></span>
     <span class="chip" onclick="qAI('rock this month')">🎸 <span data-k="c2">live concerts</span></span>
@@ -1667,57 +1661,22 @@ function shapeAIEvent(e) {
 }
 let aiHistory = loadSearchHistory();
 
-// Location-aware AI search opt-in. Defaults to true when geo is available;
-// user can disable via the location toggle below the search bar. Choice
-// persists across sessions (localStorage). When false, lat/lng are NOT sent
-// to /api/search even if userGeo is loaded.
-const AI_USE_LOCATION_KEY = 'shou_ai_use_location';
-function loadUseLocation() {
-  const v = localStorage.getItem(AI_USE_LOCATION_KEY);
-  // Default: true (location-aware ON when available). Explicit "false" string
-  // is the only way to disable.
-  return v !== 'false';
-}
-let aiUseLocation = loadUseLocation();
-
-function toggleAILocation() {
-  aiUseLocation = !aiUseLocation;
-  try { localStorage.setItem(AI_USE_LOCATION_KEY, String(aiUseLocation)); } catch {}
-  updateAILocBadge();
-  // Invalidate prefetch cache since location materially changes results
-  aiPrefetchCache.clear();
-}
-
-function updateAILocBadge() {
-  const badge = document.getElementById('aiLocBadge');
-  const btn   = document.getElementById('aiLocToggle');
-  const icon  = document.getElementById('aiLocIcon');
-  const text  = document.getElementById('aiLocText');
-  if (!badge || !btn || !icon || !text) return;
-
-  // Only render the badge when geolocation is actually available.
-  const hasGeo = userGeo && userGeo.available && userGeo.latitude != null;
-  if (!hasGeo) {
-    badge.style.display = 'none';
-    return;
-  }
-  badge.style.display = 'block';
-
-  if (aiUseLocation) {
-    btn.style.borderColor = 'var(--coral)';
-    btn.style.color = 'var(--coral)';
-    btn.style.background = 'rgba(255, 153, 102, 0.08)';
-    icon.textContent = '📍';
-    text.textContent = 'Near you';
-    btn.title = 'AI search is using your location · click to turn off';
-  } else {
-    btn.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-    btn.style.color = 'var(--bone3)';
-    btn.style.background = 'transparent';
-    icon.textContent = '📍';
-    text.textContent = 'Location off';
-    btn.title = 'AI search ignoring your location · click to turn on';
-  }
+// Location-aware AI search is now derived from the city pill: when the
+// user has selected "Near me" (actC === 'near'), AI search sends lat/lng
+// to the backend so queries like "concerts near me" can reason about
+// distance. For any other city selection (a specific city like "Brussels"
+// or "All Cities"), the user has expressed a different spatial intent
+// and we don't override it with their coordinates.
+//
+// This replaces the old aiUseLocation toggle that was stored in
+// localStorage — having two separate location controls (city pill +
+// toggle) was redundant UX.
+function aiShouldUseLocation() {
+  return actC === 'near'
+    && userGeo
+    && userGeo.available
+    && userGeo.latitude  != null
+    && userGeo.longitude != null;
 }
 // "For You" recommendations cache. Map<event_id, score> — populated when the
 // user clicks the For You tab. Empty until then. We re-fetch whenever the user
@@ -2161,6 +2120,13 @@ async function fetchForYou() {
   }
 }
 function setCity(c){
+  // If the city is changing in/out of 'near', any cached AI prefetch
+  // results were computed under different location-sending behavior and
+  // must be invalidated. Cheapest correct policy: invalidate on any
+  // city change, since the city itself is part of the user's spatial intent.
+  if (c !== actC && typeof aiPrefetchCache !== 'undefined') {
+    aiPrefetchCache.clear();
+  }
   actC=c;
   vis=6;
   updateCityPillLabel();
@@ -2169,9 +2135,12 @@ function setCity(c){
 // Resolve the city value (e.g. 'Brussels', 'all', 'near') to the label
 // to display in the pill. Uses i18n for 'all' and 'near'; city names are
 // already in the canonical form so display as-is.
+// Strips the leading 📍 from 'cNear' translations because the pill already
+// has a pin icon via CSS ::before. The translation string '📍 Near me' is
+// designed for the dropdown menu where it stands alone.
 function cityPillLabelFor(value) {
   if (!value || value === 'all') return t('ca');
-  if (value === 'near')         return t('cNear');
+  if (value === 'near')         return t('cNear').replace(/^📍\s*/, '');
   return value;
 }
 function updateCityPillLabel() {
@@ -3446,10 +3415,9 @@ async function showAI(q) {
       likedIds: Array.from(lk),
       userId: currentSession?.user?.id || null,
     };
-    // Include user location when available AND the user hasn't opted out
-    // via the location toggle. Same query with/without location may
-    // legitimately return different results.
-    if (aiUseLocation && userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null) {
+    // Include user location when the city pill is set to "Near me" — the
+    // pill is now the single location control for both browse and AI search.
+    if (aiShouldUseLocation()) {
       body.lat = Number(userGeo.latitude);
       body.lng = Number(userGeo.longitude);
     }
@@ -3528,7 +3496,7 @@ function aiPrefetch(q) {
     likedIds: Array.from(lk),
     userId: currentSession?.user?.id || null,
   };
-  if (aiUseLocation && userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null) {
+  if (aiShouldUseLocation()) {
     body.lat = Number(userGeo.latitude);
     body.lng = Number(userGeo.longitude);
   }
@@ -3972,7 +3940,6 @@ fetchEvts();
 // If geo arrives first, populate later from inside fetchEvts. Either order works.
 fetchUserGeo().then(() => {
   populateNearMeOption();
-  updateAILocBadge();
 });
 // Render auth surface on first paint based on whatever session might be
 // restored from localStorage. onAuthStateChange will also fire INITIAL_SESSION.
