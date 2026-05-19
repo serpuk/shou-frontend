@@ -1455,6 +1455,24 @@ function pushToSearchHistory(query) {
   history.unshift(q);
   saveSearchHistory(history);
 }
+
+// Shape an event coming from /api/search the same way fetchEvts shapes events
+// from /api/events. The backend returns the same fields but skips client-side
+// normalizations (canonicalCity, desc fallback). Without this, AI-merged
+// events render with 'null' descriptions or wrong city labels.
+function shapeAIEvent(e) {
+  return {
+    ...e,
+    city:    canonicalCity(e.city),
+    rawCity: e.city || 'Belgium',
+    // Backend returns desc as null when source has no description. Frontend
+    // renders that literal "null" in cards. Use the same fallback fetchEvts
+    // uses for catalog events.
+    desc:    e.desc || (typeof t === 'function' && typeof t('descFallback') === 'function'
+              ? t('descFallback')(e.name || 'This event', e.venue || 'Belgium')
+              : `Live at ${e.venue || 'Belgium'}.`),
+  };
+}
 let aiHistory = loadSearchHistory();
 
 // Location-aware AI search opt-in. Defaults to true when geo is available;
@@ -3124,11 +3142,7 @@ async function showAI(q) {
       const existingIds = new Set(all.map(e => e.id));
       const newEvents = cached.events
         .filter(e => e && e.id && !existingIds.has(e.id))
-        .map(e => ({
-          ...e,
-          city: canonicalCity(e.city),
-          rawCity: e.city || 'Belgium',
-        }));
+        .map(shapeAIEvent);
       if (newEvents.length > 0) {
         all = all.concat(newEvents);
       }
@@ -3183,13 +3197,7 @@ async function showAI(q) {
       const existingIds = new Set(all.map(e => e.id));
       const newEvents = data.events
         .filter(e => e && e.id && !existingIds.has(e.id))
-        .map(e => ({
-          ...e,
-          // Re-normalize city the way fetchEvts does, since the response
-          // skips canonicalCity().
-          city: canonicalCity(e.city),
-          rawCity: e.city || 'Belgium',
-        }));
+        .map(shapeAIEvent);
       if (newEvents.length > 0) {
         all = all.concat(newEvents);
       }
