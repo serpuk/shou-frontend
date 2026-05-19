@@ -8,40 +8,59 @@
 <meta property="og:title" content="shou — belgium after dark">
 <meta property="og:description" content="Your city, after dark. Concerts, festivals, clubs & live events across Belgium.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0a0a0c">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237A3FD8'/><stop offset='.5' stop-color='%23D43C7A'/><stop offset='1' stop-color='%23FF3355'/></linearGradient></defs><rect width='32' height='32' rx='7' fill='url(%23g)'/><path d='M23 10 C23 7, 19 7, 16 7 C12 7, 9 9, 9 12 C9 16, 14 16, 17 17 C21 18, 24 19, 24 22 C24 25, 20 26, 16 26 C12 26, 9 24, 9 22' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round'/></svg>">
+<meta name="theme-color" content="#0e0915">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'><defs><linearGradient id='b' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff2e7e'/><stop offset='1' stop-color='%23ff9966'/></linearGradient><linearGradient id='s' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238b3ee0'/><stop offset='1' stop-color='%23c896ff'/></linearGradient><linearGradient id='p' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5fb8'/><stop offset='1' stop-color='%23ffa3d9'/></linearGradient></defs><path d='M 8,2 L 9.79,7.47 L 15.56,7.47 L 10.89,10.85 L 12.67,16.31 L 8,12.94 L 3.33,16.31 L 5.11,10.85 L 0.44,7.47 L 6.21,7.47 Z' transform='translate(0 4) scale(0.85)' fill='url(%23s)'/><path d='M 26,2 L 27.57,6.79 L 32.61,6.79 L 28.52,9.75 L 30.09,14.54 L 26,11.59 L 21.91,14.54 L 23.48,9.75 L 19.39,6.79 L 24.43,6.79 Z' transform='translate(0 4) scale(0.85)' fill='url(%23p)'/><rect x='3' y='22' width='3' height='10' rx='1' fill='url(%23b)'/><rect x='8' y='18' width='3' height='14' rx='1' fill='url(%23b)'/><rect x='13' y='15' width='3' height='17' rx='1' fill='url(%23b)'/><rect x='18' y='17' width='3' height='15' rx='1' fill='url(%23b)'/><rect x='23' y='20' width='3' height='12' rx='1' fill='url(%23b)'/><rect x='28' y='24' width='3' height='8' rx='1' fill='url(%23b)' opacity='0.85'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Direction B palette — magenta, cyan, deeper ink */
-  --ink:       #0a0a0c;
-  --ink2:      #121218;
-  --ink3:      #1a1a2e;
-  --magenta:   #FF0055;
-  --magenta2:  #FF3377;
-  --cyan:      #00F2FF;
-  --cyan2:     #6BEFFF;
-  --bone:      #f8f9fa;
-  --bone2:     rgba(248,249,250,0.75);
-  --bone3:     rgba(248,249,250,0.45);
-  --bone4:     rgba(248,249,250,0.15);
+  /* === B1 Dusk Magenta palette ===
+     Hot pink → coral primary, with violet/pink-light for star accents.
+     Variable NAMES preserved from previous palette so existing JS and CSS
+     keep working without rewiring — just the hex values are remapped.
+     What used to be cyan is now warm coral; what used to be magenta is
+     now a refined hot-pink. */
+  --ink:       #0e0915;
+  --ink2:      #18101f;
+  --ink3:      #211528;
+  --magenta:   #ff2e7e;
+  --magenta2:  #ff5fb8;
+  /* "cyan" is no longer cyan — it's now the WARM coral accent in B1.
+     Kept name so existing classes like .stat:nth-child(2) .sn { color: var(--cyan) }
+     still resolve. The new value is coral. */
+  --cyan:      #ff9966;
+  --cyan2:     #ffba8c;
+  /* Pure-coral and pure-violet tokens for new logo + stars + ambient gradients */
+  --coral:     #ff9966;
+  --violet:    #8b3ee0;
+  --violet-deep: #6b2bd9;
+  --pink-hot:  #ff5fb8;
+  --pink-light: #ffa3d9;
+  --bone:      #f6efef;
+  --bone2:     rgba(246,239,239,0.80);
+  --bone3:     rgba(246,239,239,0.50);
+  --bone4:     rgba(246,239,239,0.18);
   --glass:     rgba(255,255,255,0.03);
   --glass2:    rgba(255,255,255,0.06);
-  --border-cy: rgba(0,242,255,0.2);
-  --border-mg: rgba(255,0,85,0.25);
+  --border-cy: rgba(255,153,102,0.25);
+  --border-mg: rgba(255,46,126,0.28);
   --radius:    16px;
   --rsm:       12px;
-  --grad-mg:   linear-gradient(135deg, #FF0055, #FF3377);
-  --grad-cy:   linear-gradient(135deg, #00F2FF, #6BEFFF);
-  --grad-mix:  linear-gradient(90deg, #00F2FF, #FF0055);
+  --grad-mg:   linear-gradient(135deg, #ff2e7e, #ff5fb8);
+  --grad-cy:   linear-gradient(135deg, #ff9966, #ffba8c);
+  --grad-mix:  linear-gradient(120deg, #ff2e7e 0%, #ff9966 100%);
+  --grad-star: linear-gradient(135deg, #8b3ee0, #c896ff);
+  --grad-star2: linear-gradient(135deg, #ff5fb8, #ffa3d9);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  background: radial-gradient(circle at top right, #1a1a2e 0%, #0a0a0c 60%);
+  background:
+    radial-gradient(ellipse 100% 60% at 15% 0%, rgba(255, 46, 126, 0.15), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 85% 30%, rgba(139, 62, 224, 0.12), transparent 65%),
+    var(--ink);
   color: var(--bone);
   font-family: 'Inter', -apple-system, sans-serif;
   font-size: 15px; line-height: 1.6;
@@ -52,7 +71,7 @@ body {
 .hero-bg {
   position: fixed; inset: 0; z-index: 0;
   background-image:
-    linear-gradient(rgba(10,10,12,0.72), rgba(10,10,12,0.88)),
+    linear-gradient(rgba(14, 9, 21, 0.76), rgba(14, 9, 21, 0.92)),
     url('https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?w=1920&q=85');
   background-size: cover;
   background-position: center;
@@ -61,8 +80,8 @@ body {
 .hero-bg::after {
   content: ''; position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 50% 50% at 20% 30%, rgba(255,0,85,0.18) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 50% at 80% 25%, rgba(0,242,255,0.15) 0%, transparent 60%);
+    radial-gradient(ellipse 50% 50% at 20% 30%, rgba(255,46,126,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 50% at 80% 25%, rgba(255,153,102,0.15) 0%, transparent 60%);
 }
 
 /* ── NAV ── */
@@ -70,28 +89,58 @@ nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   height: 70px; padding: 0 40px;
   display: flex; align-items: center; justify-content: space-between;
-  background: rgba(10,10,12,0.75); backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0,242,255,0.1);
+  background: rgba(14, 9, 21, 0.78); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 nav::after {
   content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,242,255,0.4), rgba(255,0,85,0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 46, 126, 0.35), rgba(139, 62, 224, 0.30), rgba(255, 153, 102, 0.35), transparent);
 }
 .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .logo-mark {
-  width: 34px; height: 34px; border-radius: 7px;
-  background: linear-gradient(135deg, #7A3FD8 0%, #D43C7A 50%, #FF3355 100%);
+  width: 38px; height: 38px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 18px rgba(212, 60, 122, 0.45);
   flex-shrink: 0;
 }
 .logo-mark svg {
-  width: 24px; height: 24px; display: block;
+  width: 100%; height: 100%; display: block;
 }
 .logo-text {
-  font-family: 'Inter', sans-serif; font-weight: 800;
-  font-size: 15px; letter-spacing: 2.5px;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 36, 'SOFT' 50;
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: -0.02em;
   color: var(--bone);
+}
+/* Logo soundbar pulse animations — staggered for natural rhythm */
+@keyframes lm-bar-a { 0%, 100% { transform: scaleY(0.6); } 50% { transform: scaleY(1); } }
+@keyframes lm-bar-b { 0%, 100% { transform: scaleY(0.85); } 50% { transform: scaleY(0.55); } }
+@keyframes lm-bar-c { 0%, 100% { transform: scaleY(0.7); } 50% { transform: scaleY(1); } }
+@keyframes lm-bar-d { 0%, 100% { transform: scaleY(1);   } 50% { transform: scaleY(0.65); } }
+@keyframes lm-bar-e { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(0.95); } }
+@keyframes lm-bar-f { 0%, 100% { transform: scaleY(0.75); } 50% { transform: scaleY(0.45); } }
+@keyframes lm-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(0.88); }
+}
+@keyframes lm-tiny-twinkle {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.3; }
+}
+.lm-b1 { transform-origin: bottom; animation: lm-bar-a 1.4s ease-in-out infinite; }
+.lm-b2 { transform-origin: bottom; animation: lm-bar-b 1.6s ease-in-out infinite; }
+.lm-b3 { transform-origin: bottom; animation: lm-bar-c 1.2s ease-in-out infinite; }
+.lm-b4 { transform-origin: bottom; animation: lm-bar-d 1.8s ease-in-out infinite; }
+.lm-b5 { transform-origin: bottom; animation: lm-bar-e 1.5s ease-in-out infinite; }
+.lm-b6 { transform-origin: bottom; animation: lm-bar-f 1.3s ease-in-out infinite; }
+.lm-star1 { transform-origin: center; transform-box: fill-box; animation: lm-twinkle 3s ease-in-out infinite; }
+.lm-star2 { transform-origin: center; transform-box: fill-box; animation: lm-twinkle 3.5s ease-in-out infinite 0.8s; }
+.lm-tiny { animation: lm-tiny-twinkle 2.4s ease-in-out infinite; }
+/* Respect prefers-reduced-motion — stop all logo animation for users with vestibular sensitivities */
+@media (prefers-reduced-motion: reduce) {
+  .lm-b1, .lm-b2, .lm-b3, .lm-b4, .lm-b5, .lm-b6,
+  .lm-star1, .lm-star2, .lm-tiny { animation: none; }
 }
 .navr { display: flex; gap: 10px; align-items: center; }
 
@@ -99,13 +148,13 @@ nav::after {
 .langbox { position: relative; }
 .lb-btn {
   display: inline-flex; align-items: center; gap: 7px;
-  background: transparent; border: 1px solid rgba(0,242,255,0.2);
+  background: transparent; border: 1px solid rgba(255,153,102,0.2);
   border-radius: 20px; padding: 6px 12px 6px 14px;
   color: var(--bone3); font-family: 'Inter', sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: 1px;
   cursor: pointer; transition: all .2s;
 }
-.lb-btn:hover { border-color: rgba(0,242,255,0.5); color: var(--cyan); }
+.lb-btn:hover { border-color: rgba(255,153,102,0.5); color: var(--cyan); }
 .lb-btn.open { border-color: var(--cyan); color: var(--cyan); }
 .lb-caret { opacity: .7; transition: transform .2s; }
 .lb-btn.open .lb-caret { transform: rotate(180deg); }
@@ -113,7 +162,7 @@ nav::after {
 .lang-menu {
   position: absolute; top: calc(100% + 6px); right: 0;
   background: rgba(18,18,24,0.97);
-  border: 1px solid rgba(0,242,255,0.25);
+  border: 1px solid rgba(255,153,102,0.25);
   border-radius: 12px;
   padding: 6px;
   min-width: 150px;
@@ -131,14 +180,14 @@ nav::after {
   font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all .15s;
 }
-.lm-item:hover { background: rgba(0,242,255,0.08); color: var(--bone); }
+.lm-item:hover { background: rgba(255,153,102,0.08); color: var(--bone); }
 .lm-item.active { color: var(--magenta); font-weight: 700; }
 
 /* ── AUTH SURFACE (sign-in button OR avatar+menu when signed in) ── */
 .authbox { position: relative; }
 .signin-btn {
-  background: rgba(255,0,85,0.12);
-  border: 1px solid rgba(255,0,85,0.4);
+  background: rgba(255,46,126,0.12);
+  border: 1px solid rgba(255,46,126,0.4);
   border-radius: 20px; padding: 7px 16px;
   color: var(--magenta);
   font-family: 'Inter', sans-serif;
@@ -147,7 +196,7 @@ nav::after {
 }
 .signin-btn:hover {
   background: var(--magenta); color: #fff;
-  box-shadow: 0 0 18px rgba(255,0,85,0.45);
+  box-shadow: 0 0 18px rgba(255,46,126,0.45);
 }
 .avatar-btn {
   width: 34px; height: 34px;
@@ -160,11 +209,11 @@ nav::after {
   cursor: pointer; transition: all .15s;
   display: flex; align-items: center; justify-content: center;
 }
-.avatar-btn:hover { transform: scale(1.05); box-shadow: 0 0 18px rgba(0,242,255,0.4); }
+.avatar-btn:hover { transform: scale(1.05); box-shadow: 0 0 18px rgba(255,153,102,0.4); }
 .avatar-menu {
   position: absolute; top: calc(100% + 8px); right: 0;
   background: rgba(18,18,24,0.97);
-  border: 1px solid rgba(0,242,255,0.25);
+  border: 1px solid rgba(255,153,102,0.25);
   border-radius: 12px;
   padding: 12px;
   min-width: 200px;
@@ -189,7 +238,7 @@ nav::after {
   font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all .15s;
 }
-.am-item:hover { background: rgba(255,0,85,0.1); color: var(--magenta); }
+.am-item:hover { background: rgba(255,46,126,0.1); color: var(--magenta); }
 
 /* ── SIGN-IN MODAL ── */
 .signin-mov {
@@ -201,12 +250,12 @@ nav::after {
 }
 .signin-mov.on { display: flex; }
 .signin-modal {
-  background: rgba(18,18,24,0.98);
-  border: 1px solid rgba(0,242,255,0.3);
+  background: rgba(24, 16, 31, 0.98);
+  border: 1px solid rgba(255,153,102,0.3);
   border-radius: var(--radius);
   padding: 36px 32px 28px;
   max-width: 420px; width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(255,0,85,0.06);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(255,46,126,0.06);
   position: relative;
 }
 .signin-modal .mcl {
@@ -219,8 +268,10 @@ nav::after {
 }
 .signin-modal .mcl:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
 .signin-modal h3 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 22px; font-weight: 700;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 48;
+  font-size: 26px; font-weight: 500;
+  letter-spacing: -0.015em;
   color: var(--bone);
   margin-bottom: 8px;
 }
@@ -243,7 +294,7 @@ nav::after {
 .signin-modal .em-field:focus {
   outline: none;
   border-color: var(--cyan);
-  background: rgba(0,242,255,0.04);
+  background: rgba(255,153,102,0.04);
 }
 .signin-modal .send-btn {
   width: 100%;
@@ -256,7 +307,7 @@ nav::after {
   cursor: pointer; transition: all .2s;
 }
 .signin-modal .send-btn:hover:not(:disabled) {
-  background: var(--magenta2); box-shadow: 0 0 22px rgba(255,0,85,0.5);
+  background: var(--magenta2); box-shadow: 0 0 22px rgba(255,46,126,0.5);
 }
 .signin-modal .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .signin-modal .err {
@@ -273,8 +324,8 @@ nav::after {
   display: inline-block;
   width: 56px; height: 56px;
   border-radius: 50%;
-  background: rgba(0,242,255,0.12);
-  border: 1px solid rgba(0,242,255,0.3);
+  background: rgba(255,153,102,0.12);
+  border: 1px solid rgba(255,153,102,0.3);
   color: var(--cyan);
   font-size: 28px; line-height: 56px;
   margin-bottom: 16px;
@@ -291,18 +342,19 @@ nav::after {
 }
 .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 16px; border-radius: 20px;
-  background: rgba(255,0,85,0.1); border: 1px solid rgba(255,0,85,0.35);
-  color: var(--magenta);
-  font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 2.5px;
-  margin-bottom: 26px;
-  box-shadow: 0 0 18px rgba(255,0,85,0.12);
+  padding: 6px 16px; border-radius: 100px;
+  background: rgba(255, 153, 102, 0.08);
+  border: 1px solid rgba(255, 153, 102, 0.30);
+  color: var(--coral);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.2em;
+  margin-bottom: 28px;
+  box-shadow: 0 0 24px rgba(255, 153, 102, 0.10);
 }
 .pulse {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--magenta); animation: pu 1.8s infinite;
-  box-shadow: 0 0 8px var(--magenta);
+  background: var(--coral); animation: pu 1.8s infinite;
+  box-shadow: 0 0 8px var(--coral);
 }
 @keyframes pu {
   0%,100% { opacity: 1; transform: scale(1); }
@@ -310,43 +362,28 @@ nav::after {
 }
 
 h1 {
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(42px, 7.5vw, 88px);
-  font-weight: 800; line-height: 1;
-  letter-spacing: -2.5px;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 144, 'SOFT' 50;
+  font-size: clamp(48px, 8.5vw, 120px);
+  font-weight: 500; line-height: 0.94;
+  letter-spacing: -0.035em;
   margin-bottom: 22px; color: var(--bone);
-  text-shadow: 0 2px 24px rgba(0,0,0,0.6);
+  text-shadow: 0 2px 24px rgba(0,0,0,0.5);
 }
 h1 em {
-  font-style: italic; color: var(--cyan);
-  position: relative; display: inline-block;
-  text-shadow:
-    0.04em 0 0 rgba(255,0,85,0.7),
-   -0.02em -0.04em 0 rgba(0,242,255,0.7),
-    0 2px 24px rgba(0,0,0,0.6);
-  animation: glitch 3.2s infinite steps(1,end);
-}
-h1 .bl {
-  background: var(--grad-mix);
+  font-style: italic;
+  font-variation-settings: 'opsz' 144, 'SOFT' 100;
+  background: linear-gradient(120deg, var(--magenta) 0%, var(--coral) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 16px rgba(0,0,0,0.5));
 }
-/* Glitch runs briefly, then rests — readable AND personality.
-   2.4s of stillness, 0.8s of pulse per 3.2s cycle. */
-@keyframes glitch {
-  0%, 75%, 100% {
-    transform: translate(0);
-    text-shadow:
-      0.04em 0 0 rgba(255,0,85,0.7),
-     -0.02em -0.04em 0 rgba(0,242,255,0.7),
-      0 2px 24px rgba(0,0,0,0.6);
-  }
-  78% { transform: translate(2px, -2px); text-shadow: -0.04em -0.025em 0 var(--magenta), 0.04em 0.025em 0 var(--cyan); }
-  82% { transform: translate(-2px, 0); text-shadow: 0.03em 0.04em 0 var(--magenta), -0.04em -0.04em 0 var(--cyan); }
-  86% { transform: translate(1px, 1px); text-shadow: 0.04em 0 0 var(--magenta), -0.02em -0.04em 0 var(--cyan); }
-  90%, 95% { transform: translate(0); }
+h1 .bl {
+  color: var(--pink-light);
+  text-shadow:
+    0 0 32px rgba(200, 150, 255, 0.55),
+    0 0 16px rgba(255, 95, 184, 0.4),
+    0 2px 16px rgba(0,0,0,0.5);
 }
 
 .sub {
@@ -364,7 +401,7 @@ h1 .bl {
   transition: box-shadow .3s ease;
 }
 .sw:hover, .sw:focus-within {
-  box-shadow: 0 0 32px rgba(0,242,255,0.25), 0 0 32px rgba(255,0,85,0.2);
+  box-shadow: 0 0 32px rgba(255, 46, 126, 0.28), 0 0 60px rgba(139, 62, 224, 0.15);
 }
 .si {
   width: 100%; background: var(--ink);
@@ -388,21 +425,24 @@ h1 .bl {
   font-size: 11px; font-weight: 700;
   letter-spacing: 1.5px; text-transform: uppercase;
   cursor: pointer; transition: all .2s;
-  box-shadow: 0 0 22px rgba(255,0,85,0.4);
+  box-shadow: 0 0 22px rgba(255,46,126,0.4);
 }
-.sbtn:hover { transform: translateY(-50%) scale(1.04); box-shadow: 0 0 30px rgba(255,0,85,0.6); }
+.sbtn:hover { transform: translateY(-50%) scale(1.04); box-shadow: 0 0 30px rgba(255,46,126,0.6); }
 
-.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
 .chip {
-  padding: 7px 14px; border-radius: 4px;
-  background: rgba(0,242,255,0.05);
-  border: 1px solid rgba(0,242,255,0.22);
-  font-size: 11px; font-weight: 700;
-  color: var(--cyan); letter-spacing: 1px;
-  text-transform: uppercase;
+  padding: 10px 18px; border-radius: 100px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 12px; font-weight: 600;
+  color: var(--bone2); letter-spacing: 0.04em;
   cursor: pointer; transition: all .2s;
 }
-.chip:hover { background: rgba(0,242,255,0.1); border-color: rgba(0,242,255,0.5); }
+.chip:hover {
+  background: rgba(255, 153, 102, 0.10);
+  border-color: rgba(255, 153, 102, 0.45);
+  color: var(--coral);
+}
 
 /* ── MAIN WRAP ── */
 .main-wrap {
@@ -414,16 +454,16 @@ h1 .bl {
 
 /* ── AI PANEL ── */
 .aip {
-  background: linear-gradient(135deg, rgba(0,242,255,0.06), rgba(255,0,85,0.04));
-  border: 1px solid rgba(0,242,255,0.25);
+  background: linear-gradient(135deg, rgba(255,153,102,0.06), rgba(255,46,126,0.04));
+  border: 1px solid rgba(255,153,102,0.25);
   border-radius: var(--radius);
   padding: 20px 24px; margin-bottom: 30px;
   display: none; backdrop-filter: blur(10px);
 }
 .aip.show { display: block; animation: fadeIn .4s; }
 .aip-h {
-  font-size: 11px; color: var(--cyan); font-weight: 700;
-  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px;
+  font-size: 11px; color: var(--coral); font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px;
 }
 .aip-t { font-size: 14px; color: var(--bone); line-height: 1.7; }
 .aip-t strong { color: var(--bone); font-weight: 700; }
@@ -444,8 +484,8 @@ h1 .bl {
 }
 
 .err {
-  background: rgba(255,0,85,0.08);
-  border: 1px solid rgba(255,0,85,0.3);
+  background: rgba(255,46,126,0.08);
+  border: 1px solid rgba(255,46,126,0.3);
   color: var(--magenta2);
   padding: 10px 16px; border-radius: 10px;
   font-size: 13px; margin-bottom: 20px; display: none;
@@ -464,23 +504,24 @@ h1 .bl {
   transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
 .stat:hover {
-  transform: translateY(-4px); border-color: rgba(255,0,85,0.4);
-  box-shadow: 0 10px 32px rgba(0,0,0,0.35), 0 0 20px rgba(255,0,85,0.15);
+  transform: translateY(-4px); border-color: rgba(255,46,126,0.4);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.35), 0 0 20px rgba(255,46,126,0.15);
 }
 .stat::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
 }
-.stat:nth-child(1)::before { background: var(--magenta); box-shadow: 0 0 10px rgba(255,0,85,0.5); }
-.stat:nth-child(2)::before { background: var(--cyan); box-shadow: 0 0 10px rgba(0,242,255,0.5); }
+.stat:nth-child(1)::before { background: var(--magenta); box-shadow: 0 0 10px rgba(255,46,126,0.5); }
+.stat:nth-child(2)::before { background: var(--cyan); box-shadow: 0 0 10px rgba(255,153,102,0.5); }
 .stat:nth-child(3)::before { background: var(--grad-mix); }
 .stat:nth-child(4)::before { background: linear-gradient(90deg, var(--bone), var(--cyan)); }
 .sn {
-  font-family: 'Inter', sans-serif;
-  font-size: 42px; font-weight: 800;
-  line-height: 1; letter-spacing: -2.5px; margin-bottom: 8px;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 48;
+  font-size: 44px; font-weight: 500;
+  line-height: 1; letter-spacing: -0.025em; margin-bottom: 8px;
 }
-.stat:nth-child(1) .sn { color: var(--magenta); text-shadow: 0 0 24px rgba(255,0,85,0.5); }
-.stat:nth-child(2) .sn { color: var(--cyan); text-shadow: 0 0 24px rgba(0,242,255,0.5); }
+.stat:nth-child(1) .sn { color: var(--magenta); text-shadow: 0 0 24px rgba(255, 46, 126, 0.4); }
+.stat:nth-child(2) .sn { color: var(--coral); text-shadow: 0 0 24px rgba(255, 153, 102, 0.4); }
 .stat:nth-child(3) .sn { background: var(--grad-mix); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .stat:nth-child(4) .sn { color: var(--bone); }
 .sl {
@@ -488,37 +529,53 @@ h1 .bl {
   text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
 }
 
-/* ── FILTERS ── */
+/* ── FILTERS ──
+   Subtle elevated surface — filter zone reads as a distinct functional area
+   without harsh separation. Soft radial glow hint underneath. */
 .filters {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  margin-bottom: 30px; padding: 14px 18px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(0,242,255,0.12);
-  border-radius: var(--radius); backdrop-filter: blur(8px);
+  margin-bottom: 30px; padding: 18px 22px;
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 46, 126, 0.05), transparent 70%),
+    rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius); backdrop-filter: blur(12px);
 }
-.flbl { font-size: 11px; color: var(--bone3); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-right: 4px; }
+.flbl { font-size: 10px; color: var(--bone3); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; margin-right: 6px; }
 .fb {
-  background: transparent; border: 1px solid rgba(0,242,255,0.2);
-  border-radius: 20px; padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 100px; padding: 10px 18px;
   color: var(--bone2); font-family: 'Inter', sans-serif;
-  font-size: 12px; font-weight: 600;
+  font-size: 13px; font-weight: 600;
   cursor: pointer; transition: all .2s;
 }
-.fb:hover { border-color: rgba(0,242,255,0.5); color: var(--cyan); }
-.fb.on {
-  background: var(--magenta); color: #fff;
-  border-color: var(--magenta);
-  box-shadow: 0 0 18px rgba(255,0,85,0.45);
+.fb:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--bone);
 }
-/* Liked filter tab — slightly differentiated since it's a personal view, not a category */
-.fb.liked-tab { color: var(--magenta2); border-color: rgba(255,51,119,0.35); }
-.fb.liked-tab:hover { color: #fff; border-color: var(--magenta); }
-.fb.liked-tab.on { background: var(--magenta); color: #fff; }
+.fb.on {
+  background: linear-gradient(120deg, var(--magenta), var(--coral));
+  color: var(--ink);
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgba(255, 46, 126, 0.25);
+}
+/* Liked filter — soft pink hover/active */
+.fb.liked-tab { color: var(--pink-hot); border-color: rgba(255, 95, 184, 0.30); }
+.fb.liked-tab:hover { color: var(--bone); border-color: var(--pink-hot); }
+.fb.liked-tab.on {
+  background: linear-gradient(120deg, var(--pink-hot), var(--magenta));
+  color: var(--ink); border-color: transparent;
+}
 
-/* Live now filter — red accent reads as "active broadcast / happening now". */
-.fb.live-tab { color: #ff5050; border-color: rgba(255,80,80,0.35); }
-.fb.live-tab:hover { color: #fff; border-color: #ff5050; }
-.fb.live-tab.on { background: #ff5050; color: #fff; }
+/* Live now filter — pulsing magenta dot, hot pink active state */
+.fb.live-tab { color: var(--magenta); border-color: rgba(255, 46, 126, 0.35); }
+.fb.live-tab:hover { color: var(--bone); border-color: var(--magenta); }
+.fb.live-tab.on {
+  background: linear-gradient(120deg, var(--magenta), var(--pink-hot));
+  color: var(--bone); border-color: transparent;
+  box-shadow: 0 0 24px rgba(255, 46, 126, 0.4);
+}
 .liked-count {
   display: inline-block;
   margin-left: 4px;
@@ -538,16 +595,16 @@ h1 .bl {
 .gdpr-banner {
   position: fixed; bottom: 14px; left: 14px; right: 14px; z-index: 200;
   max-width: 540px; margin: 0 auto;
-  background: rgba(18,18,24,0.95);
-  border: 1px solid rgba(0,242,255,0.25);
+  background: rgba(24, 16, 31, 0.96);
+  border: 1px solid rgba(255,153,102,0.25);
   border-radius: var(--radius);
   padding: 18px 20px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(0,242,255,0.05);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 30px rgba(255,153,102,0.05);
   backdrop-filter: blur(12px);
   display: none;
 }
 .gdpr-banner.on { display: block; }
-.gdpr-banner h4 { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--bone); }
+.gdpr-banner h4 { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 36; font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--bone); }
 .gdpr-banner p  { font-size: 12.5px; line-height: 1.55; color: var(--bone2); margin-bottom: 14px; }
 .gdpr-banner .gdpr-actions { display: flex; gap: 10px; align-items: center; }
 .gdpr-banner button.gdpr-ok {
@@ -565,7 +622,7 @@ h1 .bl {
 }
 .gdpr-banner a.gdpr-more:hover { text-decoration: underline; }
 .fsel {
-  background: var(--ink); border: 1px solid rgba(0,242,255,0.2);
+  background: var(--ink); border: 1px solid rgba(255,153,102,0.2);
   border-radius: 20px; padding: 7px 32px 7px 14px;
   font-size: 12px; color: var(--bone2);
   font-family: 'Inter', sans-serif; outline: none; cursor: pointer;
@@ -573,7 +630,7 @@ h1 .bl {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300F2FF' opacity='.6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center;
 }
-.fsel:hover { border-color: rgba(0,242,255,0.5); color: var(--bone); }
+.fsel:hover { border-color: rgba(255,153,102,0.5); color: var(--bone); }
 .fsel:focus { border-color: var(--magenta); }
 .fsel option {
   background: var(--ink2); color: var(--bone);
@@ -582,27 +639,36 @@ h1 .bl {
 }
 .fsel option:checked, .fsel option:hover { background: var(--ink3); }
 
+/* When AI search is active, the city dropdown is hidden — AI search has its
+   own location reasoning (the "Near you" pill). Showing city filter alongside
+   creates redundant controls. JS toggles body.ai-active when aiResultIds is set. */
+body.ai-active .fsel { display: none; }
+
 /* ── SECTION HEAD ── */
 .sh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; }
 .st {
-  font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 800;
-  letter-spacing: -0.5px; color: var(--bone);
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 144;
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.025em; line-height: 1.05;
+  color: var(--bone);
 }
-.sc { font-size: 12px; color: var(--bone3); font-weight: 600; }
+.sc { font-size: 12px; color: var(--bone3); font-weight: 600; letter-spacing: 0.05em; }
 
 /* ── FEATURED / TRENDING CARD ── */
 .featured {
   position: relative; margin-bottom: 36px;
   border-radius: var(--radius); overflow: hidden;
-  border: 1px solid rgba(0,242,255,0.22);
+  border: 1px solid rgba(255,153,102,0.22);
   background: var(--glass); backdrop-filter: blur(10px);
   cursor: pointer;
   transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
 }
 .featured:hover {
-  border-color: rgba(255,0,85,0.45);
+  border-color: rgba(255,46,126,0.45);
   transform: translateY(-3px);
-  box-shadow: 0 18px 55px rgba(0,0,0,0.65), 0 0 40px rgba(255,0,85,0.18);
+  box-shadow: 0 18px 55px rgba(0,0,0,0.65), 0 0 40px rgba(255,46,126,0.18);
 }
 
 /* Media / poster area */
@@ -629,8 +695,8 @@ h1 .bl {
   z-index: 2; pointer-events: none;
 }
 .feat-badge-src {
-  background: rgba(0,242,255,0.15); color: var(--cyan);
-  border: 1px solid rgba(0,242,255,0.4);
+  background: rgba(255,153,102,0.15); color: var(--cyan);
+  border: 1px solid rgba(255,153,102,0.4);
   padding: 6px 12px; border-radius: 4px;
   font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
   backdrop-filter: blur(8px);
@@ -639,7 +705,7 @@ h1 .bl {
   background: var(--magenta); color: #fff;
   padding: 6px 12px; border-radius: 4px;
   font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-  box-shadow: 0 0 20px rgba(255,0,85,0.5);
+  box-shadow: 0 0 20px rgba(255,46,126,0.5);
 }
 
 /* Body / content area — clear hierarchy: pill → title → desc → meta → actions */
@@ -649,9 +715,10 @@ h1 .bl {
 }
 .feat-body > .cpill { margin-bottom: 0; align-self: flex-start; }
 .feat-title {
-  font-family: 'Inter', sans-serif;
-  font-size: 28px; font-weight: 800;
-  line-height: 1.2; letter-spacing: -0.6px;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 60;
+  font-size: 32px; font-weight: 500;
+  line-height: 1.1; letter-spacing: -0.02em;
   color: var(--bone); margin: 0;
 }
 .feat-desc {
@@ -679,7 +746,7 @@ h1 .bl {
   display: flex; align-items: center; justify-content: center;
   font-size: 90px; background: linear-gradient(135deg, var(--ink2), var(--ink3));
 }
-.fph span { filter: drop-shadow(0 0 20px rgba(0,242,255,0.3)); }
+.fph span { filter: drop-shadow(0 0 20px rgba(255,153,102,0.3)); }
 
 @media (max-width: 640px) {
   .feat-media > img, .feat-media > div.fph { height: 220px; }
@@ -696,11 +763,11 @@ h1 .bl {
   font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
   text-transform: uppercase; margin-bottom: 10px;
 }
-.cm  { background: rgba(0,242,255,0.1);  color: var(--cyan);     border: 1px solid rgba(0,242,255,0.35); }
+.cm  { background: rgba(255,153,102,0.1);  color: var(--cyan);     border: 1px solid rgba(255,153,102,0.35); }
 .ca  { background: rgba(248,249,250,0.05);color: var(--bone);    border: 1px solid rgba(248,249,250,0.18); }
-.cs  { background: rgba(0,242,255,0.08); color: var(--cyan2);    border: 1px solid rgba(0,242,255,0.3); }
-.cfa { background: rgba(255,0,85,0.1);   color: var(--magenta2); border: 1px solid rgba(255,0,85,0.3); }
-.cx  { background: rgba(255,0,85,0.1);   color: var(--magenta);  border: 1px solid rgba(255,0,85,0.3); }
+.cs  { background: rgba(255,153,102,0.08); color: var(--cyan2);    border: 1px solid rgba(255,153,102,0.3); }
+.cfa { background: rgba(255,46,126,0.1);   color: var(--magenta2); border: 1px solid rgba(255,46,126,0.3); }
+.cx  { background: rgba(255,46,126,0.1);   color: var(--magenta);  border: 1px solid rgba(255,46,126,0.3); }
 
 /* Language badge — subtle indicator that title/desc wasn't translated to user's language */
 .lang-badge {
@@ -730,38 +797,50 @@ h1 .bl {
 }
 .socs { display: flex; align-items: center; gap: 5px; }
 .sb {
-  background: var(--glass); border: 1px solid rgba(0,242,255,0.15); border-radius: 8px;
+  background: var(--glass); border: 1px solid rgba(255,153,102,0.15); border-radius: 8px;
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; font-size: 13px; transition: all .2s; color: var(--bone2);
 }
-.sb:hover { background: rgba(255,0,85,0.1); border-color: rgba(255,0,85,0.4); color: var(--magenta); }
-.sb.lk { color: var(--magenta); border-color: rgba(255,0,85,0.5); box-shadow: 0 0 10px rgba(255,0,85,0.3); }
+.sb:hover { background: rgba(255,46,126,0.1); border-color: rgba(255,46,126,0.4); color: var(--magenta); }
+.sb.lk { color: var(--magenta); border-color: rgba(255,46,126,0.5); box-shadow: 0 0 10px rgba(255,46,126,0.3); }
 .ln { font-size: 11px; color: var(--bone3); margin-left: 1px; }
 
 /* Card-level like button — pill-shaped, matches Get Tickets button height.
    Used in smCard. The big card (.featured) keeps the smaller .sb for now
    because it has more buttons in its row (X, FB, copy-link). */
 .like-btn {
-  background: var(--glass); border: 1px solid rgba(255,0,85,0.25); border-radius: 8px;
+  background: var(--glass); border: 1px solid rgba(255,46,126,0.25); border-radius: 8px;
   padding: 9px 16px; font-family: 'Inter', sans-serif; cursor: pointer;
   color: var(--bone2); transition: all .2s;
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 800; letter-spacing: 1px;
 }
 .like-btn .like-heart {
-  font-size: 32px; line-height: 1;
+  font-size: 28px; line-height: 1;
   display: inline-block;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease, -webkit-text-stroke-color 0.2s ease;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--bone3);
+}
+.like-btn:hover .like-heart {
+  -webkit-text-stroke-color: var(--magenta);
+}
+/* Liked state: filled magenta, no stroke. Same glyph as unliked — only the
+   fill changes. This keeps the heart visually the SAME SIZE in both states
+   (previously ♡ outlined vs ♥ filled rendered at different glyph widths). */
+.like-btn.lk .like-heart {
+  color: var(--magenta);
+  -webkit-text-stroke: 0;
 }
 .like-btn .like-count { color: var(--bone3); font-weight: 700; }
 .like-btn:hover {
-  background: rgba(255,0,85,0.08); border-color: rgba(255,0,85,0.5);
+  background: rgba(255,46,126,0.08); border-color: rgba(255,46,126,0.5);
   color: var(--magenta);
 }
 .like-btn:hover .like-count { color: var(--bone2); }
 .like-btn.lk {
-  color: var(--magenta); border-color: rgba(255,0,85,0.6);
-  box-shadow: 0 0 12px rgba(255,0,85,0.25);
+  color: var(--magenta); border-color: rgba(255,46,126,0.6);
+  box-shadow: 0 0 12px rgba(255,46,126,0.25);
 }
 .like-btn.lk .like-count { color: var(--magenta); }
 
@@ -786,11 +865,11 @@ h1 .bl {
   cursor: pointer; font-family: 'Inter', sans-serif;
   transition: all .2s; text-decoration: none;
   display: inline-flex; align-items: center; gap: 5px;
-  box-shadow: 0 0 20px rgba(255,0,85,0.35);
+  box-shadow: 0 0 20px rgba(255,46,126,0.35);
 }
-.tb:hover { transform: scale(1.04); box-shadow: 0 0 30px rgba(255,0,85,0.55); }
-.tb.blue { background: var(--cyan); color: var(--ink); box-shadow: 0 0 20px rgba(0,242,255,0.4); }
-.tb.blue:hover { box-shadow: 0 0 30px rgba(0,242,255,0.6); }
+.tb:hover { transform: scale(1.04); box-shadow: 0 0 30px rgba(255,46,126,0.55); }
+.tb.blue { background: var(--cyan); color: var(--ink); box-shadow: 0 0 20px rgba(255,153,102,0.4); }
+.tb.blue:hover { box-shadow: 0 0 30px rgba(255,153,102,0.6); }
 .tb.tb-disabled {
   background: rgba(255,255,255,0.06); color: var(--bone3);
   cursor: not-allowed; box-shadow: none;
@@ -809,8 +888,8 @@ h1 .bl {
   backdrop-filter: blur(10px); position: relative;
 }
 .card:hover {
-  border-color: rgba(0,242,255,0.5); transform: translateY(-4px);
-  box-shadow: 0 18px 55px rgba(0,0,0,0.65), 0 0 30px rgba(0,242,255,0.15);
+  border-color: rgba(255,153,102,0.5); transform: translateY(-4px);
+  box-shadow: 0 18px 55px rgba(0,0,0,0.65), 0 0 30px rgba(255,153,102,0.15);
 }
 .cph {
   width: 100%; height: 165px;
@@ -818,7 +897,7 @@ h1 .bl {
   font-size: 50px; position: relative; overflow: hidden;
   background: linear-gradient(135deg, var(--ink2), var(--ink3));
 }
-.cph span { filter: drop-shadow(0 0 15px rgba(0,242,255,0.3)); }
+.cph span { filter: drop-shadow(0 0 15px rgba(255,153,102,0.3)); }
 .cph::after {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(to top, var(--ink) 0%, transparent 70%);
@@ -834,17 +913,19 @@ h1 .bl {
   backdrop-filter: blur(8px);
 }
 .srcpill.s-tm {
-  background: rgba(0,242,255,0.18); color: var(--cyan);
-  border: 1px solid rgba(0,242,255,0.4);
+  background: rgba(255,153,102,0.18); color: var(--cyan);
+  border: 1px solid rgba(255,153,102,0.4);
 }
 .srcpill.s-pub {
-  background: rgba(255,0,85,0.18); color: var(--magenta);
-  border: 1px solid rgba(255,0,85,0.4);
+  background: rgba(255,46,126,0.18); color: var(--magenta);
+  border: 1px solid rgba(255,46,126,0.4);
 }
 .cb { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; }
 .ctitle {
-  font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 800;
-  line-height: 1.25; margin-bottom: 6px; letter-spacing: -0.3px; color: var(--bone);
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 36;
+  font-size: 19px; font-weight: 500;
+  line-height: 1.2; margin-bottom: 6px; letter-spacing: -0.015em; color: var(--bone);
 }
 .cdesc {
   font-size: 12px; color: var(--bone2); line-height: 1.6;
@@ -861,7 +942,7 @@ h1 .bl {
 .loading { text-align: center; padding: 80px 20px; color: var(--bone3); }
 .spin {
   width: 40px; height: 40px; margin: 0 auto 18px;
-  border: 2px solid rgba(0,242,255,0.15);
+  border: 2px solid rgba(255,153,102,0.15);
   border-top-color: var(--cyan); border-radius: 50%;
   animation: sp 0.9s linear infinite;
 }
@@ -872,13 +953,13 @@ h1 .bl {
 .lmw { display: flex; justify-content: center; margin-top: 40px; }
 .lmb {
   background: transparent;
-  border: 1px solid rgba(0,242,255,0.4); color: var(--cyan);
+  border: 1px solid rgba(255,153,102,0.4); color: var(--cyan);
   padding: 12px 32px; border-radius: 40px;
   font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
   letter-spacing: 1.5px; text-transform: uppercase;
   cursor: pointer; transition: all .2s;
 }
-.lmb:hover { background: rgba(0,242,255,0.08); border-color: var(--cyan); box-shadow: 0 0 20px rgba(0,242,255,0.25); }
+.lmb:hover { background: rgba(255,153,102,0.08); border-color: var(--cyan); box-shadow: 0 0 20px rgba(255,153,102,0.25); }
 
 /* ── MODAL ── */
 .mov {
@@ -890,11 +971,11 @@ h1 .bl {
 .mov.on { display: flex; }
 .modal {
   background: var(--ink2);
-  border: 1px solid rgba(0,242,255,0.25);
+  border: 1px solid rgba(255,153,102,0.25);
   border-radius: var(--radius);
   max-width: 640px; width: 100%; max-height: 90vh;
   overflow-y: auto; position: relative;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(0,242,255,0.1);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,153,102,0.1);
   padding: 0;  /* padding moved to .mb so the image can go full-bleed */
   /* Smooth scroll-into-view when opening on mobile */
   -webkit-overflow-scrolling: touch;
@@ -992,15 +1073,16 @@ h1 .bl {
   background: linear-gradient(135deg, var(--ink2), var(--ink3));
   border-radius: var(--radius) var(--radius) 0 0;
 }
-.mph span { filter: drop-shadow(0 0 20px rgba(0,242,255,0.3)); }
+.mph span { filter: drop-shadow(0 0 20px rgba(255,153,102,0.3)); }
 
 /* Modal body */
 .mb { padding: 28px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
 .mb > .cpill { align-self: flex-start; margin-bottom: 0; }
 .mtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 28px; font-weight: 800;
-  line-height: 1.2; letter-spacing: -0.6px;
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 60;
+  font-size: 32px; font-weight: 500;
+  line-height: 1.1; letter-spacing: -0.02em;
   color: var(--bone); margin: 0;
 }
 .mdesc {
@@ -1025,7 +1107,7 @@ h1 .bl {
   display: inline-block; margin-top: 4px;
   color: var(--cyan); text-decoration: none;
   font-size: 12px; font-weight: 600;
-  border-bottom: 1px solid rgba(0,242,255,0.3);
+  border-bottom: 1px solid rgba(255,153,102,0.3);
   transition: all .15s;
 }
 .dir-link:hover {
@@ -1049,6 +1131,13 @@ h1 .bl {
 
 .mact-share {
   display: flex; gap: 8px; align-items: center;
+  /* Push share row clear of the sticky .mact-primary below it. The primary
+     bar is ~70px tall and sits at bottom:0 with a transparent top-fade
+     region (gradient: ink2 75% → transparent). The transparent region was
+     intercepting clicks on the share buttons positioned just above it.
+     Margin-bottom pushes share above the sticky primary's full footprint. */
+  margin-bottom: 16px;
+  position: relative; z-index: 6;
 }
 .shb {
   background: var(--glass2); border: 1px solid rgba(255,255,255,0.08);
@@ -1061,7 +1150,7 @@ h1 .bl {
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.shb:hover { background: rgba(0,242,255,0.08); border-color: rgba(0,242,255,0.3); color: var(--cyan); }
+.shb:hover { background: rgba(255,153,102,0.08); border-color: rgba(255,153,102,0.3); color: var(--cyan); }
 
 /* Multi-source picker — shown when an event is listed on 2+ platforms */
 .msrc-row {
@@ -1166,7 +1255,34 @@ footer p {
 
 <nav>
   <div class="logo" onclick="goHome()" style="cursor:pointer" role="link" tabindex="0" aria-label="Home" onkeydown="if(event.key==='Enter')goHome()">
-    <div class="logo-mark"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M23 10 C23 7, 19 7, 16 7 C12 7, 9 9, 9 12 C9 16, 14 16, 17 17 C21 18, 24 19, 24 22 C24 25, 20 26, 16 26 C12 26, 9 24, 9 22" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg></div>
+    <div class="logo-mark"><svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="lm-bar" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff2e7e"/>
+          <stop offset="100%" stop-color="#ff9966"/>
+        </linearGradient>
+        <linearGradient id="lm-star-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#8b3ee0"/>
+          <stop offset="100%" stop-color="#c896ff"/>
+        </linearGradient>
+        <linearGradient id="lm-star-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff5fb8"/>
+          <stop offset="100%" stop-color="#ffa3d9"/>
+        </linearGradient>
+        <symbol id="lm-s-purple" viewBox="-1.1 -1.1 2.2 2.2"><path d="M 0,-1 L 0.224,-0.309 L 0.951,-0.309 L 0.363,0.118 L 0.588,0.809 L 0,0.382 L -0.588,0.809 L -0.363,0.118 L -0.951,-0.309 L -0.224,-0.309 Z" fill="url(#lm-star-purple)"/></symbol>
+        <symbol id="lm-s-pink" viewBox="-1.1 -1.1 2.2 2.2"><path d="M 0,-1 L 0.224,-0.309 L 0.951,-0.309 L 0.363,0.118 L 0.588,0.809 L 0,0.382 L -0.588,0.809 L -0.363,0.118 L -0.951,-0.309 L -0.224,-0.309 Z" fill="url(#lm-star-pink)"/></symbol>
+      </defs>
+      <use class="lm-star1" href="#lm-s-purple" x="4"  y="4" width="8" height="8"/>
+      <use class="lm-star2" href="#lm-s-pink"   x="22" y="3" width="7" height="7"/>
+      <circle class="lm-tiny" cx="16" cy="3"  r="0.6" fill="#ffa3d9"/>
+      <circle class="lm-tiny" cx="32" cy="12" r="0.7" fill="#8b3ee0"/>
+      <rect class="lm-b1" x="3"  y="22" width="3" height="10" rx="1" fill="url(#lm-bar)"/>
+      <rect class="lm-b2" x="8"  y="18" width="3" height="14" rx="1" fill="url(#lm-bar)"/>
+      <rect class="lm-b3" x="13" y="15" width="3" height="17" rx="1" fill="url(#lm-bar)"/>
+      <rect class="lm-b4" x="18" y="17" width="3" height="15" rx="1" fill="url(#lm-bar)"/>
+      <rect class="lm-b5" x="23" y="20" width="3" height="12" rx="1" fill="url(#lm-bar)"/>
+      <rect class="lm-b6" x="28" y="24" width="3" height="8"  rx="1" fill="url(#lm-bar)" opacity="0.85"/>
+    </svg></div>
     <span class="logo-text">shou</span>
   </div>
   <div class="navr">
@@ -1209,9 +1325,9 @@ footer p {
        user has opted in. Toggling turns the location signal on/off for AI
        search ("near me" queries use it; explicit cities ignore it). -->
   <div id="aiLocBadge" style="display:none;margin-bottom:14px;font-size:11px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;">
-    <button id="aiLocToggle" onclick="toggleAILocation()" style="background:transparent;border:1px solid rgba(0,242,255,0.25);border-radius:20px;padding:5px 12px;color:var(--bone3);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;">
+    <button id="aiLocToggle" onclick="toggleAILocation()" style="background:transparent;border:1px solid rgba(255,153,102,0.25);border-radius:20px;padding:5px 12px;color:var(--bone3);font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;">
       <span id="aiLocIcon">📍</span>
-      <span id="aiLocText">searches use your location</span>
+      <span id="aiLocText">Near you</span>
     </button>
   </div>
   <div class="chips fu3">
@@ -1428,6 +1544,14 @@ let aiResultIds = null;     // null = no active search; Set = filter is active
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
 let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
+
+// Sync body.ai-active class with AI state. CSS uses this to hide redundant
+// controls (city dropdown) while an AI search is active. Call after any
+// state change to aiResultIds or aiSearching.
+function syncAiActiveClass() {
+  const isActive = !!(aiResultIds || aiSearching);
+  document.body.classList.toggle('ai-active', isActive);
+}
 const AI_PREFETCH_CACHE_MAX = 20;
 const AI_PREFETCH_DEBOUNCE_MS = 400;
 let aiPrefetchTimer = null;
@@ -1516,19 +1640,19 @@ function updateAILocBadge() {
   badge.style.display = 'block';
 
   if (aiUseLocation) {
-    btn.style.borderColor = 'var(--cyan)';
-    btn.style.color = 'var(--cyan)';
-    btn.style.background = 'rgba(0,242,255,0.06)';
+    btn.style.borderColor = 'var(--coral)';
+    btn.style.color = 'var(--coral)';
+    btn.style.background = 'rgba(255, 153, 102, 0.08)';
     icon.textContent = '📍';
-    text.textContent = 'searches use your location';
-    btn.title = 'Click to ignore location in AI search';
+    text.textContent = 'Near you';
+    btn.title = 'AI search is using your location · click to turn off';
   } else {
-    btn.style.borderColor = 'rgba(0,242,255,0.2)';
+    btn.style.borderColor = 'rgba(255, 255, 255, 0.18)';
     btn.style.color = 'var(--bone3)';
     btn.style.background = 'transparent';
     icon.textContent = '📍';
-    text.textContent = 'location off';
-    btn.title = 'Click to use your location in AI search';
+    text.textContent = 'Location off';
+    btn.title = 'AI search ignoring your location · click to turn on';
   }
 }
 // "For You" recommendations cache. Map<event_id, score> — populated when the
@@ -1917,6 +2041,7 @@ function sf(f,btn){
     aiResultIds = null;
     aiReasoning = '';
     aiSearching = false;
+    syncAiActiveClass();
     const aiInput = document.getElementById('ai');
     if (aiInput) aiInput.value = '';
     const aiPanel = document.getElementById('aip');
@@ -1978,6 +2103,7 @@ function goHome() {
     aiResultIds = null;
     aiReasoning = '';
     aiSearching = false;
+    syncAiActiveClass();
     const aiInput = document.getElementById('ai');
     if (aiInput) aiInput.value = '';
     const aiPanel = document.getElementById('aip');
@@ -2451,7 +2577,7 @@ ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:
 </div>
 <div class="cf2">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
-  <span class="like-heart">${isL ? '♥' : '♡'}</span>
+  <span class="like-heart">♥</span>
   <span class="like-count">${e.likes+(isL?1:0)}</span>
 </button>
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
@@ -2506,7 +2632,7 @@ function updateModalLikeButton(id) {
   btn.classList.toggle('lk', isL);
   const heart = btn.querySelector('.like-heart');
   const count = btn.querySelector('.like-count');
-  if (heart) heart.textContent = isL ? '♥' : '♡';
+  if (heart) heart.textContent = '♥';
   if (count) count.textContent = String(e.likes + (isL ? 1 : 0));
 }
 
@@ -2594,24 +2720,45 @@ function track(eventId, action){
 //   - Copy: writes "Title — URL" so paste yields readable text
 //
 // OG meta tags for per-event share previews still pending (needs SSR).
+// Build a short, share-ready intro line for an event. Used by all share
+// buttons so X / FB / copy-link / WhatsApp paste all read the same way.
+// Format: "Event Name · 📍 Venue, City · 📅 Date"
+// Skips fields that are missing or duplicated (e.g. when venue==city).
+function buildShareIntro(e) {
+  const parts = [e.name];
+  const locParts = [];
+  if (e.venue) locParts.push(e.venue);
+  if (e.city && e.city !== e.venue) locParts.push(e.city);
+  if (locParts.length) parts.push('📍 ' + locParts.join(', '));
+  if (e.date) {
+    const timeStr = (e.time && e.time !== 'TBA') ? ' · ' + e.time : '';
+    parts.push('📅 ' + fmtD(e.date) + timeStr);
+  }
+  return parts.join(' · ');
+}
+
 function stw(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  // Tweet structure: "Event Name — Venue, City" + URL
-  const parts = [e.name];
-  if (e.venue) parts.push(e.venue);
-  if (e.city && e.city !== e.venue) parts.push(e.city);
-  const tweet = parts.join(' — ');
+  // Tweet structure: "Event Name · 📍 Venue, City · 📅 Date #shou" + URL
+  // Twitter counts the URL as ~23 chars regardless of length, so we have
+  // ~250 chars for the text portion. Title can be long; trim if needed.
+  let intro = buildShareIntro(e);
+  // 240 chars leaves room for #shou hashtag (~6) and small buffer.
+  if (intro.length > 240) intro = intro.slice(0, 237) + '…';
+  const tweet = intro + ' #shou';
   window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweet)+'&url='+encodeURIComponent(u),'_blank');
 }
 function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  // &quote= pre-fills the user's compose box with the event title.
-  // Facebook will still ultimately use OG tags for the preview card.
-  const intro = e.name + (e.venue ? ' — ' + e.venue : '');
+  // &quote= pre-fills the user's compose box with our intro text.
+  // The OG preview card (scraped from the URL via the bot-UA rewrite to
+  // /api/og) supplies title/desc/image. The quote text is what users
+  // optionally write themselves above the preview card.
+  const intro = buildShareIntro(e);
   window.open(
     'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u)+'&quote='+encodeURIComponent(intro),
     '_blank'
@@ -2621,9 +2768,28 @@ function cp2(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  // Copy "Title — URL" so the receiver sees context, not just a bare URL.
-  const text = e.name + ' — ' + u;
-  navigator.clipboard?.writeText(text).then(()=>alert('Copied!'));
+  // Multi-line for pastes into iMessage / WhatsApp / email. The recipient
+  // sees full event context, then the URL on its own line for previewability.
+  const intro = buildShareIntro(e);
+  const text = intro + '\n\n' + u;
+  // Optional chaining handles older browsers; fall back to a hidden textarea
+  // for very old environments where clipboard.writeText isn't available.
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(()=>alert('Copied!')).catch(()=>fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); alert('Copied!'); }
+  catch { alert('Copy failed — please copy manually: ' + text); }
+  document.body.removeChild(ta);
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -2708,7 +2874,7 @@ ${mSourcesRow(e)}
 </div>
 <div class="mact-primary">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
-  <span class="like-heart">${isL ? '♥' : '♡'}</span>
+  <span class="like-heart">♥</span>
   <span class="like-count">${e.likes+(isL?1:0)}</span>
 </button>
 ${mTicketBtn(e)}
@@ -2974,9 +3140,9 @@ if (document.readyState === 'loading') {
 
 // Source labels & colors for the picker pills
 const SOURCE_META = {
-  ticketmaster:     { label: 'Ticketmaster',  color: '#00F2FF' },
-  uitdatabank:      { label: 'Uitdatabank',   color: '#FF0055' },
-  publiq:           { label: 'Uitdatabank',   color: '#FF0055' },
+  ticketmaster:     { label: 'Ticketmaster',  color: '#ff9966' },
+  uitdatabank:      { label: 'Uitdatabank',   color: '#ff2e7e' },
+  publiq:           { label: 'Uitdatabank',   color: '#ff2e7e' },
   agenda_brussels:  { label: 'agenda.brussels', color: '#FFD166' },
   eventbrite:       { label: 'Eventbrite',    color: '#F05537' },
   resident_advisor: { label: 'Resident Advisor', color: '#FFB800' },
@@ -3050,7 +3216,7 @@ function mPriceHtml(e){
   const {url, isDirect} = eventUrl(e);
   if(url && priceText===t('see')){
     const label = isDirect ? `${t('see')} →` : `${t('search')} →`;
-    return `<a href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(0,242,255,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
+    return `<a href="${url}" target="_blank" rel="noopener" onclick="track('${e.id}','click')" style="color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(255,153,102,0.4);text-underline-offset:3px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--cyan)'">${label}</a>`;
   }
   return priceText;
 }
@@ -3080,6 +3246,7 @@ function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
 function clearAI(){
   aiQ=''; aiResultIds=null; aiReasoning=''; aiSearching=false; vis=6;
+  syncAiActiveClass();
   const aiInput = document.getElementById('ai');
   if (aiInput) aiInput.value='';
   const panel = document.getElementById('aip');
@@ -3116,7 +3283,7 @@ function renderAIBanner({ searching, query, reasoning, count }) {
   t.innerHTML = `
     ${matchesLine}
     <div style="margin-bottom:14px;font-size:15px;color:var(--bone);line-height:1.5;">${safeReasoning}</div>
-    <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(0,242,255,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(0,242,255,0.08)'" onmouseout="this.style.background='transparent'" data-k="clearSearch">Clear search ✕</button>
+    <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(255,153,102,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,153,102,0.08)'" onmouseout="this.style.background='transparent'" data-k="clearSearch">Clear search ✕</button>
   `;
   p.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -3141,6 +3308,7 @@ async function showAI(q) {
     aiResultIds = new Set(cached.ids);
     aiReasoning = cached.reasoning;
     aiSearching = false;
+    syncAiActiveClass();
     // Merge cached events too — same dedup logic as the live response
     if (Array.isArray(cached.events) && cached.events.length > 0) {
       const existingIds = new Set(all.map(e => e.id));
@@ -3160,6 +3328,7 @@ async function showAI(q) {
   // responsive even though the network call takes 1-3s.
   aiSearching = true;
   aiResultIds = new Set();   // empty Set → applyF filters everything out → grid shows nothing
+  syncAiActiveClass();
   applyF();                  // clear current grid
   renderAIBanner({ searching: true });
 
@@ -3191,6 +3360,7 @@ async function showAI(q) {
     aiResultIds = new Set(Array.isArray(data.matchingIds) ? data.matchingIds : []);
     aiReasoning = data.reasoning || '';
     aiSearching = false;
+    syncAiActiveClass();
 
     // Merge full event data from search response into 'all'. The frontend
     // only loaded the top-500 popular events; AI search may pick events
@@ -3230,6 +3400,7 @@ async function showAI(q) {
     const criteria = parseAIQuery(q);
     aiResultIds = new Set(all.filter(e => matchesAIQuery(e, criteria)).map(e => e.id));
     aiReasoning = 'Showing keyword-matched events (AI search is temporarily unavailable).';
+    syncAiActiveClass();
     applyF();
     renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
   }
@@ -3328,13 +3499,13 @@ function openSearchHistoryDropdown() {
     top:${rect.bottom + 8}px;
     left:${rect.left}px;
     width:${rect.width}px;
-    background:#121218;
-    border:1px solid rgba(0,242,255,0.3);
+    background:#18101f;
+    border:1px solid rgba(255,153,102,0.3);
     border-radius:14px;
     padding:6px;
     max-height:300px;
     overflow-y:auto;
-    box-shadow:0 16px 48px rgba(0,0,0,0.7), 0 0 24px rgba(0,242,255,0.08);
+    box-shadow:0 16px 48px rgba(0,0,0,0.7), 0 0 24px rgba(255,153,102,0.08);
     z-index:9999;
     display:block;
   `;
@@ -3343,7 +3514,7 @@ function openSearchHistoryDropdown() {
     <div style="font-size:10px;color:var(--bone3);letter-spacing:1.5px;text-transform:uppercase;padding:8px 12px 6px;">Recent searches</div>
     ${aiHistory.map(q => {
       const safe = q.replace(/[<>"']/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      return `<button onclick="qAI(this.dataset.q)" data-q="${safe}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;padding:9px 12px;border-radius:8px;color:var(--bone2);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(0,242,255,0.08)';this.style.color='var(--bone)'" onmouseout="this.style.background='transparent';this.style.color='var(--bone2)'"><span style="color:var(--bone3);font-size:11px;">↻</span><span>${safe}</span></button>`;
+      return `<button onclick="qAI(this.dataset.q)" data-q="${safe}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;padding:9px 12px;border-radius:8px;color:var(--bone2);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(255,153,102,0.08)';this.style.color='var(--bone)'" onmouseout="this.style.background='transparent';this.style.color='var(--bone2)'"><span style="color:var(--bone3);font-size:11px;">↻</span><span>${safe}</span></button>`;
     }).join('')}
   `;
 

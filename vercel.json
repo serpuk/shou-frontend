@@ -1,3 +1,17 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        { "type": "query", "key": "event", "value": "(?<eventId>.+)" },
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?<bot>.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discordbot|TelegramBot|SkypeUriPreview|Pinterest|redditbot|Applebot|bingbot|Googlebot|DuckDuckBot|Embedly|Bitlybot).*)"
+        }
+      ],
+      "destination": "https://shou-backend.vercel.app/api/og?event=:eventId"
+    }
+  ]
 }
