@@ -1198,7 +1198,7 @@ footer p {
   <p class="sub fu2" data-k="sub">Concerts, clubs, festivals, theatre &amp; more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.</p>
   <div class="sw fu3">
     <span class="sicon">✦</span>
-    <input class="si" id="ai" type="text" placeholder="ask — e.g. techno in ghent this weekend…" onkeydown="if(event.key==='Enter')doAI()">
+    <input class="si" id="ai" type="text" placeholder="ask — e.g. techno in ghent this weekend…" onkeydown="if(event.key==='Enter')doAI()" oninput="aiInputTyped(this.value)" onfocus="maybeOpenHistory()" autocomplete="off">
     <button class="sbtn" onclick="doAI()" data-k="ab">ask shou ↗</button>
   </div>
   <div class="chips fu3">
@@ -1405,6 +1405,48 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes();
+
+// AI search state. aiQ is the active query string (shown in input + banner).
+// aiResultIds is the Set of event IDs returned by /api/search — replaces the
+// old local matchesAIQuery() filtering. aiReasoning is the LLM's friendly
+// explanation, shown in the suggestions banner. aiSearching is true while
+// a request is in flight so we can show a skeleton.
+let aiResultIds = null;     // null = no active search; Set = filter is active
+let aiReasoning = '';        // LLM-written explanation for the suggestions banner
+let aiSearching = false;     // true while /api/search is in flight
+let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
+const AI_PREFETCH_CACHE_MAX = 20;
+const AI_PREFETCH_DEBOUNCE_MS = 400;
+let aiPrefetchTimer = null;
+
+// Search history: last N queries the user has searched. Anonymous users get
+// localStorage; signed-in users get cross-device history from /api/search-history
+// (populated on auth). Dropdown shows whichever's available.
+const AI_HISTORY_KEY = 'shou_search_history';
+const AI_HISTORY_MAX = 5;
+function loadSearchHistory() {
+  try {
+    const raw = localStorage.getItem(AI_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, AI_HISTORY_MAX) : [];
+  } catch { return []; }
+}
+function saveSearchHistory(history) {
+  try {
+    localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(history.slice(0, AI_HISTORY_MAX)));
+  } catch {}
+}
+function pushToSearchHistory(query) {
+  const q = (query || '').trim();
+  if (!q) return;
+  let history = loadSearchHistory();
+  // Remove existing occurrence so the new entry moves to the top
+  history = history.filter(h => h !== q);
+  history.unshift(q);
+  saveSearchHistory(history);
+}
+let aiHistory = loadSearchHistory();
 // "For You" recommendations cache. Map<event_id, score> — populated when the
 // user clicks the For You tab. Empty until then. We re-fetch whenever the user
 // returns to the tab so likes-since-last-fetch are reflected.
@@ -1788,6 +1830,9 @@ function sf(f,btn){
   // AI search are mutually-exclusive ways of narrowing the catalog.
   if (aiQ) {
     aiQ = '';
+    aiResultIds = null;
+    aiReasoning = '';
+    aiSearching = false;
     const aiInput = document.getElementById('ai');
     if (aiInput) aiInput.value = '';
     const aiPanel = document.getElementById('aip');
@@ -1846,6 +1891,9 @@ function goHome() {
     // sf clears aiQ as a side-effect, but if we're already on 'all',
     // we still want to clear any active AI query manually.
     aiQ = '';
+    aiResultIds = null;
+    aiReasoning = '';
+    aiSearching = false;
     const aiInput = document.getElementById('ai');
     if (aiInput) aiInput.value = '';
     const aiPanel = document.getElementById('aip');
@@ -2032,7 +2080,6 @@ function matchesAIQuery(e,c){
 }
 
 function applyF(){
-  const aiCriteria=aiQ?parseAIQuery(aiQ):null;
   const isNearMe = actC === 'near' && userGeo && userGeo.available;
   // "Smart default" — when the user clicks All AND is signed in AND has enough
   // signal, the home feed becomes For You instead of plain Trending. The
@@ -2046,6 +2093,11 @@ function applyF(){
     forYouIds.size > 0
   );
 
+  // When AI search is active, only events in aiResultIds pass the filter.
+  // aiResultIds is set by the /api/search response. While a search is in
+  // flight, we don't render the old results (the skeleton UI takes over).
+  // Local parseAIQuery is kept only as an emergency fallback used inside
+  // bAsk() when the API call fails entirely.
   filtered=all.filter(e=>{
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
@@ -2057,7 +2109,9 @@ function applyF(){
     // City filter: 'all' and 'near' both show all cities, but 'near' sorts
     // by distance. An explicit city name filters to that city.
     const cm = actC==='all' || actC==='near' || e.city===actC;
-    const am = matchesAIQuery(e,aiCriteria);
+    // AI match: when a search has produced results, only those IDs pass.
+    // No active search → all events pass this stage.
+    const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
     return sm && cm && am;
   });
 
@@ -2078,7 +2132,16 @@ function applyF(){
 
   // Pick the secondary sort comparator
   let secondary;
-  if (isPersonalizedHome) {
+  if (aiQ && aiResultIds) {
+    // AI search: respect the LLM's ranking. The Set preserves insertion order
+    // (sorted by relevance from /api/search). Build a rank map for fast lookup.
+    const aiRank = new Map();
+    let i = 0;
+    for (const id of aiResultIds) {
+      aiRank.set(id, i++);
+    }
+    secondary = (a, b) => (aiRank.get(a.id) ?? 9999) - (aiRank.get(b.id) ?? 9999);
+  } else if (isPersonalizedHome) {
     secondary = (a, b) => (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0);
   } else if (isLiveNow || isCategoryOrAI || isLiked) {
     // Chronological for any explicit filter or time-sensitive view.
@@ -2932,58 +2995,229 @@ const AR={
 function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q);}
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
 function clearAI(){
-  aiQ=''; vis=6;
+  aiQ=''; aiResultIds=null; aiReasoning=''; aiSearching=false; vis=6;
   const aiInput = document.getElementById('ai');
   if (aiInput) aiInput.value='';
   const panel = document.getElementById('aip');
   if (panel) panel.classList.remove('show');
   applyF();
 }
-function showAI(q){
-  // 1) Actually filter events by the query
-  aiQ=q; vis=6; applyF();
 
-  // 2) Show a concise summary panel with active-search badge + clear button + tip.
-  // Panel becomes visible via the 'show' class (matches the .aip.show CSS rule).
-  const p=document.getElementById('aip'),t2=document.getElementById('ait');
+// Render the suggestions banner. Two modes:
+//   - searching:true → skeleton placeholder (3 dots animation + "Searching...")
+//   - searching:false → reasoning text + active-search badge + Clear button
+function renderAIBanner({ searching, query, reasoning, count }) {
+  const p = document.getElementById('aip');
+  const t = document.getElementById('ait');
+  if (!p || !t) return;
   p.classList.add('show');
-  t2.innerHTML='<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
 
-  setTimeout(()=>{
-    const l=q.toLowerCase();
-    let tip=AR.default;
-    if(l.includes('techno'))                                            tip=AR.techno;
-    else if(l.includes('club')||l.includes('rave')||l.includes('party'))tip=AR.club;
-    else if(l.includes('electronic')||l.includes('house'))              tip=AR.electronic;
-    else if(l.includes('jazz'))                                         tip=AR.jazz;
-    else if(l.includes('festival'))                                     tip=AR.festival;
-    else if(l.includes('free')||l.includes('gratuit')||l.includes('gratis')) tip=AR.free;
-    else if(l.includes('family')||l.includes('kids'))                   tip=AR.family;
-    else if(l.includes('theatre')||l.includes('opera'))                 tip=AR.theatre;
-    else if(l.includes('concert')||l.includes('music'))                 tip=AR.concert;
+  if (searching) {
+    t.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--bone2);">
+        <div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <span data-k="askThinking">Searching Belgium's catalog…</span>
+      </div>
+    `;
+    return;
+  }
 
-    const count=filtered.length;
-    const isFreeQuery=l.includes('free')||l.includes('gratuit')||l.includes('gratis');
+  // Done. Render reasoning + Clear button.
+  const safeQuery = (query || '').replace(/[<>]/g, '');
+  const safeReasoning = (reasoning || '').replace(/[<>]/g, '');
+  const matchesLine = count > 0
+    ? `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Results for "<em style="color:var(--bone2);font-style:italic;text-transform:none;letter-spacing:0;">${safeQuery}</em>" · ${count} event${count===1?'':'s'}</div>`
+    : `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">No matches for "<em style="color:var(--bone2);font-style:italic;text-transform:none;letter-spacing:0;">${safeQuery}</em>"</div>`;
 
-    let headline;
-    if(count){
-      headline=`Found <strong style="color:var(--cyan)">${count}</strong> event${count===1?'':'s'} matching "<em style="color:var(--bone)">${q.replace(/[<>]/g,'')}</em>"`;
-    } else if(isFreeQuery){
-      // Most free events come from Uitdatabank (Publiq platform), which is
-      // pending activation. Ticketmaster rarely lists truly free events.
-      headline=`No free events in our current data. Most free cultural events come from <strong style="color:var(--bone)">Uitdatabank</strong> (Publiq), which we're still being granted access to. Once live, expect museum nights, city festivals, and community shows to appear here.`;
-    } else {
-      headline=`No events match "<em style="color:var(--bone)">${q.replace(/[<>]/g,'')}</em>" right now. Try broader terms or a different city.`;
+  t.innerHTML = `
+    ${matchesLine}
+    <div style="margin-bottom:14px;font-size:15px;color:var(--bone);line-height:1.5;">${safeReasoning}</div>
+    <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(0,242,255,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(0,242,255,0.08)'" onmouseout="this.style.background='transparent'" data-k="clearSearch">Clear search ✕</button>
+  `;
+  p.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// Run an AI search via /api/search. Async — shows skeleton during the call.
+// If we already have a cached prefetched result for this exact query, use
+// that for instant rendering instead of re-fetching.
+async function showAI(q) {
+  q = String(q || '').trim();
+  if (!q) return;
+
+  aiQ = q;
+  vis = 6;
+  pushToSearchHistory(q);
+  aiHistory = loadSearchHistory();
+  closeSearchHistoryDropdown();
+
+  // Check prefetch cache: if user just typed this query and the background
+  // prefetch already returned, use it. Instant.
+  const cached = aiPrefetchCache.get(q);
+  if (cached) {
+    aiResultIds = new Set(cached.ids);
+    aiReasoning = cached.reasoning;
+    aiSearching = false;
+    applyF();
+    renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
+    return;
+  }
+
+  // No cache → run the search. Show skeleton immediately so the UI feels
+  // responsive even though the network call takes 1-3s.
+  aiSearching = true;
+  aiResultIds = new Set();   // empty Set → applyF filters everything out → grid shows nothing
+  applyF();                  // clear current grid
+  renderAIBanner({ searching: true });
+
+  try {
+    const body = {
+      query: q,
+      lang: lang || 'en',
+      likedIds: Array.from(lk),
+      userId: currentSession?.user?.id || null,
+    };
+    const res = await fetch(API_BASE + '/api/search', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(`search api ${res.status}`);
+    }
+    const data = await res.json();
+
+    aiResultIds = new Set(Array.isArray(data.matchingIds) ? data.matchingIds : []);
+    aiReasoning = data.reasoning || '';
+    aiSearching = false;
+
+    // Cache for prefetch hits on later identical queries.
+    aiPrefetchCache.set(q, { ids: Array.from(aiResultIds), reasoning: aiReasoning });
+    if (aiPrefetchCache.size > AI_PREFETCH_CACHE_MAX) {
+      // Drop the oldest entry (Map preserves insertion order)
+      const firstKey = aiPrefetchCache.keys().next().value;
+      aiPrefetchCache.delete(firstKey);
     }
 
-    t2.innerHTML=`
-      <div style="margin-bottom:${count||isFreeQuery?'14px':'10px'};font-size:15px;color:var(--bone2);line-height:1.5;">${headline}</div>
-      ${count?`<div style="font-size:13px;color:var(--bone3);line-height:1.65;margin-bottom:14px;">${tip}</div>`:''}
-      <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(0,242,255,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(0,242,255,0.08)'" onmouseout="this.style.background='transparent'">Clear search ✕</button>
-    `;
-    p.scrollIntoView({behavior:'smooth',block:'nearest'});
-  },600);
+    applyF();
+    renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
+  } catch (err) {
+    console.warn('AI search failed:', err.message);
+    aiSearching = false;
+    // Fallback to local keyword parser so the user still sees SOMETHING.
+    // matchesAIQuery is the old local matcher we kept around for exactly
+    // this case.
+    const criteria = parseAIQuery(q);
+    aiResultIds = new Set(all.filter(e => matchesAIQuery(e, criteria)).map(e => e.id));
+    aiReasoning = 'Showing keyword-matched events (AI search is temporarily unavailable).';
+    applyF();
+    renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
+  }
 }
+
+// Background prefetch: while user is typing, debounce → fire a search after
+// they pause for 400ms. Result is cached so the actual "Ask Shou" click
+// is instant for queries the user already started running.
+//
+// Note: we don't show the skeleton during prefetch — it's silent. The user
+// doesn't know it ran unless they click the button and benefit from cache.
+function aiPrefetch(q) {
+  q = String(q || '').trim();
+  if (q.length < 3 || aiPrefetchCache.has(q)) return;
+  fetch(API_BASE + '/api/search', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      query: q,
+      lang: lang || 'en',
+      likedIds: Array.from(lk),
+      userId: currentSession?.user?.id || null,
+    }),
+  })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data || !Array.isArray(data.matchingIds)) return;
+      aiPrefetchCache.set(q, {
+        ids: data.matchingIds,
+        reasoning: data.reasoning || '',
+      });
+      if (aiPrefetchCache.size > AI_PREFETCH_CACHE_MAX) {
+        const firstKey = aiPrefetchCache.keys().next().value;
+        aiPrefetchCache.delete(firstKey);
+      }
+    })
+    .catch(() => { /* silent — prefetch failures are non-blocking */ });
+}
+
+// Called from the input's "input" event. Debounces so we only prefetch when
+// the user pauses typing.
+function aiInputTyped(value) {
+  if (aiPrefetchTimer) clearTimeout(aiPrefetchTimer);
+  aiPrefetchTimer = setTimeout(() => aiPrefetch(value), AI_PREFETCH_DEBOUNCE_MS);
+}
+
+// --------------------------------------------------------------------------
+// Search history dropdown — shown when the input is focused AND empty AND
+// the user has at least one past search.
+// --------------------------------------------------------------------------
+function openSearchHistoryDropdown() {
+  // Refresh from storage in case another tab modified it
+  aiHistory = loadSearchHistory();
+  let dd = document.getElementById('aiHistoryDropdown');
+  if (!dd) {
+    dd = document.createElement('div');
+    dd.id = 'aiHistoryDropdown';
+    dd.style.cssText = `
+      position:absolute; top:calc(100% + 6px); left:0; right:0;
+      background:rgba(18,18,24,0.97);
+      border:1px solid rgba(0,242,255,0.25);
+      border-radius:14px;
+      padding:6px;
+      box-shadow:0 12px 36px rgba(0,0,0,0.55);
+      backdrop-filter:blur(12px);
+      z-index:50;
+      display:none;
+    `;
+    // Append to the .sw wrapper (relative parent) so positioning works
+    const sw = document.querySelector('.sw');
+    if (sw) sw.appendChild(dd);
+  }
+  if (aiHistory.length === 0) {
+    dd.style.display = 'none';
+    return;
+  }
+  dd.innerHTML = `
+    <div style="font-size:10px;color:var(--bone3);letter-spacing:1.5px;text-transform:uppercase;padding:8px 12px 6px;">Recent searches</div>
+    ${aiHistory.map(q => {
+      const safe = q.replace(/[<>"']/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      return `<button onclick="qAI(this.dataset.q)" data-q="${safe}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;padding:9px 12px;border-radius:8px;color:var(--bone2);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(0,242,255,0.08)';this.style.color='var(--bone)'" onmouseout="this.style.background='transparent';this.style.color='var(--bone2)'"><span style="color:var(--bone3);font-size:11px;">↻</span><span>${safe}</span></button>`;
+    }).join('')}
+  `;
+  dd.style.display = 'block';
+}
+function closeSearchHistoryDropdown() {
+  const dd = document.getElementById('aiHistoryDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+// Decide whether to open the dropdown based on input state.
+function maybeOpenHistory() {
+  const input = document.getElementById('ai');
+  if (input && input.value.trim() === '' && aiHistory.length > 0) {
+    openSearchHistoryDropdown();
+  } else {
+    closeSearchHistoryDropdown();
+  }
+}
+
+// Close history dropdown when clicking anywhere except inside the search box
+// or the dropdown itself.
+document.addEventListener('click', (e) => {
+  const sw = document.querySelector('.sw');
+  if (!sw || !sw.contains(e.target)) {
+    closeSearchHistoryDropdown();
+  }
+});
 
 const SAMPLE=[
   {id:'s1',name:'Coldplay: Music of the Spheres',seg:'Music',genre:'Rock',city:'Brussels',venue:'King Baudouin Stadium',date:'2025-07-14',time:'20:00',img:null,url:'https://www.ticketmaster.be',mn:85,mx:240,desc:'The beloved British band returns to Belgium with their spectacular world tour. LED wristbands, confetti and anthems under the stars.',pop:98,likes:4821},
