@@ -3281,7 +3281,6 @@ function openSearchHistoryDropdown() {
     closeSearchHistoryDropdown();
     return;
   }
-  console.log('[dropdown] OPENING with', aiHistory.length, 'entries');
 
   const input = document.getElementById('ai');
   if (!input) return;
@@ -3341,11 +3340,7 @@ function openSearchHistoryDropdown() {
 }
 function closeSearchHistoryDropdown() {
   const dd = document.getElementById('aiHistoryDropdown');
-  if (dd && dd.style.display !== 'none') {
-    // TEMP debug: trace who's closing the dropdown
-    console.log('[dropdown] close called', new Error().stack);
-    dd.style.display = 'none';
-  }
+  if (dd) dd.style.display = 'none';
 }
 
 // Decide whether to open the dropdown based on input state.
