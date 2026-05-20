@@ -3119,112 +3119,28 @@ function stw(id){
   const tweet = intro + ' #shou';
   window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweet)+'&url='+encodeURIComponent(u),'_blank');
 }
-// True iff the device is a phone or tablet (touch-only, no mouse).
-// We require BOTH signals to agree:
-//   - pointer:coarse media query → primary input is touch, not mouse
-//   - mobile/Android/iPhone UA string → device class is phone/tablet
-//
-// Either signal alone is unreliable:
-//   - Windows laptops with touch screens have pointer:coarse but a mouse
-//   - Desktop browsers in dev-tools "responsive mode" can spoof mobile UA
-function isMobileDevice() {
-  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const mobileUA = /Android|iPhone|iPad|iPod|Mobile|Phone/i.test(navigator.userAgent || '');
-  return coarse && mobileUA;
-}
-
-function isIOS() {
-  const ua = navigator.userAgent || '';
-  // iPad on iOS 13+ identifies as Mac; check touch points to distinguish
-  return /iPhone|iPod/.test(ua)
-      || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
-}
-
 function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  const intro = buildShareIntro(e);
-
-  // FB share has THREE platform-specific paths because Facebook's APIs
-  // behave differently per OS as of May 2026:
+  // Open Facebook's sharer in a new tab. Works on iOS Safari, Android
+  // Chrome, and desktop browsers. Facebook scrapes the URL via the bot-UA
+  // rewrite to /api/og and shows the OG card (title, description, image)
+  // in the compose preview.
   //
-  // 1. iOS — FB broke sharer.php on iOS Safari in Oct 2025 (returns
-  //    "Sorry, something went wrong" for ALL URLs, including their own).
-  //    No fix as of this writing. AND the FB iOS app doesn't scrape OG
-  //    when receiving URLs via the iOS Share Sheet — it just posts a
-  //    bare URL with no preview card.
-  //    Workaround: deep-link via fb://sharer?url=... which opens the FB
-  //    app's compose screen directly. The app DOES scrape OG when called
-  //    via its own URL scheme. If FB app isn't installed, the deep link
-  //    silently fails (no error) — we detect with a timeout and fall
-  //    back to navigator.share so the user can pick another target.
-  //    Source: developers.facebook.com/community/threads/780876041388015
+  // We don't use navigator.share() here because:
+  //   - On desktop, the OS share sheet (Windows/macOS) has no real FB
+  //     integration — clicking the FB icon opens fb.com without composing.
+  //   - On iOS, the FB app doesn't scrape OG when receiving URLs via the
+  //     iOS Share Sheet; it posts a bare URL with no preview card.
+  // Direct sharer.php avoids both problems.
   //
-  // 2. Android — navigator.share() opens the OS share sheet; the FB
-  //    Android app DOES scrape OG when receiving URLs via Android Intent
-  //    (unlike iOS). Same behavior as before.
-  //
-  // 3. Desktop — sharer.php still works (the iOS bug doesn't affect
-  //    desktop). Opens facebook.com/share with the OG card.
-  //
-  // We no longer pass &quote=: Facebook silently ignored it since 2017.
-  // OG meta from /api/og supplies title/desc/image instead.
-
-  if (isMobileDevice() && isIOS()) {
-    // iOS: try FB app deep link first. If it fails (app not installed),
-    // fall back to navigator.share() so the user can at least pick a
-    // different app (Messages, WhatsApp, etc).
-    //
-    // Detection technique: visibilitychange fires when the OS switches
-    // away to the FB app. If it doesn't fire within ~1.2s, the deep
-    // link was rejected and we fall back.
-    const deepLink = 'fb://sharer?url=' + encodeURIComponent(u);
-    let switched = false;
-    const onHide = () => {
-      if (document.visibilityState === 'hidden') {
-        switched = true;
-        document.removeEventListener('visibilitychange', onHide);
-      }
-    };
-    document.addEventListener('visibilitychange', onHide);
-    window.location.href = deepLink;
-    setTimeout(() => {
-      document.removeEventListener('visibilitychange', onHide);
-      if (switched) return;  // user is in FB app, do nothing
-      // FB app not installed — fall back to OS share sheet so the user
-      // can pick another target (Messages, WhatsApp, etc).
-      if (navigator.share) {
-        const payload = { title: e.name || 'shou', text: intro, url: u };
-        if (!navigator.canShare || navigator.canShare(payload)) {
-          navigator.share(payload).catch(err => {
-            if (err && err.name !== 'AbortError') {
-              // Last resort: open sharer.php (broken on iOS but maybe
-              // FB will fix it; harmless to try).
-              window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
-            }
-          });
-        }
-      }
-    }, 1200);
-    return;
-  }
-
-  if (isMobileDevice() && navigator.share) {
-    // Android: OS share sheet. FB Android app does scrape OG from intents.
-    const payload = { title: e.name || 'shou', text: intro, url: u };
-    if (!navigator.canShare || navigator.canShare(payload)) {
-      navigator.share(payload).catch(err => {
-        if (err && err.name !== 'AbortError') {
-          window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
-        }
-      });
-      return;
-    }
-  }
-
-  // Desktop (or mobile without Web Share API): sharer.php in a new tab.
-  window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
+  // No &quote= parameter: Facebook silently ignored it since 2017. The
+  // OG meta supplies title/description/image instead.
+  window.open(
+    'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(u),
+    '_blank'
+  );
 }
 function cp2(id){
   const e=all.find(x=>x.id===id);if(!e)return;
