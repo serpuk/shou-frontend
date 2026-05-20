@@ -508,7 +508,9 @@ function killChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[i
 
 const queryErrors = new Set();
 function reportQueryError(label, err) {
-  const msg = err?.message || String(err);
+  const parts = [err?.message, err?.details, err?.hint, err?.code].filter(Boolean);
+  let msg = parts.length ? parts.join(' · ') : (typeof err === 'string' ? err : null);
+  if (!msg) { try { msg = JSON.stringify(err); } catch { msg = String(err); } }
   if (queryErrors.has(label + ':' + msg)) return;
   queryErrors.add(label + ':' + msg);
   const diag = document.getElementById('diag');
@@ -603,18 +605,17 @@ async function loadOverview() {
 }
 
 async function loadIngestionHealth() {
-  const res = await safeQuery('ingestion latest', () =>
-    sb.from('ingestion_runs').select('source, finished_at, started_at, status').order('started_at', { ascending: false }).limit(1));
+  const res = await safeQuery('ingestion latest', () => sb.rpc('admin_ingestion_latest'));
   const r = res.data?.[0];
   if (!r) { setHealth('hd-ingest', 'warn', 'no runs yet'); return; }
   const status = r.status === 'success' ? 'ok' : (r.status === 'running' ? 'warn' : 'err');
   setHealth('hd-ingest', status, `<span class="mono">${escapeHtml(r.source)}</span> · ${r.status || 'unknown'} · <span class="mono">${ago(r.finished_at || r.started_at)}</span>`);
 }
 async function loadTranslationHealth() {
-  const r1 = await safeQuery('jobs pending', () => sb.from('translation_jobs').select('id', { count: 'exact', head: true }).eq('status', 'pending'));
-  const r2 = await safeQuery('oldest pending', () => sb.from('translation_jobs').select('created_at').eq('status', 'pending').order('created_at', { ascending: true }).limit(1));
-  const pending = r1.count ?? 0;
-  const oldest = r2.data?.[0]?.created_at;
+  const res = await safeQuery('translation health', () => sb.rpc('admin_translation_jobs_health'));
+  const row = res.data?.[0] || {};
+  const pending = Number(row.pending_count) || 0;
+  const oldest = row.oldest_pending_created_at;
   let status = 'ok';
   if (pending > 1000) status = 'err'; else if (pending > 100) status = 'warn';
   setHealth('hd-trans', status, `<span class="mono">${fmt(pending)}</span> pending${oldest ? ` · oldest <span class="mono">${ago(oldest)}</span>` : ''}`);
@@ -737,10 +738,11 @@ async function loadCoverage() {
 
 async function loadTransJobs() {
   const statuses = ['pending','processing','completed','failed'];
-  const counts = await Promise.all(statuses.map(s => safeQuery('jobs:'+s, () => sb.from('translation_jobs').select('id', { count: 'exact', head: true }).eq('status', s))));
-  document.getElementById('tbl-jobs').innerHTML = `<table><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody>${statuses.map((s,i) => {
+  const res = await safeQuery('jobs counts', () => sb.rpc('admin_translation_jobs_counts'));
+  const byStatus = Object.fromEntries((res.data || []).map(r => [r.status, Number(r.count) || 0]));
+  document.getElementById('tbl-jobs').innerHTML = `<table><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody>${statuses.map(s => {
     const k = s==='completed'?'ok':(s==='failed'?'err':(s==='processing'?'run':'warn'));
-    return `<tr><td><span class="pill ${k}">${s}</span></td><td class="num">${fmt(counts[i].count ?? 0)}</td></tr>`;
+    return `<tr><td><span class="pill ${k}">${s}</span></td><td class="num">${fmt(byStatus[s] ?? 0)}</td></tr>`;
   }).join('')}</tbody></table>`;
 }
 
@@ -763,7 +765,7 @@ async function loadCacheStats() {
 
 async function loadIngestion() {
   if (!sb) return;
-  const res = await safeQuery('ingestion runs', () => sb.from('ingestion_runs').select('source, started_at, finished_at, status, events_fetched, events_created, events_updated, translations_created').order('started_at',{ascending:false}).limit(20));
+  const res = await safeQuery('ingestion runs', () => sb.rpc('admin_ingestion_runs', { p_limit: 20 }));
   const rows = res.data || [];
   const el = document.getElementById('tbl-runs');
   if (!rows.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; return; }
