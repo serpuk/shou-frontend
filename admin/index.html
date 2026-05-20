@@ -6,555 +6,252 @@
 <title>shou · admin</title>
 <meta name="robots" content="noindex,nofollow">
 
-<!-- Fraunces (serif accent) + JetBrains Mono (numerics) + Inter (body) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
 
 <style>
-  /* ============================================================
-     Cockpit aesthetic — same dusk-magenta palette as main site,
-     but operational. Mono numerics, Fraunces italic section headers,
-     lime accent reserved for "healthy" status, magenta for data.
-     ============================================================ */
   :root {
-    --ink:        #0e0915;
-    --ink2:       #18101f;
-    --ink3:       #221629;
-    --glass:      rgba(24, 16, 31, 0.6);
-    --glass-hi:   rgba(24, 16, 31, 0.85);
-    --bone:       #fff5f5;
-    --bone2:      #cab8c4;
-    --bone3:      #7d6f7d;
-    --bone4:      #4a4150;
-    --magenta:    #ff2e7e;
-    --magenta-d:  #c91d62;
-    --coral:      #ff9966;
-    --violet:     #8b3ee0;
-    --pink-hot:   #ff5fb8;
-    --pink-light: #ffa3d9;
-    --lime:       #9eff5f;
-    --lime-d:     #6fd933;
-    --amber:      #ffc94f;
-    --grid:       rgba(255, 46, 126, 0.04);
-    --radius-sm:  6px;
-    --radius:     12px;
-    --radius-lg:  18px;
+    --bg:        #ffffff;
+    --bg-soft:   #f8f9fa;
+    --bg-hover:  #f1f3f4;
+    --border:    #e8eaed;
+    --border-strong: #dadce0;
+    --text:      #202124;
+    --text-2:    #5f6368;
+    --text-3:    #80868b;
+    --blue:      #1a73e8;
+    --blue-light:#e8f0fe;
+    --green:     #0d9488;
+    --green-light:#d1f4ed;
+    --red:       #d93025;
+    --red-light: #fce8e6;
+    --amber:     #f9ab00;
+    --amber-light:#fef7e0;
+    --purple:    #9334e6;
+    --orange:    #ea8600;
+    --pink:      #d01884;
+    --teal:      #00897b;
+    --radius:    8px;
+    --radius-sm: 4px;
+    --shadow:    0 1px 2px rgba(60,64,67,0.08), 0 1px 3px 1px rgba(60,64,67,0.04);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--ink); color: var(--bone); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-  body {
-    /* Faint scanline grid for cockpit/instrument feel.
-       Two layers: vertical lines every 80px, horizontal every 80px.
-       Plus a radial magenta glow from top-left for depth. */
-    background-image:
-      radial-gradient(ellipse 1200px 600px at 10% -10%, rgba(255, 46, 126, 0.06), transparent 60%),
-      radial-gradient(ellipse 800px 400px at 110% 20%, rgba(139, 62, 224, 0.05), transparent 60%),
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 80px 80px, 80px 80px;
-    min-height: 100vh;
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-soft); color: var(--text);
+    font-family: 'Google Sans', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* ── PASSWORD GATE ───────────────────────────────────────── */
   #gate {
     position: fixed; inset: 0; z-index: 1000;
     display: flex; align-items: center; justify-content: center;
-    background: var(--ink);
+    background: var(--bg-soft);
   }
   #gate.gone { display: none; }
   .gate-card {
-    background: var(--glass-hi);
-    border: 1px solid rgba(255, 46, 126, 0.2);
-    border-radius: var(--radius-lg);
-    padding: 48px 56px;
-    max-width: 420px;
-    width: 90%;
-    text-align: center;
-    backdrop-filter: blur(20px);
-    box-shadow: 0 0 60px rgba(255, 46, 126, 0.1);
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 48px; max-width: 380px; width: 90%;
+    text-align: center; box-shadow: var(--shadow);
   }
-  .gate-icon {
-    font-family: 'Fraunces', serif; font-style: italic;
-    font-size: 48px; font-weight: 500;
-    background: linear-gradient(135deg, var(--magenta), var(--coral));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    margin-bottom: 8px;
-  }
-  .gate-sub {
-    font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--bone3); margin-bottom: 32px;
-  }
+  .gate-title { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .gate-sub { font-size: 13px; color: var(--text-2); margin: 0 0 24px; }
   .gate-input {
-    width: 100%; padding: 14px 18px;
-    background: var(--ink); color: var(--bone);
-    border: 1px solid var(--ink3);
-    border-radius: 100px;
-    font-family: 'JetBrains Mono', monospace; font-size: 14px;
-    outline: none; transition: border-color .2s, box-shadow .2s;
-    text-align: center; letter-spacing: 0.3em;
+    width: 100%; padding: 12px 16px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    font-family: 'Roboto', sans-serif; font-size: 14px;
+    outline: none; transition: border-color .15s, box-shadow .15s;
+    text-align: center;
   }
-  .gate-input:focus {
-    border-color: var(--magenta);
-    box-shadow: 0 0 24px rgba(255, 46, 126, 0.2);
-  }
-  .gate-input.err {
-    border-color: var(--coral);
-    animation: shake 0.4s;
-  }
+  .gate-input:focus { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .gate-input.err { border-color: var(--red); animation: shake 0.4s; }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px); }
-    75% { transform: translateX(6px); }
-  }
-  .gate-hint {
-    font-size: 11px; color: var(--bone4);
-    margin-top: 18px; font-style: italic; font-family: 'Fraunces', serif;
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
   }
 
-  /* ── TOP BAR ──────────────────────────────────────────────── */
   .topbar {
     position: sticky; top: 0; z-index: 100;
-    background: rgba(14, 9, 21, 0.85);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--ink3);
-    padding: 14px 28px;
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 24px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
   }
-  .brand {
-    display: flex; align-items: baseline; gap: 14px;
-  }
-  .brand-mark {
-    font-family: 'Fraunces', serif; font-size: 26px; font-weight: 500;
-    color: var(--bone); letter-spacing: -0.02em;
-  }
-  .brand-mark em {
-    color: var(--magenta);
-    font-style: italic;
-  }
-  .brand-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.3em;
-    color: var(--bone3); text-transform: uppercase;
-  }
+  .brand { font-size: 18px; font-weight: 500; }
+  .brand .sep { color: var(--text-3); margin: 0 4px; font-weight: 400; }
+  .brand .sub { color: var(--text-2); font-weight: 400; }
   .range-picker {
-    display: flex; gap: 4px;
-    background: var(--ink2);
-    padding: 4px;
-    border-radius: 100px;
-    border: 1px solid var(--ink3);
+    display: flex; background: var(--bg-soft);
+    padding: 2px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
   }
   .range-btn {
-    background: transparent;
-    border: 0;
-    color: var(--bone3);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 600;
-    letter-spacing: 0.1em;
-    padding: 7px 14px;
-    border-radius: 100px;
-    cursor: pointer;
-    transition: all .15s;
+    background: transparent; border: 0; color: var(--text-2);
+    font-family: 'Roboto', sans-serif; font-size: 12px; font-weight: 500;
+    padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+    transition: all .12s;
   }
-  .range-btn:hover { color: var(--bone); }
-  .range-btn.on {
-    background: var(--magenta);
-    color: var(--ink);
-  }
+  .range-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .range-btn.on { background: var(--bg); color: var(--blue); box-shadow: var(--shadow); }
   .topbar-meta {
-    display: flex; align-items: center; gap: 16px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--bone3);
-  }
-  .live-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--lime);
-    box-shadow: 0 0 12px var(--lime);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Roboto', sans-serif; font-size: 12px; color: var(--text-2);
   }
   .refresh-btn {
-    background: transparent;
-    border: 1px solid var(--ink3);
-    color: var(--bone2);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 8px 14px;
-    border-radius: 100px;
-    cursor: pointer;
-    transition: all .15s;
-    letter-spacing: 0.1em;
+    background: var(--bg); border: 1px solid var(--border-strong);
+    color: var(--blue); font-family: 'Roboto', sans-serif;
+    font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+    transition: all .12s;
   }
-  .refresh-btn:hover {
-    border-color: var(--magenta);
-    color: var(--magenta);
-  }
-  .refresh-btn.spinning {
-    color: var(--coral);
-    border-color: var(--coral);
-  }
+  .refresh-btn:hover { background: var(--bg-hover); }
 
-  /* ── MAIN CONTENT ─────────────────────────────────────────── */
-  main {
-    padding: 28px;
-    max-width: 1500px;
-    margin: 0 auto;
+  .diag {
+    background: var(--red-light); border-bottom: 1px solid #f4c7c3;
+    color: var(--red); padding: 12px 24px; font-size: 13px;
+    display: none; line-height: 1.5;
   }
+  .diag.on { display: block; }
+  .diag b { font-weight: 600; }
+  .diag code {
+    background: rgba(217,48,37,0.1); padding: 1px 6px;
+    border-radius: 3px; font-family: 'Roboto Mono', monospace; font-size: 12px;
+  }
+  .diag ul { margin: 4px 0 0; padding-left: 20px; }
+  .diag li { margin: 4px 0; }
 
-  /* Section headers — Fraunces italic, deliberately small but characterful */
+  main { padding: 24px; max-width: 1500px; margin: 0 auto; }
   .sec-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin: 44px 0 16px;
+    margin: 28px 0 12px;
   }
   .sec-head:first-of-type { margin-top: 0; }
-  .sec-title {
-    font-family: 'Fraunces', serif;
-    font-size: 22px; font-weight: 500;
-    color: var(--bone);
-    letter-spacing: -0.01em;
-  }
-  .sec-title em {
-    color: var(--magenta);
-    font-style: italic;
-  }
-  .sec-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--bone4);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
+  .sec-title { font-size: 16px; font-weight: 500; }
+  .sec-meta { font-size: 12px; color: var(--text-2); }
 
-  /* ── BIG STAT GRID (overview) ─────────────────────────────── */
   .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
   }
   @media (max-width: 1100px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 600px)  { .stat-grid { grid-template-columns: 1fr; } }
-
   .stat {
-    background: var(--glass);
-    border: 1px solid var(--ink3);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-    transition: border-color .2s;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    transition: box-shadow .15s;
   }
-  .stat:hover {
-    border-color: rgba(255, 46, 126, 0.3);
-  }
-  .stat::before {
-    /* Subtle gradient accent in top-left corner */
-    content: '';
-    position: absolute; top: 0; left: 0;
-    width: 80px; height: 2px;
-    background: linear-gradient(90deg, var(--accent, var(--magenta)), transparent);
-  }
-  .stat-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--bone3);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
+  .stat:hover { box-shadow: var(--shadow); }
+  .stat-label { font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
   .stat-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 32px; font-weight: 600;
-    color: var(--bone);
-    line-height: 1;
-    margin-bottom: 12px;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    font-size: 28px; font-weight: 400;
+    line-height: 1.2; margin-bottom: 8px;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.5px;
   }
-  .stat-value.loading { color: var(--bone4); }
+  .stat-value.loading { color: var(--text-3); }
+  .stat-value.err     { color: var(--red); font-size: 14px; }
   .stat-foot {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 8px;
+    gap: 8px; min-height: 24px;
   }
-  .stat-delta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .stat-delta.up    { color: var(--lime); }
-  .stat-delta.down  { color: var(--coral); }
-  .stat-delta.flat  { color: var(--bone4); }
-  .stat-spark {
-    width: 80px; height: 24px;
-    flex-shrink: 0;
-  }
+  .stat-delta { font-size: 12px; font-weight: 500; }
+  .stat-delta.up    { color: var(--green); }
+  .stat-delta.down  { color: var(--red); }
+  .stat-delta.flat  { color: var(--text-3); }
+  .stat-spark { width: 80px; height: 24px; flex-shrink: 0; }
 
-  /* ── TWO COLUMN LAYOUT ────────────────────────────────────── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 14px;
-  }
-  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
-
-  /* ── PANELS ───────────────────────────────────────────────── */
-  .panel {
-    background: var(--glass);
-    border: 1px solid var(--ink3);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    backdrop-filter: blur(10px);
-  }
-  .panel-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--ink3);
-  }
-  .panel-title {
-    font-family: 'Fraunces', serif;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--bone);
-    letter-spacing: -0.01em;
-  }
-  .panel-title em { color: var(--magenta); font-style: italic; }
-  .panel-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--bone3);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-
-  /* ── CHART CONTAINERS ─────────────────────────────────────── */
-  .chart-wrap {
-    position: relative;
-    height: 220px;
-    width: 100%;
-  }
-  .chart-wrap.tall { height: 280px; }
-  .chart-wrap.short { height: 140px; }
-
-  /* ── TABLES ───────────────────────────────────────────────── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-  }
-  thead th {
-    text-align: left;
-    color: var(--bone3);
-    font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 8px 12px 8px 0;
-    border-bottom: 1px solid var(--ink3);
-  }
-  thead th.num { text-align: right; padding-right: 0; }
-  tbody td {
-    padding: 9px 12px 9px 0;
-    color: var(--bone2);
-    border-bottom: 1px solid rgba(34, 22, 41, 0.5);
-    font-variant-numeric: tabular-nums;
-  }
-  tbody td.num { text-align: right; padding-right: 0; color: var(--bone); }
-  tbody td.label { color: var(--bone); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; }
-  tbody tr:last-child td { border-bottom: 0; }
-  tbody tr:hover td { background: rgba(255, 46, 126, 0.04); color: var(--bone); }
-
-  /* Status pills */
-  .pill {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 100px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .pill.ok      { background: rgba(158, 255, 95, 0.12); color: var(--lime); border: 1px solid rgba(158, 255, 95, 0.25); }
-  .pill.warn    { background: rgba(255, 201, 79, 0.12); color: var(--amber); border: 1px solid rgba(255, 201, 79, 0.25); }
-  .pill.err     { background: rgba(255, 153, 102, 0.12); color: var(--coral); border: 1px solid rgba(255, 153, 102, 0.25); }
-  .pill.neutral { background: rgba(202, 184, 196, 0.08); color: var(--bone3); border: 1px solid var(--ink3); }
-  .pill.run     { background: rgba(255, 46, 126, 0.12); color: var(--magenta); border: 1px solid rgba(255, 46, 126, 0.25); }
-
-  /* Loading/empty states */
-  .empty {
-    color: var(--bone4);
-    text-align: center;
-    padding: 24px 0;
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-size: 14px;
-  }
-  .loading {
-    color: var(--bone4);
-    text-align: center;
-    padding: 24px 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
-  .err-msg {
-    background: rgba(255, 153, 102, 0.08);
-    border: 1px solid rgba(255, 153, 102, 0.25);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    color: var(--coral);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    margin-top: 8px;
-  }
-
-  /* ── HEALTH BANNER ────────────────────────────────────────── */
   .health-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-    margin-bottom: 32px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;
   }
   @media (max-width: 1100px) { .health-row { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 600px)  { .health-row { grid-template-columns: 1fr; } }
-
   .health {
-    background: var(--glass);
-    border: 1px solid var(--ink3);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .health-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--bone4);
-  }
-  .health-dot.ok   { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
-  .health-dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
-  .health-dot.err  { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
-  .health-body { flex: 1; min-width: 0; }
-  .health-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--bone3);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-  .health-detail {
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    color: var(--bone);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .health-detail .mono {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--bone2);
-  }
-
-  /* ── PROGRESS BARS (translation coverage etc) ─────────────── */
-  .bar-row {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
     display: flex; align-items: center; gap: 10px;
-    margin-bottom: 8px;
   }
-  .bar-row:last-child { margin-bottom: 0; }
-  .bar-label {
-    width: 80px;
-    flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--bone2);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+  .health-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--text-3); }
+  .health-dot.ok   { background: var(--green); }
+  .health-dot.warn { background: var(--amber); }
+  .health-dot.err  { background: var(--red); }
+  .health-body { flex: 1; min-width: 0; }
+  .health-label { font-size: 11px; color: var(--text-2); font-weight: 500; margin-bottom: 2px; }
+  .health-detail { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .health-detail .mono { font-family: 'Roboto Mono', monospace; color: var(--text-2); font-size: 12px; }
+
+  .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
   }
-  .bar-track {
-    flex: 1;
-    height: 6px;
-    background: var(--ink2);
-    border-radius: 100px;
-    overflow: hidden;
-    position: relative;
+  .panel-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
-  .bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--magenta), var(--coral));
-    border-radius: 100px;
-    transition: width .6s ease;
+  .panel-title { font-size: 14px; font-weight: 500; }
+  .panel-meta  { font-size: 11px; color: var(--text-2); }
+
+  .chart-wrap { position: relative; height: 220px; width: 100%; }
+  .chart-wrap.tall { height: 280px; }
+
+  table { width: 100%; border-collapse: collapse; font-family: 'Roboto', sans-serif; font-size: 13px; }
+  thead th {
+    text-align: left; color: var(--text-2); font-weight: 500;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border);
   }
-  .bar-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--bone);
-    min-width: 70px;
-    text-align: right;
+  thead th.num { text-align: right; padding-right: 0; }
+  tbody td {
+    padding: 9px 12px 9px 0; border-bottom: 1px solid var(--border);
     font-variant-numeric: tabular-nums;
   }
+  tbody td.num { text-align: right; padding-right: 0; font-family: 'Roboto Mono', monospace; }
+  tbody td.muted { color: var(--text-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--bg-soft); }
 
-  /* ── SCROLLBAR ────────────────────────────────────────────── */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: var(--ink); }
-  ::-webkit-scrollbar-thumb { background: var(--ink3); border-radius: 100px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--bone4); }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 100px;
+    font-size: 11px; font-weight: 500;
+  }
+  .pill.ok      { background: var(--green-light);  color: var(--green); }
+  .pill.warn    { background: var(--amber-light); color: #c47a00; }
+  .pill.err     { background: var(--red-light);   color: var(--red); }
+  .pill.neutral { background: var(--bg-soft);     color: var(--text-2); border: 1px solid var(--border); }
+  .pill.run     { background: var(--blue-light);  color: var(--blue); }
 
-  /* ── FOOTER ───────────────────────────────────────────────── */
-  footer {
-    text-align: center;
-    padding: 40px 28px 60px;
-    color: var(--bone4);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
-  footer em {
-    color: var(--bone3);
-    font-style: italic;
-    font-family: 'Fraunces', serif;
-    text-transform: none;
-    letter-spacing: 0;
-  }
+  .empty, .loading { text-align: center; padding: 24px 0; color: var(--text-3); font-size: 13px; }
+  .loading { font-style: italic; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { width: 50px; flex-shrink: 0; font-size: 12px; color: var(--text-2); text-transform: uppercase; font-weight: 500; }
+  .bar-track { flex: 1; height: 8px; background: var(--bg-soft); border-radius: 100px; overflow: hidden; }
+  .bar-fill  { height: 100%; background: var(--blue); border-radius: 100px; transition: width .6s ease; }
+  .bar-num   { font-family: 'Roboto Mono', monospace; font-size: 12px; min-width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-num .pct { color: var(--text-3); font-size: 11px; }
+
+  footer { text-align: center; padding: 32px 24px 48px; color: var(--text-3); font-size: 12px; }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════
-     PASSWORD GATE — client-side hash check, deterrence-grade.
-     Anyone view-sourcing the page sees the hash, so this is NOT
-     real security. It's a soft lock on the URL. Anon-key access
-     is the actual permission boundary; the gate prevents casual
-     access.
-     ═══════════════════════════════════════════════════════════ -->
 <div id="gate">
   <div class="gate-card">
-    <div class="gate-icon">shou</div>
-    <div class="gate-sub">admin · access required</div>
+    <h1 class="gate-title">shou admin</h1>
+    <p class="gate-sub">access required</p>
     <input id="gateInput" class="gate-input" type="password" autocomplete="off"
-           placeholder="••••••••" onkeydown="if(event.key==='Enter')tryGate()">
-    <div class="gate-hint">enter password to unlock dashboard</div>
+           placeholder="password" onkeydown="if(event.key==='Enter')tryGate()">
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     TOP BAR — brand + range picker + live status + refresh
-     ═══════════════════════════════════════════════════════════ -->
 <div class="topbar">
-  <div class="brand">
-    <div class="brand-mark">sh<em>o</em>u<span style="color:var(--bone3);font-style:normal;">/</span><span style="color:var(--bone2);font-weight:400;">admin</span></div>
-    <div class="brand-sub">cockpit</div>
-  </div>
-
+  <div class="brand">shou<span class="sep">/</span><span class="sub">admin</span></div>
   <div class="range-picker" id="rangePicker">
     <button class="range-btn"     data-range="1">24H</button>
     <button class="range-btn on"  data-range="7">7D</button>
@@ -562,263 +259,179 @@
     <button class="range-btn"     data-range="90">90D</button>
     <button class="range-btn"     data-range="all">ALL</button>
   </div>
-
   <div class="topbar-meta">
-    <span class="live-dot"></span>
     <span id="lastLoaded">—</span>
-    <button class="refresh-btn" id="refreshBtn" onclick="reloadAll()">⟲ REFRESH</button>
+    <button class="refresh-btn" id="refreshBtn" onclick="reloadAll()">⟲ Refresh</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MAIN CONTENT
-     ═══════════════════════════════════════════════════════════ -->
-<main>
+<div class="diag" id="diag"><div id="diagBody"></div></div>
 
-  <!-- ─── SECTION: PULSE ─────────────────────────────────────── -->
+<main>
   <div class="sec-head">
-    <div class="sec-title">the <em>pulse</em></div>
+    <div class="sec-title">System health</div>
     <div class="sec-meta">live snapshot</div>
   </div>
 
-  <!-- Health banner: 4 system health indicators -->
-  <div class="health-row" id="healthRow">
+  <div class="health-row">
     <div class="health"><div class="health-dot" id="hd-ingest"></div><div class="health-body"><div class="health-label">Ingestion</div><div class="health-detail" id="hd-ingest-msg">checking…</div></div></div>
-    <div class="health"><div class="health-dot" id="hd-trans"></div><div class="health-body"><div class="health-label">Translation Queue</div><div class="health-detail" id="hd-trans-msg">checking…</div></div></div>
+    <div class="health"><div class="health-dot" id="hd-trans"></div><div class="health-body"><div class="health-label">Translation queue</div><div class="health-detail" id="hd-trans-msg">checking…</div></div></div>
     <div class="health"><div class="health-dot" id="hd-cat"></div><div class="health-body"><div class="health-label">Catalog</div><div class="health-detail" id="hd-cat-msg">checking…</div></div></div>
-    <div class="health"><div class="health-dot" id="hd-act"></div><div class="health-body"><div class="health-label">User Activity</div><div class="health-detail" id="hd-act-msg">checking…</div></div></div>
+    <div class="health"><div class="health-dot" id="hd-act"></div><div class="health-body"><div class="health-label">Activity</div><div class="health-detail" id="hd-act-msg">checking…</div></div></div>
   </div>
 
-  <!-- Big stats with sparklines -->
   <div class="stat-grid">
-    <div class="stat" style="--accent: var(--magenta);">
-      <div class="stat-label">Events Live</div>
+    <div class="stat">
+      <div class="stat-label">Events live</div>
       <div class="stat-value loading" id="stat-events">—</div>
-      <div class="stat-foot">
-        <span class="stat-delta flat" id="delta-events">—</span>
-        <svg class="stat-spark" id="spark-events" viewBox="0 0 80 24"></svg>
-      </div>
+      <div class="stat-foot"><span class="stat-delta flat" id="delta-events">—</span><svg class="stat-spark" id="spark-events" viewBox="0 0 80 24"></svg></div>
     </div>
-    <div class="stat" style="--accent: var(--coral);">
-      <div class="stat-label">New / day (avg)</div>
+    <div class="stat">
+      <div class="stat-label">New events / day (avg)</div>
       <div class="stat-value loading" id="stat-new">—</div>
-      <div class="stat-foot">
-        <span class="stat-delta flat" id="delta-new">—</span>
-        <svg class="stat-spark" id="spark-new" viewBox="0 0 80 24"></svg>
-      </div>
+      <div class="stat-foot"><span class="stat-delta flat" id="delta-new">—</span><svg class="stat-spark" id="spark-new" viewBox="0 0 80 24"></svg></div>
     </div>
-    <div class="stat" style="--accent: var(--violet);">
+    <div class="stat">
       <div class="stat-label">Searches</div>
       <div class="stat-value loading" id="stat-searches">—</div>
-      <div class="stat-foot">
-        <span class="stat-delta flat" id="delta-searches">—</span>
-        <svg class="stat-spark" id="spark-searches" viewBox="0 0 80 24"></svg>
-      </div>
+      <div class="stat-foot"><span class="stat-delta flat" id="delta-searches">—</span><svg class="stat-spark" id="spark-searches" viewBox="0 0 80 24"></svg></div>
     </div>
-    <div class="stat" style="--accent: var(--pink-hot);">
-      <div class="stat-label">User Actions</div>
+    <div class="stat">
+      <div class="stat-label">User actions</div>
       <div class="stat-value loading" id="stat-actions">—</div>
-      <div class="stat-foot">
-        <span class="stat-delta flat" id="delta-actions">—</span>
-        <svg class="stat-spark" id="spark-actions" viewBox="0 0 80 24"></svg>
-      </div>
+      <div class="stat-foot"><span class="stat-delta flat" id="delta-actions">—</span><svg class="stat-spark" id="spark-actions" viewBox="0 0 80 24"></svg></div>
     </div>
   </div>
 
-  <!-- ─── SECTION: CATALOG ───────────────────────────────────── -->
-  <div class="sec-head">
-    <div class="sec-title">the <em>catalog</em></div>
-    <div class="sec-meta">what's in the database</div>
-  </div>
+  <div class="sec-head"><div class="sec-title">Catalog</div><div class="sec-meta">events in the database</div></div>
 
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">events <em>added</em> per day</div>
-        <div class="panel-meta" id="meta-events-chart">—</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">Events added per day</div><div class="panel-meta" id="meta-events-chart">—</div></div>
       <div class="chart-wrap"><canvas id="chart-events-per-day"></canvas></div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">by <em>source</em></div>
-        <div class="panel-meta" id="meta-source">—</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">By source</div><div class="panel-meta" id="meta-source">—</div></div>
       <div class="chart-wrap"><canvas id="chart-source"></canvas></div>
     </div>
   </div>
 
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">top <em>cities</em></div>
-        <div class="panel-meta">by event count</div>
-      </div>
-      <div id="tbl-cities" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Top venues</div><div class="panel-meta">by event count</div></div>
+      <div id="tbl-venues" class="loading">loading…</div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">by <em>category</em></div>
-        <div class="panel-meta">all live events</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">By category</div><div class="panel-meta">live events</div></div>
       <div class="chart-wrap"><canvas id="chart-category"></canvas></div>
     </div>
   </div>
 
-  <div class="panel" style="margin-bottom: 14px;">
-    <div class="panel-head">
-      <div class="panel-title">catalog <em>quality</em> signals</div>
-      <div class="panel-meta">data gaps to investigate</div>
-    </div>
-    <div id="tbl-quality" class="loading">loading</div>
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Catalog quality</div><div class="panel-meta">data gaps to investigate</div></div>
+    <div id="tbl-quality" class="loading">loading…</div>
   </div>
 
-  <!-- ─── SECTION: TRANSLATIONS ──────────────────────────────── -->
-  <div class="sec-head">
-    <div class="sec-title">the <em>translation</em> pipeline</div>
-    <div class="sec-meta">multilingual coverage</div>
-  </div>
+  <div class="sec-head"><div class="sec-title">Translation pipeline</div><div class="sec-meta">multilingual coverage</div></div>
 
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">translations <em>completed</em> per day</div>
-        <div class="panel-meta">by target language</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">Translations completed per day</div><div class="panel-meta">by target language</div></div>
       <div class="chart-wrap tall"><canvas id="chart-trans-per-day"></canvas></div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title"><em>coverage</em> by language</div>
-        <div class="panel-meta">% of live events</div>
-      </div>
-      <div id="bars-coverage" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Coverage by language</div><div class="panel-meta">% of live events</div></div>
+      <div id="bars-coverage" class="loading">loading…</div>
     </div>
   </div>
 
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">translation <em>jobs</em> by status</div>
-        <div class="panel-meta">queue snapshot</div>
-      </div>
-      <div id="tbl-jobs" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Translation jobs by status</div><div class="panel-meta">queue snapshot</div></div>
+      <div id="tbl-jobs" class="loading">loading…</div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">cache <em>hit</em> rate</div>
-        <div class="panel-meta">translation cache reuse</div>
-      </div>
-      <div id="cache-summary" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Translation cache</div><div class="panel-meta">reuse statistics</div></div>
+      <div id="cache-summary" class="loading">loading…</div>
     </div>
   </div>
 
-  <!-- ─── SECTION: INGESTION ─────────────────────────────────── -->
-  <div class="sec-head">
-    <div class="sec-title">the <em>ingestion</em> pipeline</div>
-    <div class="sec-meta">scrapers, scrapers, scrapers</div>
+  <div class="sec-head"><div class="sec-title">Ingestion pipeline</div><div class="sec-meta">recent scraper runs</div></div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Recent runs</div><div class="panel-meta">last 20</div></div>
+    <div id="tbl-runs" class="loading">loading…</div>
   </div>
 
-  <div class="panel" style="margin-bottom: 14px;">
-    <div class="panel-head">
-      <div class="panel-title">recent <em>runs</em></div>
-      <div class="panel-meta">last 20</div>
-    </div>
-    <div id="tbl-runs" class="loading">loading</div>
-  </div>
+  <div class="sec-head"><div class="sec-title">Audience</div><div class="sec-meta">user activity</div></div>
 
-  <!-- ─── SECTION: USERS ─────────────────────────────────────── -->
-  <div class="sec-head">
-    <div class="sec-title">the <em>audience</em></div>
-    <div class="sec-meta">what people do here</div>
-  </div>
-
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">user <em>actions</em> per day</div>
-        <div class="panel-meta">by action type</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">User actions per day</div><div class="panel-meta">by action type</div></div>
       <div class="chart-wrap tall"><canvas id="chart-actions-per-day"></canvas></div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">action <em>mix</em></div>
-        <div class="panel-meta">all-time share</div>
-      </div>
+      <div class="panel-head"><div class="panel-title">Action mix</div><div class="panel-meta">share of total</div></div>
       <div class="chart-wrap"><canvas id="chart-action-mix"></canvas></div>
     </div>
   </div>
 
-  <div class="two-col" style="margin-bottom: 14px;">
+  <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">top <em>searches</em></div>
-        <div class="panel-meta">most-asked queries</div>
-      </div>
-      <div id="tbl-searches" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Top searches</div><div class="panel-meta">most-asked queries</div></div>
+      <div id="tbl-searches" class="loading">loading…</div>
     </div>
     <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">top <em>events</em></div>
-        <div class="panel-meta">by user actions</div>
-      </div>
-      <div id="tbl-top-events" class="loading">loading</div>
+      <div class="panel-head"><div class="panel-title">Top events</div><div class="panel-meta">by user actions</div></div>
+      <div id="tbl-top-events" class="loading">loading…</div>
     </div>
   </div>
 
-  <div class="panel" style="margin-bottom: 14px;">
-    <div class="panel-head">
-      <div class="panel-title">searches by <em>language</em> &amp; result count</div>
-      <div class="panel-meta">recent activity</div>
-    </div>
-    <div id="tbl-search-detail" class="loading">loading</div>
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Recent searches</div><div class="panel-meta">with result counts</div></div>
+    <div id="tbl-search-detail" class="loading">loading…</div>
   </div>
-
 </main>
 
-<footer>
-  shou <em>cockpit</em> · v1 · client-side dashboard · data via supabase
-</footer>
+<footer>shou admin · v1 · data via supabase</footer>
 
 <script>
-// ============================================================
-// CONFIG
-// ============================================================
 const SUPABASE_URL  = 'https://mpbrfnlmtdxnipyarsss.supabase.co';
-// Anon key — same one used by main site. RLS may filter some rows;
-// that's fine, the dashboard shows what's visible.
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wYnJmbmxtdGR4bmlweWFyc3NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM4MjU1MTIsImV4cCI6MjA0OTQwMTUxMn0.PASTE_YOUR_ANON_KEY_HERE';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wYnJmbmxtdGR4bmlweWFyc3NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTU4MDMsImV4cCI6MjA5MjA3MTgwM30.r2QJY9QBfWpo8ItIJ06nTt4Wk38g2mD52AXPJmaPN_o';
+const PASSWORD_HASH = '3b612c75a7b5048a435fb6ec81e52ff92d6d795a8b5a9c17070f6a63c97a53b2';
 
-// SHA-256 of the password. Default: 'shou-admin' (REPLACE THIS).
-//   to compute a new hash, paste this in the console:
-//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('your-password'))
-//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')));
-const PASSWORD_HASH = '3b612c75a7b5048a435fb6ec81e52ff92d6d795a8b5a9c17070f6a63c97a53b2';  // REPLACE — this is a placeholder
+const configIssues = [];
+if (!SUPABASE_ANON || SUPABASE_ANON === 'PASTE_YOUR_ANON_KEY_HERE') {
+  configIssues.push('<b>SUPABASE_ANON</b> key is not set. All queries will fail. Find <code>SUPABASE_ANON</code> at the top of the &lt;script&gt; tag in admin.html and paste your anon key (same one used by main site).');
+}
+if (!PASSWORD_HASH || PASSWORD_HASH === 'PASTE_YOUR_PASSWORD_HASH_HERE') {
+  configIssues.push('<b>PASSWORD_HASH</b> is not set. Compute the SHA-256 hash of your chosen password: open browser console and run <code>crypto.subtle.digest(\'SHA-256\', new TextEncoder().encode(\'YOUR-PASSWORD\')).then(b=&gt;console.log([...new Uint8Array(b)].map(x=&gt;x.toString(16).padStart(2,\'0\')).join(\'\')))</code> then paste the result.');
+}
+if (configIssues.length) {
+  const diag = document.getElementById('diag');
+  const body = document.getElementById('diagBody');
+  body.innerHTML = '<b>⚠ Configuration incomplete:</b><ul>' +
+    configIssues.map(i => '<li>' + i + '</li>').join('') + '</ul>';
+  diag.classList.add('on');
+}
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+let sb = null;
+try {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: false } });
+} catch (e) { console.error('Failed to init Supabase:', e); }
 
-// State
-let RANGE_DAYS = 7;       // current time-window selection
-let charts = {};          // chart.js instances, keyed by canvas id
+let RANGE_DAYS = 7;
+let charts = {};
 let lastReload = null;
 
-// ============================================================
-// GATE
-// ============================================================
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
-
 async function tryGate() {
   const input = document.getElementById('gateInput');
-  const v = input.value;
-  if (!v) return;
-  const hash = await sha256(v);
-  if (hash === PASSWORD_HASH) {
+  const v = input.value; if (!v) return;
+  if (await sha256(v) === PASSWORD_HASH) {
     sessionStorage.setItem('shou-admin-ok', '1');
     document.getElementById('gate').classList.add('gone');
     boot();
@@ -828,771 +441,433 @@ async function tryGate() {
     input.select();
   }
 }
-
-// Auto-unlock if already passed in this session
 if (sessionStorage.getItem('shou-admin-ok') === '1') {
   document.getElementById('gate').classList.add('gone');
-  // boot() called on DOMContentLoaded below
 } else {
-  setTimeout(() => document.getElementById('gateInput').focus(), 100);
+  setTimeout(() => document.getElementById('gateInput')?.focus(), 100);
 }
 
-// ============================================================
-// UTILITIES
-// ============================================================
-const fmt = (n) => {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/,'') + 'k';
-  return n.toLocaleString('en-US');
-};
-const pct = (n) => (n == null || isNaN(n)) ? '—' : (Math.round(n * 1000) / 10) + '%';
-const ago = (ts) => {
+const fmt = n => n == null || isNaN(n) ? '—' : n >= 10000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : n.toLocaleString('en-US');
+const pct = n => n == null || isNaN(n) ? '—' : (Math.round(n*1000)/10) + '%';
+const ago = ts => {
   if (!ts) return '—';
   const d = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (d < 60)   return Math.round(d) + 's ago';
+  if (d < 60) return Math.round(d) + 's ago';
   if (d < 3600) return Math.round(d/60) + 'm ago';
   if (d < 86400) return Math.round(d/3600) + 'h ago';
   return Math.round(d/86400) + 'd ago';
 };
-const dayKey = (ts) => {
-  // ISO yyyy-mm-dd
-  const d = new Date(ts);
-  return d.toISOString().slice(0, 10);
-};
-const sparkPath = (values) => {
-  // Build an SVG polyline 80x24 from an array of values
+const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
+const sparkPath = values => {
   if (!values || values.length < 2) return '';
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = (max - min) || 1;
-  const step = 80 / (values.length - 1);
-  return values.map((v, i) => `${(i * step).toFixed(1)},${(22 - 20 * ((v - min) / range)).toFixed(1)}`).join(' ');
+  const max = Math.max(...values, 1), min = Math.min(...values, 0);
+  const range = (max - min) || 1, step = 80 / (values.length - 1);
+  return values.map((v, i) => `${(i*step).toFixed(1)},${(22 - 20*((v-min)/range)).toFixed(1)}`).join(' ');
 };
-
-// Range → ISO timestamp for "after this"
 function rangeStartISO() {
   if (RANGE_DAYS === 'all') return '1970-01-01T00:00:00Z';
-  const d = new Date();
-  d.setDate(d.getDate() - RANGE_DAYS);
-  d.setHours(0, 0, 0, 0);
+  const d = new Date(); d.setDate(d.getDate() - RANGE_DAYS); d.setHours(0,0,0,0);
   return d.toISOString();
 }
-
-// Range → list of day keys for backfill (so series doesn't have gaps)
 function rangeDays() {
-  if (RANGE_DAYS === 'all') {
-    // For "all" use 90 days back to keep the chart sensible
-    return rangeDaysFor(90);
-  }
-  return rangeDaysFor(RANGE_DAYS);
-}
-function rangeDaysFor(days) {
-  const out = [];
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  for (let i = days - 1; i >= 0; i--) {
-    const t = new Date(d);
-    t.setDate(t.getDate() - i);
-    out.push(t.toISOString().slice(0, 10));
-  }
+  const n = RANGE_DAYS === 'all' ? 90 : RANGE_DAYS;
+  const out = []; const d = new Date(); d.setHours(0,0,0,0);
+  for (let i = n - 1; i >= 0; i--) { const t = new Date(d); t.setDate(t.getDate() - i); out.push(t.toISOString().slice(0,10)); }
   return out;
 }
-
-// Chart.js theme defaults
-function chartTheme() {
-  return {
-    color: '#7d6f7d',
-    font: { family: 'JetBrains Mono', size: 10 },
-    grid: { color: 'rgba(34, 22, 41, 0.5)' },
-    border: { color: 'rgba(34, 22, 41, 0.5)' },
-  };
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-// Apply theme to existing Chart.js global defaults
-function applyChartDefaults() {
-  if (typeof Chart === 'undefined') return;
-  Chart.defaults.color = '#7d6f7d';
-  Chart.defaults.font.family = "'JetBrains Mono', monospace";
-  Chart.defaults.font.size = 10;
-  Chart.defaults.borderColor = 'rgba(34, 22, 41, 0.5)';
-  Chart.defaults.plugins.legend.labels.color = '#cab8c4';
-  Chart.defaults.plugins.legend.labels.font = { family: "'Inter', sans-serif", size: 11 };
-  Chart.defaults.plugins.tooltip.titleFont = { family: "'JetBrains Mono', monospace", size: 11 };
-  Chart.defaults.plugins.tooltip.bodyFont  = { family: "'JetBrains Mono', monospace", size: 11 };
-  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(14, 9, 21, 0.95)';
-  Chart.defaults.plugins.tooltip.borderColor = '#221629';
-  Chart.defaults.plugins.tooltip.borderWidth = 1;
-  Chart.defaults.plugins.tooltip.padding = 10;
-}
-
-// Destroy a chart on a canvas if one exists (Chart.js complains otherwise on re-render)
-function killChart(canvasId) {
-  if (charts[canvasId]) {
-    charts[canvasId].destroy();
-    delete charts[canvasId];
-  }
-}
-
-// ============================================================
-// DATA FETCHING — each section is async and isolated so a
-// failure in one doesn't block others
-// ============================================================
-
-// ─── OVERVIEW STATS + HEALTH ─────────────────────────────────
-async function loadOverview() {
-  // Run 4 queries in parallel for the big stats
-  const sinceISO = rangeStartISO();
-  const days     = rangeDays();
-  const dayLabels = days; // yyyy-mm-dd
-
-  // 1. Events live (status='published', start_date >= today)
-  // 2. New events per day (created_at, last `days.length` days)
-  // 3. Searches per day
-  // 4. User actions per day
-  const today = new Date().toISOString().slice(0, 10);
-
-  const [eventsRes, newRes, searchesRes, actionsRes] = await Promise.all([
-    sb.from('events').select('id', { count: 'exact', head: true })
-       .eq('status', 'published').gte('start_date', today),
-    sb.from('events').select('created_at').gte('created_at', sinceISO).limit(50000),
-    sb.from('user_searches').select('created_at').gte('created_at', sinceISO).limit(50000),
-    sb.from('user_events').select('created_at,action').gte('created_at', sinceISO).limit(50000),
-  ]);
-
-  // Stat 1: events live
-  const eventsLive = eventsRes.count ?? 0;
-  setStat('stat-events', fmt(eventsLive));
-
-  // Stat 2: avg new per day & sparkline
-  const newByDay = bucket(newRes.data || [], 'created_at', dayLabels);
-  const newSum = newByDay.reduce((a, b) => a + b, 0);
-  const avgNew = newByDay.length ? newSum / newByDay.length : 0;
-  setStat('stat-new', fmt(Math.round(avgNew)));
-  setSpark('spark-events', newByDay, 'var(--magenta)');
-  setSpark('spark-new', newByDay, 'var(--coral)');
-  setDelta('delta-new', newByDay);
-
-  // Stat 3: searches in range
-  const searchByDay = bucket(searchesRes.data || [], 'created_at', dayLabels);
-  setStat('stat-searches', fmt(searchByDay.reduce((a,b)=>a+b,0)));
-  setSpark('spark-searches', searchByDay, 'var(--violet)');
-  setDelta('delta-searches', searchByDay);
-
-  // Stat 4: user actions in range
-  const actionByDay = bucket(actionsRes.data || [], 'created_at', dayLabels);
-  setStat('stat-actions', fmt(actionByDay.reduce((a,b)=>a+b,0)));
-  setSpark('spark-actions', actionByDay, 'var(--pink-hot)');
-  setDelta('delta-actions', actionByDay);
-
-  // Spark for events-live = same as new (we don't track historical "live" count)
-  // Delta for events-live: not meaningful; leave flat
-  setDelta('delta-events', null);
-
-  // Health: ingestion check
-  loadIngestionHealth();
-  // Health: translation queue check
-  loadTranslationHealth();
-  // Health: catalog check
-  setHealth('hd-cat', eventsLive > 100 ? 'ok' : (eventsLive > 0 ? 'warn' : 'err'),
-            `<span class="mono">${fmt(eventsLive)}</span> events live`);
-  // Health: activity check
-  const actToday = (actionsRes.data || []).filter(r => dayKey(r.created_at) === today).length;
-  setHealth('hd-act', actToday > 0 ? 'ok' : 'warn',
-            actToday > 0 ? `<span class="mono">${fmt(actToday)}</span> actions today` : 'no activity today');
-}
-
-function setStat(id, value) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = value;
-  el.classList.remove('loading');
-}
-function setSpark(id, values, color) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const path = sparkPath(values);
-  if (!path) { el.innerHTML = ''; return; }
-  // Compute the gradient area
-  const last = values.length - 1;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = (max - min) || 1;
-  const step = 80 / last;
-  const closePath = `M ${path} L ${(last * step).toFixed(1)},22 L 0,22 Z`;
-  el.innerHTML = `
-    <defs>
-      <linearGradient id="g-${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity="0.4"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <path d="${closePath}" fill="url(#g-${id})"/>
-    <polyline points="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  `;
-}
-function setDelta(id, values) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (!values || values.length < 4) { el.textContent = '—'; el.className = 'stat-delta flat'; return; }
-  // Compare last quarter to previous quarter
-  const half = Math.floor(values.length / 2);
-  const recent = values.slice(-half).reduce((a,b)=>a+b,0);
-  const prior  = values.slice(0, half).reduce((a,b)=>a+b,0);
-  if (prior === 0 && recent === 0) { el.textContent = '—'; el.className = 'stat-delta flat'; return; }
-  if (prior === 0) { el.textContent = '↑ NEW'; el.className = 'stat-delta up'; return; }
-  const change = (recent - prior) / prior;
-  const sign = change > 0 ? '↑' : (change < 0 ? '↓' : '');
-  const klass = Math.abs(change) < 0.05 ? 'flat' : (change > 0 ? 'up' : 'down');
-  el.textContent = `${sign} ${Math.abs(Math.round(change * 100))}%`;
-  el.className = `stat-delta ${klass}`;
-}
-
-// Bucket an array of {created_at} into per-day counts aligned to dayLabels
 function bucket(rows, field, dayLabels) {
   const counts = Object.fromEntries(dayLabels.map(d => [d, 0]));
-  for (const r of rows) {
-    const k = dayKey(r[field]);
-    if (k in counts) counts[k]++;
-  }
+  for (const r of rows) { const k = dayKey(r[field]); if (k in counts) counts[k]++; }
   return dayLabels.map(d => counts[d]);
 }
-// Bucket by day AND by category — returns { categoryName: [values per day] }
 function bucketByGroup(rows, field, group, dayLabels) {
   const byGroup = {};
   for (const r of rows) {
-    const k = dayKey(r[field]);
-    if (!dayLabels.includes(k)) continue;
+    const k = dayKey(r[field]); if (!dayLabels.includes(k)) continue;
     const g = r[group] || 'unknown';
     if (!byGroup[g]) byGroup[g] = Object.fromEntries(dayLabels.map(d => [d, 0]));
     byGroup[g][k]++;
   }
-  const out = {};
-  for (const g in byGroup) out[g] = dayLabels.map(d => byGroup[g][d]);
+  const out = {}; for (const g in byGroup) out[g] = dayLabels.map(d => byGroup[g][d]);
   return out;
 }
+function applyChartDefaults() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = '#5f6368';
+  Chart.defaults.font.family = "'Roboto', sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(32,33,36,0.95)';
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.borderWidth = 0;
+}
+function killChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
+const queryErrors = new Set();
+function reportQueryError(label, err) {
+  const msg = err?.message || String(err);
+  if (queryErrors.has(label + ':' + msg)) return;
+  queryErrors.add(label + ':' + msg);
+  const diag = document.getElementById('diag');
+  const body = document.getElementById('diagBody');
+  body.innerHTML += `<div style="margin-top:6px;"><b>⚠ Query failed:</b> <code>${label}</code> — ${escapeHtml(msg)}</div>`;
+  diag.classList.add('on');
+}
+async function safeQuery(label, fn) {
+  try {
+    const r = await fn();
+    if (r?.error) reportQueryError(label, r.error);
+    return r;
+  } catch (err) { reportQueryError(label, err); return { data: null, error: err, count: null }; }
+}
+
+function setStat(id, value) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = value; el.classList.remove('loading');
+}
+function setSpark(id, values, color) {
+  const el = document.getElementById(id); if (!el) return;
+  const path = sparkPath(values); if (!path) { el.innerHTML = ''; return; }
+  const last = values.length - 1;
+  const max = Math.max(...values, 1), min = Math.min(...values, 0);
+  const step = 80 / last;
+  const closePath = `M ${path} L ${(last*step).toFixed(1)},22 L 0,22 Z`;
+  el.innerHTML = `<defs><linearGradient id="g-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${closePath}" fill="url(#g-${id})"/><polyline points="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function setDelta(id, values) {
+  const el = document.getElementById(id); if (!el) return;
+  if (!values || values.length < 4) { el.textContent = '—'; el.className = 'stat-delta flat'; return; }
+  const half = Math.floor(values.length / 2);
+  const recent = values.slice(-half).reduce((a,b)=>a+b,0);
+  const prior  = values.slice(0, half).reduce((a,b)=>a+b,0);
+  if (prior === 0 && recent === 0) { el.textContent = '—'; el.className = 'stat-delta flat'; return; }
+  if (prior === 0) { el.textContent = '↑ new'; el.className = 'stat-delta up'; return; }
+  const change = (recent - prior) / prior;
+  const klass = Math.abs(change) < 0.05 ? 'flat' : (change > 0 ? 'up' : 'down');
+  const sign = klass === 'flat' ? '' : (change > 0 ? '↑ ' : '↓ ');
+  el.textContent = `${sign}${Math.abs(Math.round(change*100))}%`;
+  el.className = `stat-delta ${klass}`;
+}
 function setHealth(id, kind, msg) {
-  const dot = document.getElementById(id);
-  const txt = document.getElementById(id + '-msg');
+  const dot = document.getElementById(id), txt = document.getElementById(id + '-msg');
   if (!dot || !txt) return;
   dot.className = 'health-dot ' + kind;
   txt.innerHTML = msg;
 }
 
+async function loadOverview() {
+  if (!sb) return;
+  const sinceISO = rangeStartISO();
+  const days = rangeDays();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [eventsRes, newRes, searchesRes, actionsRes] = await Promise.all([
+    safeQuery('events live', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today)),
+    safeQuery('new events', () => sb.from('events').select('created_at').gte('created_at', sinceISO).limit(50000)),
+    safeQuery('searches', () => sb.from('user_searches').select('created_at').gte('created_at', sinceISO).limit(50000)),
+    safeQuery('user actions', () => sb.from('user_events').select('created_at,action,event_id').gte('created_at', sinceISO).limit(50000)),
+  ]);
+
+  setStat('stat-events', fmt(eventsRes.count ?? 0));
+  setDelta('delta-events', null);
+
+  const newByDay = bucket(newRes.data || [], 'created_at', days);
+  setStat('stat-new', fmt(Math.round(newByDay.reduce((a,b)=>a+b,0) / days.length)));
+  setSpark('spark-events', newByDay, '#1a73e8');
+  setSpark('spark-new', newByDay, '#0d9488');
+  setDelta('delta-new', newByDay);
+
+  const searchByDay = bucket(searchesRes.data || [], 'created_at', days);
+  setStat('stat-searches', fmt(searchByDay.reduce((a,b)=>a+b,0)));
+  setSpark('spark-searches', searchByDay, '#9334e6');
+  setDelta('delta-searches', searchByDay);
+
+  const actionByDay = bucket(actionsRes.data || [], 'created_at', days);
+  setStat('stat-actions', fmt(actionByDay.reduce((a,b)=>a+b,0)));
+  setSpark('spark-actions', actionByDay, '#ea8600');
+  setDelta('delta-actions', actionByDay);
+
+  await loadIngestionHealth();
+  await loadTranslationHealth();
+  setHealth('hd-cat',
+    (eventsRes.count ?? 0) > 100 ? 'ok' : ((eventsRes.count ?? 0) > 0 ? 'warn' : 'err'),
+    `<span class="mono">${fmt(eventsRes.count ?? 0)}</span> events live`);
+  const actToday = (actionsRes.data || []).filter(r => dayKey(r.created_at) === today).length;
+  setHealth('hd-act', actToday > 0 ? 'ok' : 'warn',
+    actToday > 0 ? `<span class="mono">${fmt(actToday)}</span> actions today` : 'no activity today');
+
+  window.__cachedActions = actionsRes.data || [];
+}
+
 async function loadIngestionHealth() {
-  const res = await sb.from('ingestion_runs')
-    .select('source, finished_at, status, events_created, error_message')
-    .order('started_at', { ascending: false }).limit(10);
-  const runs = res.data || [];
-  if (!runs.length) { setHealth('hd-ingest', 'warn', 'no recent runs'); return; }
-  const latest = runs[0];
-  const since = ago(latest.finished_at || latest.started_at);
-  const okCount = runs.filter(r => r.status === 'success').length;
-  const status = latest.status === 'success' ? 'ok' : (latest.status === 'running' ? 'warn' : 'err');
-  setHealth('hd-ingest', status,
-    `<span class="mono">${latest.source}</span> · ${latest.status || 'unknown'} · <span class="mono">${since}</span>`);
+  const res = await safeQuery('ingestion latest', () =>
+    sb.from('ingestion_runs').select('source, finished_at, started_at, status').order('started_at', { ascending: false }).limit(1));
+  const r = res.data?.[0];
+  if (!r) { setHealth('hd-ingest', 'warn', 'no runs yet'); return; }
+  const status = r.status === 'success' ? 'ok' : (r.status === 'running' ? 'warn' : 'err');
+  setHealth('hd-ingest', status, `<span class="mono">${escapeHtml(r.source)}</span> · ${r.status || 'unknown'} · <span class="mono">${ago(r.finished_at || r.started_at)}</span>`);
 }
-
 async function loadTranslationHealth() {
-  // Pending jobs count
-  const r1 = await sb.from('translation_jobs').select('id', { count: 'exact', head: true })
-    .eq('status', 'pending');
-  // Oldest pending
-  const r2 = await sb.from('translation_jobs').select('created_at')
-    .eq('status', 'pending').order('created_at', { ascending: true }).limit(1);
+  const r1 = await safeQuery('jobs pending', () => sb.from('translation_jobs').select('id', { count: 'exact', head: true }).eq('status', 'pending'));
+  const r2 = await safeQuery('oldest pending', () => sb.from('translation_jobs').select('created_at').eq('status', 'pending').order('created_at', { ascending: true }).limit(1));
   const pending = r1.count ?? 0;
-  const oldest  = r2.data?.[0]?.created_at;
-  const oldAge  = oldest ? ago(oldest) : null;
+  const oldest = r2.data?.[0]?.created_at;
   let status = 'ok';
-  if (pending > 1000)  status = 'err';
-  else if (pending > 100) status = 'warn';
-  setHealth('hd-trans', status,
-    `<span class="mono">${fmt(pending)}</span> pending${oldAge ? ` · oldest <span class="mono">${oldAge}</span>` : ''}`);
+  if (pending > 1000) status = 'err'; else if (pending > 100) status = 'warn';
+  setHealth('hd-trans', status, `<span class="mono">${fmt(pending)}</span> pending${oldest ? ` · oldest <span class="mono">${ago(oldest)}</span>` : ''}`);
 }
 
-// ─── CATALOG SECTION ─────────────────────────────────────────
 async function loadCatalog() {
-  // Events added per day (created_at) — last N days
+  if (!sb) return;
   const days = rangeDays();
   const sinceISO = rangeStartISO();
-  const res = await sb.from('events')
-    .select('created_at, status, category_slug')
-    .gte('created_at', sinceISO).limit(50000);
+
+  const res = await safeQuery('catalog events', () => sb.from('events').select('created_at, status, category_slug').gte('created_at', sinceISO).limit(50000));
   const rows = res.data || [];
-  document.getElementById('meta-events-chart').textContent = `${rows.length} EVENTS`;
-  // Per-day line chart
+  document.getElementById('meta-events-chart').textContent = `${fmt(rows.length)} events`;
   const byDay = bucket(rows, 'created_at', days);
   killChart('chart-events-per-day');
   charts['chart-events-per-day'] = new Chart(document.getElementById('chart-events-per-day'), {
     type: 'line',
-    data: {
-      labels: days,
-      datasets: [{
-        label: 'Events added',
-        data: byDay,
-        borderColor: '#ff2e7e',
-        backgroundColor: 'rgba(255, 46, 126, 0.1)',
-        tension: 0.35,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        borderWidth: 2,
-      }]
-    },
-    options: chartLineOpts(),
+    data: { labels: days, datasets: [{ label: 'Events added', data: byDay, borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.08)', tension: 0.3, fill: true, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } }, interaction: { mode: 'index', intersect: false } }
   });
 
-  // By source — query event_sources joined with events on status=published
-  const srcRes = await sb.from('event_sources').select('source, event_id').limit(50000);
+  const srcRes = await safeQuery('event sources', () => sb.from('event_sources').select('source, event_id').limit(50000));
   const srcCounts = {};
-  for (const r of (srcRes.data || [])) {
-    srcCounts[r.source] = (srcCounts[r.source] || 0) + 1;
-  }
+  for (const r of (srcRes.data || [])) srcCounts[r.source] = (srcCounts[r.source] || 0) + 1;
   const srcEntries = Object.entries(srcCounts).sort((a, b) => b[1] - a[1]);
-  document.getElementById('meta-source').textContent = `${srcEntries.length} SOURCES`;
+  document.getElementById('meta-source').textContent = `${srcEntries.length} sources`;
   killChart('chart-source');
   charts['chart-source'] = new Chart(document.getElementById('chart-source'), {
     type: 'doughnut',
-    data: {
-      labels: srcEntries.map(x => x[0]),
-      datasets: [{
-        data: srcEntries.map(x => x[1]),
-        backgroundColor: ['#ff2e7e', '#ff9966', '#8b3ee0', '#ff5fb8', '#ffa3d9', '#9eff5f'],
-        borderColor: '#18101f',
-        borderWidth: 2,
-      }]
-    },
-    options: chartDonutOpts(),
+    data: { labels: srcEntries.map(x => x[0]), datasets: [{ data: srcEntries.map(x => x[1]), backgroundColor: ['#1a73e8','#0d9488','#ea8600','#9334e6','#d01884','#f9ab00'], borderColor: '#fff', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8 } } }, cutout: '62%' }
   });
 
-  // Top cities — query venues + events for live-published events
-  await loadTopCities();
+  await loadTopVenues();
 
-  // By category
   const catCounts = {};
-  for (const r of rows) {
-    const c = r.category_slug || 'unknown';
-    catCounts[c] = (catCounts[c] || 0) + 1;
-  }
+  for (const r of rows) { const c = r.category_slug || 'unknown'; catCounts[c] = (catCounts[c] || 0) + 1; }
   const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
   killChart('chart-category');
   charts['chart-category'] = new Chart(document.getElementById('chart-category'), {
     type: 'doughnut',
-    data: {
-      labels: catEntries.map(x => x[0]),
-      datasets: [{
-        data: catEntries.map(x => x[1]),
-        backgroundColor: ['#ff2e7e', '#ff9966', '#8b3ee0', '#ff5fb8', '#ffa3d9', '#9eff5f', '#ffc94f', '#cab8c4'],
-        borderColor: '#18101f',
-        borderWidth: 2,
-      }]
-    },
-    options: chartDonutOpts(),
+    data: { labels: catEntries.map(x => x[0]), datasets: [{ data: catEntries.map(x => x[1]), backgroundColor: ['#1a73e8','#0d9488','#ea8600','#9334e6','#d01884','#f9ab00','#00897b','#5f6368'], borderColor: '#fff', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8 } } }, cutout: '62%' }
   });
 
-  // Quality signals
   await loadCatalogQuality();
 }
 
-async function loadTopCities() {
-  // Get all live events with venue_id; join venue.city in JS
+async function loadTopVenues() {
   const today = new Date().toISOString().slice(0, 10);
-  const [eventsRes, venuesRes] = await Promise.all([
-    sb.from('events').select('venue_id').eq('status', 'published').gte('start_date', today).limit(50000),
-    sb.from('venues').select('id'),  // we only have 'id, name' per schema — no city column!
+  const [evRes, vnRes] = await Promise.all([
+    safeQuery('events:venue', () => sb.from('events').select('venue_id').eq('status', 'published').gte('start_date', today).limit(50000)),
+    safeQuery('venues', () => sb.from('venues').select('id, name')),
   ]);
-  // Per the schema we got, venues only has id + name — no city column.
-  // So this is now "top venues" instead of "top cities"
   const venueById = {};
-  for (const v of (venuesRes.data || [])) venueById[v.id] = v.name || 'unknown';
+  for (const v of (vnRes.data || [])) venueById[v.id] = v.name || 'unknown';
   const counts = {};
-  for (const r of (eventsRes.data || [])) {
-    const v = venueById[r.venue_id] || 'unknown';
-    counts[v] = (counts[v] || 0) + 1;
-  }
+  for (const r of (evRes.data || [])) { const n = venueById[r.venue_id] || 'unknown'; counts[n] = (counts[n] || 0) + 1; }
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  const el = document.getElementById('tbl-cities');
+  const el = document.getElementById('tbl-venues');
   if (!top.length) { el.innerHTML = '<div class="empty">no data</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>Venue</th><th class="num">Events</th></tr></thead>
-    <tbody>${top.map(([v, c]) => `<tr><td class="label">${escapeHtml(v)}</td><td class="num">${fmt(c)}</td></tr>`).join('')}</tbody>
-  </table>`;
+  el.innerHTML = `<table><thead><tr><th>Venue</th><th class="num">Events</th></tr></thead><tbody>${top.map(([v,c]) => `<tr><td>${escapeHtml(v)}</td><td class="num">${fmt(c)}</td></tr>`).join('')}</tbody></table>`;
 }
 
 async function loadCatalogQuality() {
   const today = new Date().toISOString().slice(0, 10);
-  const [
-    missingImg, missingDesc, noCategory, soldout, canceled, stale,
-  ] = await Promise.all([
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today).is('image_url', null),
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today).is('description', null),
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today).is('category_slug', null),
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('is_soldout', true).gte('start_date', today),
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('is_canceled', true).gte('start_date', today),
-    sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today).lt('last_seen_at', new Date(Date.now() - 7*86400000).toISOString()),
+  const sevenDaysAgo = new Date(Date.now() - 7*86400000).toISOString();
+  const [missImg, missDesc, noCat, soldOut, canceled, stale] = await Promise.all([
+    safeQuery('q:img', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('image_url',null)),
+    safeQuery('q:desc', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('description',null)),
+    safeQuery('q:cat', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('category_slug',null)),
+    safeQuery('q:soldout', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('is_soldout',true).gte('start_date',today)),
+    safeQuery('q:canceled', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('is_canceled',true).gte('start_date',today)),
+    safeQuery('q:stale', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).lt('last_seen_at',sevenDaysAgo)),
   ]);
-  const el = document.getElementById('tbl-quality');
-  el.innerHTML = `<table>
-    <thead><tr><th>Signal</th><th class="num">Count</th></tr></thead>
-    <tbody>
-      <tr><td class="label">Events missing image</td><td class="num">${fmt(missingImg.count ?? 0)}</td></tr>
-      <tr><td class="label">Events missing description</td><td class="num">${fmt(missingDesc.count ?? 0)}</td></tr>
-      <tr><td class="label">Events missing category</td><td class="num">${fmt(noCategory.count ?? 0)}</td></tr>
-      <tr><td class="label">Sold out</td><td class="num">${fmt(soldout.count ?? 0)}</td></tr>
-      <tr><td class="label">Canceled</td><td class="num">${fmt(canceled.count ?? 0)}</td></tr>
-      <tr><td class="label">Stale (last_seen > 7d ago)</td><td class="num">${fmt(stale.count ?? 0)}</td></tr>
-    </tbody>
-  </table>`;
+  document.getElementById('tbl-quality').innerHTML = `<table><thead><tr><th>Signal</th><th class="num">Count</th></tr></thead><tbody>
+    <tr><td>Events missing image</td><td class="num">${fmt(missImg.count ?? 0)}</td></tr>
+    <tr><td>Events missing description</td><td class="num">${fmt(missDesc.count ?? 0)}</td></tr>
+    <tr><td>Events missing category</td><td class="num">${fmt(noCat.count ?? 0)}</td></tr>
+    <tr><td>Sold out</td><td class="num">${fmt(soldOut.count ?? 0)}</td></tr>
+    <tr><td>Canceled</td><td class="num">${fmt(canceled.count ?? 0)}</td></tr>
+    <tr><td>Stale (last_seen &gt; 7 days)</td><td class="num">${fmt(stale.count ?? 0)}</td></tr>
+  </tbody></table>`;
 }
 
-// ─── TRANSLATION SECTION ─────────────────────────────────────
 async function loadTranslations() {
+  if (!sb) return;
   const days = rangeDays();
   const sinceISO = rangeStartISO();
 
-  // Per-day translations completed
-  const res = await sb.from('event_translations')
-    .select('translated_at, language')
-    .gte('translated_at', sinceISO).limit(50000);
+  const res = await safeQuery('translations', () => sb.from('event_translations').select('translated_at, language').gte('translated_at', sinceISO).limit(50000));
   const byLangByDay = bucketByGroup(res.data || [], 'translated_at', 'language', days);
   const langs = Object.keys(byLangByDay).sort();
-  const palette = ['#ff2e7e', '#ff9966', '#8b3ee0', '#ff5fb8', '#ffa3d9', '#9eff5f', '#ffc94f', '#cab8c4'];
+  const palette = ['#1a73e8','#0d9488','#ea8600','#9334e6','#d01884','#f9ab00','#00897b','#5f6368'];
   killChart('chart-trans-per-day');
   charts['chart-trans-per-day'] = new Chart(document.getElementById('chart-trans-per-day'), {
     type: 'bar',
-    data: {
-      labels: days,
-      datasets: langs.map((lang, i) => ({
-        label: lang.toUpperCase(),
-        data: byLangByDay[lang],
-        backgroundColor: palette[i % palette.length],
-        borderWidth: 0,
-        borderRadius: 2,
-      }))
-    },
-    options: chartStackedBarOpts(),
+    data: { labels: days, datasets: langs.map((lang, i) => ({ label: lang.toUpperCase(), data: byLangByDay[lang], backgroundColor: palette[i % palette.length], borderWidth: 0, borderRadius: 2 })) },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } } }
   });
 
-  // Coverage by language
   await loadCoverage();
-
-  // Translation jobs by status
   await loadTransJobs();
-
-  // Cache stats
   await loadCacheStats();
 }
 
 async function loadCoverage() {
-  // For each target language, % of live events that have a translation
-  // Total live events first
   const today = new Date().toISOString().slice(0, 10);
-  const liveRes = await sb.from('events').select('id', { count: 'exact', head: true })
-    .eq('status', 'published').gte('start_date', today);
+  const liveRes = await safeQuery('coverage:live', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today));
   const totalLive = liveRes.count ?? 0;
-
-  const langs = ['en', 'fr', 'nl', 'de', 'es', 'it'];
-  const counts = await Promise.all(langs.map(l =>
-    sb.from('event_translations').select('event_id', { count: 'exact', head: true }).eq('language', l)
-  ));
+  const langs = ['en','fr','nl','de','es','it'];
+  const counts = await Promise.all(langs.map(l => safeQuery('coverage:'+l, () => sb.from('event_translations').select('event_id', { count: 'exact', head: true }).eq('language', l))));
   const el = document.getElementById('bars-coverage');
   if (!totalLive) { el.innerHTML = '<div class="empty">no live events</div>'; return; }
   el.innerHTML = langs.map((l, i) => {
-    const c = counts[i].count ?? 0;
-    const p = totalLive ? c / totalLive : 0;
-    const w = Math.min(100, p * 100);
-    return `<div class="bar-row">
-      <div class="bar-label">${l}</div>
-      <div class="bar-track"><div class="bar-fill" style="width: ${w}%"></div></div>
-      <div class="bar-num">${fmt(c)} <span style="color:var(--bone4);">/ ${pct(p)}</span></div>
-    </div>`;
+    const c = counts[i].count ?? 0, p = c/totalLive;
+    return `<div class="bar-row"><div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,p*100)}%"></div></div><div class="bar-num">${fmt(c)} <span class="pct">${pct(p)}</span></div></div>`;
   }).join('');
 }
 
 async function loadTransJobs() {
-  // Count by status
-  const statuses = ['pending', 'processing', 'completed', 'failed'];
-  const counts = await Promise.all(statuses.map(s =>
-    sb.from('translation_jobs').select('id', { count: 'exact', head: true }).eq('status', s)
-  ));
-  const el = document.getElementById('tbl-jobs');
-  el.innerHTML = `<table>
-    <thead><tr><th>Status</th><th class="num">Count</th></tr></thead>
-    <tbody>${statuses.map((s, i) => {
-      const klass = s === 'completed' ? 'ok' : (s === 'failed' ? 'err' : (s === 'processing' ? 'run' : 'warn'));
-      return `<tr><td class="label"><span class="pill ${klass}">${s}</span></td><td class="num">${fmt(counts[i].count ?? 0)}</td></tr>`;
-    }).join('')}</tbody>
-  </table>`;
+  const statuses = ['pending','processing','completed','failed'];
+  const counts = await Promise.all(statuses.map(s => safeQuery('jobs:'+s, () => sb.from('translation_jobs').select('id', { count: 'exact', head: true }).eq('status', s))));
+  document.getElementById('tbl-jobs').innerHTML = `<table><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody>${statuses.map((s,i) => {
+    const k = s==='completed'?'ok':(s==='failed'?'err':(s==='processing'?'run':'warn'));
+    return `<tr><td><span class="pill ${k}">${s}</span></td><td class="num">${fmt(counts[i].count ?? 0)}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 
 async function loadCacheStats() {
-  // Top cache entries by hit_count + summary stats
   const [hits, recent] = await Promise.all([
-    sb.from('translation_cache').select('hit_count').limit(50000),
-    sb.from('translation_cache').select('content_hash, source_lang, target_lang, hit_count, last_used_at')
-      .order('hit_count', { ascending: false }).limit(8),
+    safeQuery('cache:hits', () => sb.from('translation_cache').select('hit_count').limit(50000)),
+    safeQuery('cache:top', () => sb.from('translation_cache').select('source_lang, target_lang, hit_count, last_used_at').order('hit_count', { ascending: false }).limit(8)),
   ]);
   const totalRows = hits.data?.length || 0;
   const totalHits = (hits.data || []).reduce((a, b) => a + (b.hit_count || 0), 0);
   const reuse = totalRows ? totalHits / totalRows : 0;
-  const el = document.getElementById('cache-summary');
-  el.innerHTML = `
-    <div style="display:flex; gap:24px; padding: 8px 0 16px; border-bottom: 1px solid var(--ink3); margin-bottom: 12px;">
-      <div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--bone3);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Cached strings</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--bone);font-variant-numeric: tabular-nums;">${fmt(totalRows)}</div>
-      </div>
-      <div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--bone3);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Total hits</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--bone);font-variant-numeric: tabular-nums;">${fmt(totalHits)}</div>
-      </div>
-      <div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--bone3);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Avg reuse</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--lime);font-variant-numeric: tabular-nums;">${reuse.toFixed(2)}×</div>
-      </div>
+  document.getElementById('cache-summary').innerHTML = `
+    <div style="display:flex;gap:24px;padding:8px 0 16px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+      <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Cached strings</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;">${fmt(totalRows)}</div></div>
+      <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Total hits</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;">${fmt(totalHits)}</div></div>
+      <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Avg reuse</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;color:var(--green);">${reuse.toFixed(2)}×</div></div>
     </div>
-    <table>
-      <thead><tr><th>Pair</th><th class="num">Hits</th><th class="num">Used</th></tr></thead>
-      <tbody>${(recent.data || []).map(r =>
-        `<tr><td class="label">${r.source_lang} → ${r.target_lang}</td><td class="num">${fmt(r.hit_count)}</td><td class="num" style="color:var(--bone3);">${ago(r.last_used_at)}</td></tr>`
-      ).join('')}</tbody>
-    </table>`;
+    <table><thead><tr><th>Pair</th><th class="num">Hits</th><th class="num">Used</th></tr></thead><tbody>${(recent.data || []).map(r => `<tr><td>${r.source_lang} → ${r.target_lang}</td><td class="num">${fmt(r.hit_count)}</td><td class="num muted">${ago(r.last_used_at)}</td></tr>`).join('')}</tbody></table>`;
 }
 
-// ─── INGESTION SECTION ───────────────────────────────────────
 async function loadIngestion() {
-  const res = await sb.from('ingestion_runs')
-    .select('source, started_at, finished_at, status, events_fetched, events_created, events_updated, events_skipped, translations_created, error_message')
-    .order('started_at', { ascending: false })
-    .limit(20);
+  if (!sb) return;
+  const res = await safeQuery('ingestion runs', () => sb.from('ingestion_runs').select('source, started_at, finished_at, status, events_fetched, events_created, events_updated, translations_created').order('started_at',{ascending:false}).limit(20));
   const rows = res.data || [];
   const el = document.getElementById('tbl-runs');
   if (!rows.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr>
-      <th>Source</th><th>Started</th><th>Status</th>
-      <th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th>
-      <th class="num">Translated</th>
-    </tr></thead>
-    <tbody>${rows.map(r => {
-      const klass = r.status === 'success' ? 'ok' : (r.status === 'running' ? 'run' : (r.status === 'error' ? 'err' : 'neutral'));
-      return `<tr>
-        <td class="label">${escapeHtml(r.source)}</td>
-        <td>${ago(r.started_at)}</td>
-        <td><span class="pill ${klass}">${r.status || '—'}</span></td>
-        <td class="num">${fmt(r.events_fetched)}</td>
-        <td class="num">${fmt(r.events_created)}</td>
-        <td class="num">${fmt(r.events_updated)}</td>
-        <td class="num">${fmt(r.translations_created)}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+  el.innerHTML = `<table><thead><tr><th>Source</th><th>Started</th><th>Status</th><th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th><th class="num">Translated</th></tr></thead><tbody>${rows.map(r => {
+    const k = r.status==='success'?'ok':(r.status==='running'?'run':(r.status==='error'?'err':'neutral'));
+    return `<tr><td>${escapeHtml(r.source)}</td><td class="muted">${ago(r.started_at)}</td><td><span class="pill ${k}">${r.status || '—'}</span></td><td class="num">${fmt(r.events_fetched)}</td><td class="num">${fmt(r.events_created)}</td><td class="num">${fmt(r.events_updated)}</td><td class="num">${fmt(r.translations_created)}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 
-// ─── USERS / AUDIENCE SECTION ────────────────────────────────
 async function loadAudience() {
+  if (!sb) return;
   const days = rangeDays();
-  const sinceISO = rangeStartISO();
+  const rows = window.__cachedActions || [];
 
-  // User actions per day, by action type
-  const actRes = await sb.from('user_events').select('created_at, action').gte('created_at', sinceISO).limit(50000);
-  const rows = actRes.data || [];
   const byActByDay = bucketByGroup(rows, 'created_at', 'action', days);
   const actions = Object.keys(byActByDay).sort();
-  const palette = ['#ff2e7e', '#ff9966', '#8b3ee0', '#ff5fb8', '#9eff5f', '#ffc94f'];
+  const palette = ['#1a73e8','#0d9488','#ea8600','#9334e6','#d01884','#f9ab00'];
   killChart('chart-actions-per-day');
   charts['chart-actions-per-day'] = new Chart(document.getElementById('chart-actions-per-day'), {
     type: 'bar',
-    data: {
-      labels: days,
-      datasets: actions.map((a, i) => ({
-        label: a,
-        data: byActByDay[a],
-        backgroundColor: palette[i % palette.length],
-        borderWidth: 0,
-        borderRadius: 2,
-      }))
-    },
-    options: chartStackedBarOpts(),
+    data: { labels: days, datasets: actions.map((a,i) => ({ label: a, data: byActByDay[a], backgroundColor: palette[i % palette.length], borderWidth: 0, borderRadius: 2 })) },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } } }
   });
 
-  // Action mix donut (all-time within range)
   const mix = {};
   for (const r of rows) mix[r.action] = (mix[r.action] || 0) + 1;
-  const mixEntries = Object.entries(mix).sort((a, b) => b[1] - a[1]);
+  const mixEntries = Object.entries(mix).sort((a,b) => b[1] - a[1]);
   killChart('chart-action-mix');
   charts['chart-action-mix'] = new Chart(document.getElementById('chart-action-mix'), {
     type: 'doughnut',
-    data: {
-      labels: mixEntries.map(x => x[0]),
-      datasets: [{
-        data: mixEntries.map(x => x[1]),
-        backgroundColor: palette,
-        borderColor: '#18101f',
-        borderWidth: 2,
-      }]
-    },
-    options: chartDonutOpts(),
+    data: { labels: mixEntries.map(x => x[0]), datasets: [{ data: mixEntries.map(x => x[1]), backgroundColor: palette, borderColor: '#fff', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8 } } }, cutout: '62%' }
   });
 
-  // Top searches
   await loadTopSearches();
-  // Top events by action count
   await loadTopEventsByAction(rows);
-  // Recent searches with detail
   await loadSearchDetail();
 }
 
 async function loadTopSearches() {
-  const res = await sb.from('user_searches').select('query, result_count, created_at').order('created_at', { ascending: false }).limit(200);
-  const counts = {};
-  const latest = {};
+  const res = await safeQuery('top searches', () => sb.from('user_searches').select('query, created_at').order('created_at',{ascending:false}).limit(200));
+  const counts = {}, latest = {};
   for (const r of (res.data || [])) {
-    const q = (r.query || '').trim().toLowerCase();
-    if (!q) continue;
+    const q = (r.query || '').trim().toLowerCase(); if (!q) continue;
     counts[q] = (counts[q] || 0) + 1;
     if (!latest[q] || new Date(r.created_at) > new Date(latest[q])) latest[q] = r.created_at;
   }
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const top = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 12);
   const el = document.getElementById('tbl-searches');
   if (!top.length) { el.innerHTML = '<div class="empty">no searches yet</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>Query</th><th class="num">Count</th><th class="num">Last</th></tr></thead>
-    <tbody>${top.map(([q, c]) =>
-      `<tr><td class="label">${escapeHtml(q)}</td><td class="num">${c}</td><td class="num" style="color:var(--bone3);">${ago(latest[q])}</td></tr>`
-    ).join('')}</tbody>
-  </table>`;
+  el.innerHTML = `<table><thead><tr><th>Query</th><th class="num">Count</th><th class="num">Last</th></tr></thead><tbody>${top.map(([q,c]) => `<tr><td>${escapeHtml(q)}</td><td class="num">${c}</td><td class="num muted">${ago(latest[q])}</td></tr>`).join('')}</tbody></table>`;
 }
 
-async function loadTopEventsByAction(actions) {
-  // Top N events by action count from the actions we already have
+async function loadTopEventsByAction(rows) {
   const counts = {};
-  for (const r of actions) counts[r.event_id] = (counts[r.event_id] || 0) + 1;
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  if (!top.length) {
-    document.getElementById('tbl-top-events').innerHTML = '<div class="empty">no event actions yet</div>';
-    return;
-  }
-  const ids = top.map(x => x[0]);
-  const evRes = await sb.from('events').select('id, title').in('id', ids);
-  const titles = Object.fromEntries((evRes.data || []).map(e => [e.id, e.title]));
+  for (const r of rows) counts[r.event_id] = (counts[r.event_id] || 0) + 1;
+  const top = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 12);
   const el = document.getElementById('tbl-top-events');
-  el.innerHTML = `<table>
-    <thead><tr><th>Event</th><th class="num">Actions</th></tr></thead>
-    <tbody>${top.map(([id, c]) =>
-      `<tr><td class="label">${escapeHtml(titles[id] || id.slice(0, 8))}</td><td class="num">${c}</td></tr>`
-    ).join('')}</tbody>
-  </table>`;
+  if (!top.length) { el.innerHTML = '<div class="empty">no actions yet</div>'; return; }
+  const ids = top.map(x => x[0]);
+  const evRes = await safeQuery('top events titles', () => sb.from('events').select('id, title').in('id', ids));
+  const titles = Object.fromEntries((evRes.data || []).map(e => [e.id, e.title]));
+  el.innerHTML = `<table><thead><tr><th>Event</th><th class="num">Actions</th></tr></thead><tbody>${top.map(([id,c]) => `<tr><td>${escapeHtml(titles[id] || id.slice(0,8))}</td><td class="num">${c}</td></tr>`).join('')}</tbody></table>`;
 }
 
 async function loadSearchDetail() {
-  const res = await sb.from('user_searches').select('query, lang, result_count, created_at').order('created_at', { ascending: false }).limit(20);
+  const res = await safeQuery('search detail', () => sb.from('user_searches').select('query, lang, result_count, created_at').order('created_at',{ascending:false}).limit(20));
   const rows = res.data || [];
   const el = document.getElementById('tbl-search-detail');
   if (!rows.length) { el.innerHTML = '<div class="empty">no searches yet</div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>When</th><th>Lang</th><th>Query</th><th class="num">Results</th></tr></thead>
-    <tbody>${rows.map(r => {
-      const rc = r.result_count;
-      const klass = rc === 0 ? 'err' : (rc < 3 ? 'warn' : 'ok');
-      return `<tr>
-        <td>${ago(r.created_at)}</td>
-        <td><span class="pill neutral">${r.lang || '—'}</span></td>
-        <td class="label">${escapeHtml(r.query)}</td>
-        <td class="num"><span class="pill ${klass}">${rc ?? '—'}</span></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+  el.innerHTML = `<table><thead><tr><th>When</th><th>Lang</th><th>Query</th><th class="num">Results</th></tr></thead><tbody>${rows.map(r => {
+    const rc = r.result_count, k = rc===0?'err':(rc<3?'warn':'ok');
+    return `<tr><td class="muted">${ago(r.created_at)}</td><td><span class="pill neutral">${r.lang || '—'}</span></td><td>${escapeHtml(r.query)}</td><td class="num"><span class="pill ${k}">${rc ?? '—'}</span></td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 
-// ============================================================
-// CHART OPTION HELPERS
-// ============================================================
-function chartLineOpts() {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } },
-      y: { ticks: { precision: 0 }, grid: { color: 'rgba(34,22,41,0.5)' }, beginAtZero: true },
-    },
-    interaction: { mode: 'index', intersect: false },
-  };
-}
-function chartStackedBarOpts() {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: true, position: 'bottom' } },
-    scales: {
-      x: { stacked: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } },
-      y: { stacked: true, ticks: { precision: 0 }, grid: { color: 'rgba(34,22,41,0.5)' }, beginAtZero: true },
-    },
-  };
-}
-function chartDonutOpts() {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 8 } } },
-    cutout: '60%',
-  };
-}
-
-// ============================================================
-// HELPER UTILITIES
-// ============================================================
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-
-// ============================================================
-// BOOT — load everything in parallel
-// ============================================================
 async function reloadAll() {
-  document.getElementById('refreshBtn').classList.add('spinning');
-  document.getElementById('refreshBtn').textContent = '⟲ LOADING';
+  if (!sb) return;
+  document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
-    await Promise.all([
-      loadOverview(),
-      loadCatalog(),
-      loadTranslations(),
-      loadIngestion(),
-      loadAudience(),
-    ]);
+    await loadOverview();
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience()]);
     lastReload = new Date();
-    document.getElementById('lastLoaded').textContent =
-      'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  } catch (err) {
-    console.error('Dashboard reload failed:', err);
-    document.getElementById('lastLoaded').textContent = 'Error — see console';
-  } finally {
-    document.getElementById('refreshBtn').classList.remove('spinning');
-    document.getElementById('refreshBtn').textContent = '⟲ REFRESH';
-  }
+    document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } catch (err) { console.error('reload failed:', err); }
+  finally { document.getElementById('refreshBtn').textContent = '⟲ Refresh'; }
 }
 
 function boot() {
   applyChartDefaults();
-  // Range picker wiring
   document.querySelectorAll('.range-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('on'));
       btn.classList.add('on');
       const r = btn.dataset.range;
-      RANGE_DAYS = (r === 'all') ? 'all' : parseInt(r, 10);
+      RANGE_DAYS = r === 'all' ? 'all' : parseInt(r, 10);
       reloadAll();
     });
   });
   reloadAll();
 }
 
-// Boot if already unlocked
 document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('shou-admin-ok') === '1') {
-    boot();
-  }
+  if (sessionStorage.getItem('shou-admin-ok') === '1') boot();
 });
 </script>
 </body>
