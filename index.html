@@ -2036,20 +2036,25 @@ async function fetchEvts(){
   }
 }
 
-// Map Ticketmaster/UiT genre strings to our category system for color coding
 // Map raw city strings from various sources (Ticketmaster, Uitdatabank) to a
 // single canonical Belgian city. Handles: language variants (Brussel/Bruxelles/Brussels),
 // municipalities within larger urban areas (Elsene → Brussels, Merksem → Antwerp),
 // and trailing suffixes ("Antwerpen 1", "Forest (Brussels)").
+//
+// Brussels & Antwerp district names collapse to the parent city since users
+// think of them that way. Other Belgian towns (Wavre, Tervuren, Werchter,
+// Francorchamps, etc.) map to themselves; the AREAS lookup below routes
+// each to its anchor-city area.
 const CITY_MAP = {
-  // Brussels & its 19 communes
+  // ── Brussels & its 19 communes + Brussels districts ──
   'brussels':'Brussels', 'brussel':'Brussels', 'bruxelles':'Brussels',
   'elsene':'Brussels', 'ixelles':'Brussels',
   'etterbeek':'Brussels', 'schaarbeek':'Brussels', 'schaerbeek':'Brussels',
   'anderlecht':'Brussels', 'molenbeek':'Brussels',
   'molenbeek-saint-jean':'Brussels', 'sint-jans-molenbeek':'Brussels',
   'saint-gilles':'Brussels', 'sint-gillis':'Brussels',
-  'saint-josse':'Brussels', 'sint-joost-ten-node':'Brussels',
+  'saint-josse':'Brussels', 'saint-josse-ten-noode':'Brussels',
+  'sint-joost-ten-node':'Brussels', 'sint-joost-ten-noode':'Brussels',
   'uccle':'Brussels', 'ukkel':'Brussels',
   'forest':'Brussels', 'vorst':'Brussels',
   'jette':'Brussels', 'koekelberg':'Brussels',
@@ -2060,38 +2065,104 @@ const CITY_MAP = {
   'watermael-boitsfort':'Brussels', 'watermaal-bosvoorde':'Brussels',
   'laeken':'Brussels', 'laken':'Brussels',
   'berchem-sainte-agathe':'Brussels', 'sint-agatha-berchem':'Brussels',
+  // Brussels districts (parts of City of Brussels)
+  'neder-over-heembeek':'Brussels',
+  'haren':'Brussels',
 
-  // Antwerp & districts
+  // ── Brussels periphery commuter towns (Flemish Brabant) ──
+  'vilvoorde':'Vilvoorde', 'vilvorde':'Vilvoorde',
+  'dilbeek':'Dilbeek',
+  'tervuren':'Tervuren', 'tervueren':'Tervuren',
+  'strombeek-bever':'Strombeek-Bever',  // in Grimbergen, but distinct event venue
+  'meise':'Meise',
+  'werchter':'Werchter',  // festival town near Leuven
+
+  // ── Antwerp & districts ──
   'antwerp':'Antwerp', 'antwerpen':'Antwerp', 'anvers':'Antwerp',
   'merksem':'Antwerp', 'berchem':'Antwerp', 'deurne':'Antwerp',
   'borgerhout':'Antwerp', 'hoboken':'Antwerp', 'ekeren':'Antwerp',
   'wilrijk':'Antwerp',
 
-  // Ghent
+  // ── Antwerp province & northern Limburg ──
+  'brasschaat':'Brasschaat',
+  'heist-op-den-berg':'Heist-op-den-Berg',
+  'itegem':'Heist-op-den-Berg',  // village in Heist-op-den-Berg municipality
+  'dessel':'Dessel',  // Graspop area
+  'lommel':'Lommel',
+  'paal':'Beringen',  // village in Beringen, Limburg
+
+  // ── Ghent, Bruges, West/East Flanders, coast ──
   'ghent':'Ghent', 'gent':'Ghent', 'gand':'Ghent',
+  'bruges':'Bruges', 'brugge':'Bruges',
+  'kortrijk':'Kortrijk', 'courtrai':'Kortrijk',
+  'ostend':'Ostend', 'oostende':'Ostend', 'ostende':'Ostend',
+  'roeselare':'Roeselare', 'roulers':'Roeselare',
+  'waregem':'Waregem',
+  'aalst':'Aalst', 'alost':'Aalst',
+  'sint-niklaas':'Sint-Niklaas', 'saint-nicolas':'Sint-Niklaas',
+  // West Flanders coast
+  'de panne':'De Panne', 'la panne':'De Panne',
+  'middelkerke':'Middelkerke',
+  // West Hainaut wedge with WF ties
+  'comines':'Comines', 'komen':'Comines',
 
-  // Mons & surroundings commonly attributed
-  'mons':'Mons', 'bergen':'Mons',
-  'jemappes':'Mons', 'cuesmes':'Mons', 'hyon':'Mons', 'ghlin':'Mons',
+  // ── Leuven & Mechelen ──
+  'leuven':'Leuven', 'louvain':'Leuven',
+  'mechelen':'Mechelen', 'malines':'Mechelen',
 
-  // Other major Belgian cities (single spelling, add variants as needed)
+  // ── Liège & eastern Wallonia ──
   'liege':'Liège', 'liège':'Liège', 'luik':'Liège',
+  'verviers':'Verviers',
+  'hasselt':'Hasselt',
+  'genk':'Genk',
+  'francorchamps':'Spa-Francorchamps', 'spa-francorchamps':'Spa-Francorchamps',
+  'spa':'Spa-Francorchamps',  // merge Spa town & circuit into one display name
+  'malmedy':'Malmedy',
+  'seraing':'Seraing',
+  'marchin':'Marchin',  // Huy area
+
+  // ── Charleroi & southern/central Wallonia (Hainaut + Namur + Luxembourg) ──
   'charleroi':'Charleroi',
   'namur':'Namur', 'namen':'Namur',
-  'leuven':'Leuven', 'louvain':'Leuven',
-  'bruges':'Bruges', 'brugge':'Bruges',
-  'hasselt':'Hasselt',
-  'kortrijk':'Kortrijk', 'courtrai':'Kortrijk',
-  'mechelen':'Mechelen', 'malines':'Mechelen',
-  'ostend':'Ostend', 'oostende':'Ostend', 'ostende':'Ostend',
+  'mons':'Mons', 'bergen':'Mons',
+  'jemappes':'Mons', 'cuesmes':'Mons', 'hyon':'Mons', 'ghlin':'Mons',
   'tournai':'Tournai', 'doornik':'Tournai',
-  'verviers':'Verviers',
-  'waregem':'Waregem',
-  'genk':'Genk',
-  'roeselare':'Roeselare', 'roulers':'Roeselare',
-  'sint-niklaas':'Sint-Niklaas', 'saint-nicolas':'Sint-Niklaas',
-  'aalst':'Aalst', 'alost':'Aalst',
   'la louviere':'La Louvière', 'la louvière':'La Louvière',
+  // Hainaut towns
+  'hornu':'Hornu',
+  'morlanwelz-mariemont':'Morlanwelz', 'morlanwelz':'Morlanwelz',
+  'quévy-le-grand':'Quévy', 'quevy-le-grand':'Quévy',
+  'courcelles':'Courcelles',
+  'fleurus':'Fleurus',
+  'soignies':'Soignies', 'zinnik':'Soignies',
+  'ath':'Ath', 'aat':'Ath',
+  'lanquesaint':'Ath',  // village in Ath municipality
+  'quaregnon':'Quaregnon',
+  'chièvres':'Chièvres', 'chievres':'Chièvres',
+  'braine-le-comte':'Braine-le-Comte', "'s gravenbrakel":'Braine-le-Comte',
+  // Namur province
+  'mettet':'Mettet',
+  'profondeville':'Profondeville',
+  'bouvignes-sur-meuse':'Dinant',  // hamlet in Dinant
+  'waulsort':'Hastière',  // hamlet in Hastière
+  'andenne':'Andenne',
+  'louette-saint-pierre':'Gedinne',  // village in Gedinne
+  // Walloon Brabant — per your call, into Charleroi & Namur Area
+  'lasne-chapelle-saint-lambert':'Lasne',
+  'wavre':'Wavre', 'waver':'Wavre',
+  'limal':'Wavre',  // section of Wavre
+  'louvain-la-neuve':'Louvain-la-Neuve',
+  'nivelles':'Nivelles', 'nijvel':'Nivelles',
+  'perwez':'Perwez',
+  'orp-jauche':'Orp-Jauche',
+  'bousval':'Genappe',  // section of Genappe
+  'la hulpe':'La Hulpe', 'terhulpen':'La Hulpe',
+  'waterloo':'Waterloo',
+  // Luxembourg province
+  'marche-en-famenne':'Marche-en-Famenne',
+  'bastogne':'Bastogne', 'bastenaken':'Bastogne',
+  'arlon':'Arlon', 'aarlen':'Arlon',
+  'bertrix':'Bertrix',
 };
 
 function canonicalCity(raw){
@@ -2121,15 +2192,46 @@ function canonicalCity(raw){
 // Order matters for the dropdown and sections — most populous first.
 const AREAS = [
   { id: 'brussels', label: 'Brussels Area',
-    cities: ['Brussels', 'Leuven'] },
+    cities: [
+      'Brussels', 'Leuven',
+      // Brussels periphery / commuter belt (Flemish Brabant)
+      'Vilvoorde', 'Dilbeek', 'Tervuren', 'Meise', 'Strombeek-Bever',
+      'Werchter',
+    ] },
   { id: 'antwerp',  label: 'Antwerp Area',
-    cities: ['Antwerp', 'Mechelen', 'Sint-Niklaas'] },
+    cities: [
+      'Antwerp', 'Mechelen', 'Sint-Niklaas',
+      // Antwerp province + northern Limburg
+      'Brasschaat', 'Heist-op-den-Berg', 'Dessel',
+      'Lommel', 'Beringen',
+    ] },
   { id: 'ghent',    label: 'Ghent Area',
-    cities: ['Ghent', 'Aalst', 'Bruges', 'Kortrijk', 'Ostend', 'Roeselare', 'Waregem'] },
+    cities: [
+      'Ghent', 'Aalst', 'Bruges', 'Kortrijk', 'Ostend',
+      'Roeselare', 'Waregem',
+      // West Flanders coast & wedge
+      'De Panne', 'Middelkerke', 'Comines',
+    ] },
   { id: 'liege',    label: 'Liège Area',
-    cities: ['Liège', 'Hasselt', 'Genk', 'Verviers'] },
+    cities: [
+      'Liège', 'Hasselt', 'Genk', 'Verviers',
+      // Liège province
+      'Spa-Francorchamps', 'Malmedy', 'Seraing', 'Marchin',
+    ] },
   { id: 'wallonia', label: 'Charleroi & Namur Area',
-    cities: ['Charleroi', 'Namur', 'Mons', 'La Louvière', 'Tournai'] },
+    cities: [
+      'Charleroi', 'Namur', 'Mons', 'La Louvière', 'Tournai',
+      // Hainaut
+      'Hornu', 'Morlanwelz', 'Quévy', 'Courcelles', 'Fleurus',
+      'Soignies', 'Ath', 'Quaregnon', 'Chièvres', 'Braine-le-Comte',
+      // Namur province
+      'Mettet', 'Profondeville', 'Dinant', 'Hastière', 'Andenne', 'Gedinne',
+      // Walloon Brabant (per user direction)
+      'Lasne', 'Wavre', 'Louvain-la-Neuve', 'Nivelles', 'Perwez',
+      'Orp-Jauche', 'Genappe', 'La Hulpe', 'Waterloo',
+      // Luxembourg province
+      'Marche-en-Famenne', 'Bastogne', 'Arlon', 'Bertrix',
+    ] },
 ];
 
 // Build a reverse map (city → area id) so filtering and section assignment
