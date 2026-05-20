@@ -3123,33 +3123,9 @@ function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-
-  // FB sharer URL — the host depends on the platform:
-  //
-  // - On iOS, www.facebook.com is configured as a Universal Link target
-  //   for the FB iOS app. When Safari opens a www.facebook.com URL, iOS
-  //   hands it to the FB app, which receives the sharer URL but doesn't
-  //   parse it — it just shows the home feed. NOT the compose dialog
-  //   the user wanted.
-  //   m.facebook.com is NOT a Universal Link target, so Safari opens it
-  //   in a new tab and serves the actual mobile compose page. The OG
-  //   card is scraped from /api/og via the bot-UA rewrite and shown in
-  //   the preview.
-  //
-  // - On desktop and Android, www.facebook.com is the right host; m.*
-  //   redirects you anyway, and on desktop the desktop layout is
-  //   preferred.
-  //
-  // Detection: iOS Safari has /iPhone|iPod/ in UA, or is iPad on iOS 13+
-  // which reports as Mac with touch points. We pick m. only when both
-  // signals agree (iOS device).
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPod/.test(ua)
-             || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
-  const host = isIOS ? 'm.facebook.com' : 'www.facebook.com';
-
+  const intro = buildShareIntro(e);
   window.open(
-    'https://' + host + '/sharer/sharer.php?u=' + encodeURIComponent(u),
+    'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u)+'&quote='+encodeURIComponent(intro),
     '_blank'
   );
 }
