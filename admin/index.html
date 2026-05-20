@@ -569,8 +569,8 @@ async function loadOverview() {
   const [eventsRes, newRes, searchesRes, actionsRes] = await Promise.all([
     safeQuery('events live', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today)),
     safeQuery('new events', () => sb.from('events').select('created_at').gte('created_at', sinceISO).limit(50000)),
-    safeQuery('searches', () => sb.from('user_searches').select('created_at').gte('created_at', sinceISO).limit(50000)),
-    safeQuery('user actions', () => sb.from('user_events').select('created_at,action,event_id').gte('created_at', sinceISO).limit(50000)),
+    safeQuery('searches', () => sb.rpc('admin_user_searches_timestamps', { p_since: sinceISO })),
+    safeQuery('user actions', () => sb.rpc('admin_user_events_window', { p_since: sinceISO })),
   ]);
 
   setStat('stat-events', fmt(eventsRes.count ?? 0));
@@ -806,7 +806,7 @@ async function loadAudience() {
 }
 
 async function loadTopSearches() {
-  const res = await safeQuery('top searches', () => sb.from('user_searches').select('query, created_at').order('created_at',{ascending:false}).limit(200));
+  const res = await safeQuery('top searches', () => sb.rpc('admin_user_searches_recent', { p_limit: 200 }));
   const counts = {}, latest = {};
   for (const r of (res.data || [])) {
     const q = (r.query || '').trim().toLowerCase(); if (!q) continue;
@@ -832,7 +832,7 @@ async function loadTopEventsByAction(rows) {
 }
 
 async function loadSearchDetail() {
-  const res = await safeQuery('search detail', () => sb.from('user_searches').select('query, lang, result_count, created_at').order('created_at',{ascending:false}).limit(20));
+  const res = await safeQuery('search detail', () => sb.rpc('admin_user_searches_recent', { p_limit: 20 }));
   const rows = res.data || [];
   const el = document.getElementById('tbl-search-detail');
   if (!rows.length) { el.innerHTML = '<div class="empty">no searches yet</div>'; return; }
