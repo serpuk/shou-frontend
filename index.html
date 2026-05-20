@@ -932,6 +932,38 @@ h1 .bl {
 
 /* ── GRID ── */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; }
+
+/* When the events grid is grouped by area, each area gets a labeled section.
+   The container (#eg) becomes a block stacker holding .area-section blocks;
+   inside each, .area-grid re-creates the same multi-column card layout.
+   Section header uses the same Fraunces treatment as other major section
+   titles, just smaller. */
+#eg:has(.area-section) {
+  display: block;  /* override grid so .area-section blocks stack */
+}
+.area-section { margin-bottom: 44px; }
+.area-section:last-child { margin-bottom: 0; }
+.area-header {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 18px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.area-name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--bone);
+}
+.area-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--bone3);
+  background: rgba(255, 153, 102, 0.08);
+  padding: 3px 10px; border-radius: 12px;
+  border: 1px solid rgba(255, 153, 102, 0.2);
+}
+.area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; }
+
 .card {
   background: var(--glass);
   border: 1px solid rgba(255,255,255,0.06);
@@ -1409,7 +1441,7 @@ footer p {
   <div class="stats">
     <div class="stat"><div class="sn" id="st">—</div><div class="sl" data-k="s1">Events Live</div></div>
     <div class="stat"><div class="sn" id="sc">18</div><div class="sl" data-k="s2">Cities</div></div>
-    <div class="stat"><div class="sn" id="ss">4</div><div class="sl" data-k="s3">Sources</div></div>
+    <div class="stat"><div class="sn" id="ss">2</div><div class="sl" data-k="s3">Sources</div></div>
     <div class="stat"><div class="sn" id="sv">—</div><div class="sl" data-k="s4">Venues</div></div>
   </div>
 
@@ -1946,8 +1978,20 @@ async function fetchEvts(){
       availableLangs:e.availableLangs||[]
     })).sort((a,b)=>b.pop-a.pop);
     const cities=[...new Set(all.map(e=>e.city))].filter(c=>c&&c!=='Belgium').sort();
+    // Build area-based dropdown options. We show only areas with events in
+    // the current catalog (skip empty groups) so users don't tap a region
+    // that returns nothing. The 'all' and 'near' options are always present.
+    const areasInUse = new Set(all.map(e => cityArea(e.city)));
     const sel=document.getElementById('csel');
-    sel.innerHTML='<option value="all">'+t('ca')+'</option>'+cities.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+    const areaOpts = AREAS
+      .filter(a => areasInUse.has(a.id))
+      .map(a => '<option value="area:'+a.id+'">'+a.label+'</option>')
+      .join('');
+    // 'Other' area shown only if there are events not in any anchor area.
+    const otherOpt = areasInUse.has('other')
+      ? '<option value="area:other">Other</option>'
+      : '';
+    sel.innerHTML = '<option value="all">'+t('ca')+'</option>'+areaOpts+otherOpt;
     // Re-inject "Near me" option (if geo available). fetchEvts is called on every
     // language change, which rebuilds the dropdown; populateNearMeOption is idempotent.
     populateNearMeOption();
@@ -1964,8 +2008,16 @@ async function fetchEvts(){
     const totals = d.totals || {};
     document.getElementById('sv').textContent =
       totals.venues  ?? [...new Set(all.map(e=>e.venue))].length;
-    document.getElementById('sc').textContent =
-      totals.cities  ?? cities.length;
+    // Cities: backend ships the LIST of raw city strings; frontend
+    // canonicalizes (Saint-Josse → Brussels, Antwerpen 1 → Antwerp, etc.)
+    // and counts distinct results. Falls back to deriving from the events
+    // page (already canonicalized at ingest time via shapeEvent).
+    if (Array.isArray(totals.cityList)) {
+      const canon = new Set(totals.cityList.map(c => canonicalCity(c)));
+      document.getElementById('sc').textContent = canon.size;
+    } else {
+      document.getElementById('sc').textContent = cities.length;
+    }
     // Sources stat: if backend ships the real count, use it. Otherwise leave
     // whatever was rendered server-side / initial-paint untouched (the
     // hardcoded "4" is acceptable as a fallback since source count is stable).
@@ -2051,6 +2103,52 @@ function canonicalCity(raw){
     .trim()
     .toLowerCase();
   return CITY_MAP[cleaned] || raw;      // fallback to raw if unknown
+}
+
+// Anchor-city AREAS — higher-level grouping above canonical cities. The user
+// picks an area in the city pill ('Brussels area', 'Ghent area', etc.) and
+// we filter to events in any city that belongs to that area, then group
+// results into sections per area.
+//
+// Groupings are practical/commuter-based, not strictly geographic:
+//   - Brussels Area: capital + commuter belt (Leuven, Mechelen, Wavre)
+//   - Antwerp Area: port + immediate hinterland (Turnhout, Lier)
+//   - Ghent Area: East Flanders + West Flanders coast (Bruges, Kortrijk, Ostend)
+//   - Liège Area: eastern Wallonia + Limburg (Hasselt, Genk, Verviers)
+//   - Charleroi/Namur Area: central/southern Wallonia (Mons, La Louvière, Tournai)
+//
+// Cities not in any area (very small or unknown) fall under 'Other'.
+// Order matters for the dropdown and sections — most populous first.
+const AREAS = [
+  { id: 'brussels', label: 'Brussels Area',
+    cities: ['Brussels', 'Leuven'] },
+  { id: 'antwerp',  label: 'Antwerp Area',
+    cities: ['Antwerp', 'Mechelen', 'Sint-Niklaas'] },
+  { id: 'ghent',    label: 'Ghent Area',
+    cities: ['Ghent', 'Aalst', 'Bruges', 'Kortrijk', 'Ostend', 'Roeselare', 'Waregem'] },
+  { id: 'liege',    label: 'Liège Area',
+    cities: ['Liège', 'Hasselt', 'Genk', 'Verviers'] },
+  { id: 'wallonia', label: 'Charleroi & Namur Area',
+    cities: ['Charleroi', 'Namur', 'Mons', 'La Louvière', 'Tournai'] },
+];
+
+// Build a reverse map (city → area id) so filtering and section assignment
+// are O(1) lookups per event. Cities not in any area get 'other'.
+const CITY_TO_AREA = (() => {
+  const m = new Map();
+  for (const area of AREAS) {
+    for (const c of area.cities) m.set(c, area.id);
+  }
+  return m;
+})();
+
+function cityArea(canonicalCityName) {
+  return CITY_TO_AREA.get(canonicalCityName) || 'other';
+}
+
+function areaLabel(areaId) {
+  const a = AREAS.find(x => x.id === areaId);
+  return a ? a.label : 'Other';
 }
 
 // Map Ticketmaster/UiT genre strings to our category system for color coding
@@ -2159,16 +2257,16 @@ function setCity(c){
   updateCityPillLabel();
   applyF();
 }
-// Resolve the city value (e.g. 'Brussels', 'all', 'near') to the label
-// to display in the pill. Uses i18n for 'all' and 'near'; city names are
-// already in the canonical form so display as-is.
-// Strips the leading 📍 from 'cNear' translations because the pill already
-// has a pin icon via CSS ::before. The translation string '📍 Near me' is
-// designed for the dropdown menu where it stands alone.
+// Resolve the city value (e.g. 'area:brussels', 'all', 'near', or a legacy
+// raw city name) to the label to display in the pill. Strips the leading 📍
+// from 'cNear' translations since the pill already has a pin icon via CSS.
 function cityPillLabelFor(value) {
   if (!value || value === 'all') return t('ca');
   if (value === 'near')         return t('cNear').replace(/^📍\s*/, '');
-  return value;
+  if (typeof value === 'string' && value.startsWith('area:')) {
+    return areaLabel(value.slice(5));
+  }
+  return value;  // legacy: any stored exact-city string still renders
 }
 function updateCityPillLabel() {
   const el = document.getElementById('cityPillValue');
@@ -2419,7 +2517,9 @@ function applyF(){
       || e.categorySlug === actF
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
     // City filter: 'all' and 'near' both show all cities, but 'near' sorts
-    // by distance. An explicit city name filters to that city.
+    // by distance. 'area:<id>' filters to events whose city belongs to that
+    // anchor-city area (Brussels Area covers Brussels + Leuven + Mechelen
+    // + Aalst; etc).
     //
     // EXCEPTION: when AI search is active, bypass the city filter entirely.
     // The AI has already reasoned about geography — the user's location was
@@ -2429,8 +2529,16 @@ function applyF(){
     // in Brussels" + UI: "No events found" when the pill is set to Antwerp.
     // The search bar is intent-driven; the pill is browse-driven. Search
     // wins when both are present.
-    const cm = aiQ
-            || actC==='all' || actC==='near' || e.city===actC;
+    let cm;
+    if (aiQ || actC === 'all' || actC === 'near') {
+      cm = true;
+    } else if (typeof actC === 'string' && actC.startsWith('area:')) {
+      const areaId = actC.slice(5);
+      cm = cityArea(e.city) === areaId;
+    } else {
+      // Backward-compat: a stored actC of an exact city name still works.
+      cm = e.city === actC;
+    }
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
@@ -2585,6 +2693,15 @@ function renderAll(){
 
   emp.classList.remove('on');
 
+  // Decide whether to group by area. We group when the user is browsing
+  // "All Cities" without an active AI search — the section headers help
+  // them navigate a long list. When they've picked a specific area, 'Near
+  // me', or are running an AI search, grouping would add noise (results
+  // are already scoped) so we render flat.
+  const groupByArea = !aiQ
+                    && (actC === 'all')
+                    && filtered.length > 6;  // not worth grouping tiny lists
+
   if(isFiltering){
     // Filtered mode: one list, no "trending" split
     fw.innerHTML='';
@@ -2598,7 +2715,9 @@ function renderAll(){
       countEl.textContent=t('ne2')(filtered.length);
     }
     const toShow=filtered.slice(0, vis + 2);  // +2 since trending is empty
-    document.getElementById('eg').innerHTML=toShow.map(e=>smCard(e)).join('');
+    document.getElementById('eg').innerHTML = groupByArea
+      ? renderGroupedByArea(toShow)
+      : toShow.map(e=>smCard(e)).join('');
   } else {
     // Default mode: first 2 are "Trending", rest go in the grid
     if(trendingHeader) trendingHeader.style.display='';
@@ -2611,8 +2730,43 @@ function renderAll(){
     }
     const f2=filtered.slice(0,2), rest=filtered.slice(2,2+vis);
     fw.innerHTML=f2.map(e=>bigCard(e)).join('');
-    document.getElementById('eg').innerHTML=rest.map(e=>smCard(e)).join('');
+    document.getElementById('eg').innerHTML = groupByArea
+      ? renderGroupedByArea(rest)
+      : rest.map(e=>smCard(e)).join('');
   }
+}
+
+// Group a list of events by their area and render section headers between
+// groups. Cards within each area keep their existing sort order (from
+// applyF's sort cascade — popularity/date/distance depending on context).
+//
+// Areas are rendered in the order defined in AREAS (most populous first);
+// 'Other' goes last. Empty areas are skipped.
+function renderGroupedByArea(events) {
+  if (!events.length) return '';
+  // Bucket events by area id
+  const buckets = new Map();
+  for (const e of events) {
+    const a = cityArea(e.city);
+    if (!buckets.has(a)) buckets.set(a, []);
+    buckets.get(a).push(e);
+  }
+  // Emit in defined order, then 'Other'
+  const order = [...AREAS.map(a => a.id), 'other'];
+  const parts = [];
+  for (const areaId of order) {
+    const items = buckets.get(areaId);
+    if (!items || !items.length) continue;
+    const label = areaLabel(areaId);
+    parts.push(`<div class="area-section">
+      <div class="area-header">
+        <span class="area-name">${label}</span>
+        <span class="area-count">${items.length}</span>
+      </div>
+      <div class="area-grid">${items.map(e => smCard(e)).join('')}</div>
+    </div>`);
+  }
+  return parts.join('');
 }
 function th(e,big){
   const tc=segThumb(e.seg),em=segEmoji(e.seg);
