@@ -2450,6 +2450,63 @@ function populateNearMeOption() {
   }
 }
 function loadMore(){vis+=6;renderAll();}
+// Detect a geographic mention inside an AI search query and translate it
+// to the corresponding city-pill value ('all', 'near', or 'area:<id>').
+// Returns null when the query has no geo signal.
+//
+// Used by showAI() to override the user's currently-selected area when the
+// query itself expresses geographic intent — e.g. "jazz in Brussels" with
+// the Antwerp Area pill selected should clear the pill, since the user's
+// search intent is now Brussels.
+//
+// Detection covers (in priority order):
+//   1. Proximity phrases  → 'near'    (or 'all' if geolocation unavailable)
+//   2. Country / region   → 'all'
+//   3. Anchor area labels → 'area:<id>'
+//   4. Specific city name → 'area:<id>' of the area that contains it
+//
+// City keys are sorted longest-first so multi-word entries like "saint-gilles"
+// match before their substrings ("gilles"). Word-boundary regex avoids false
+// positives like "spa" matching inside "special".
+function extractGeoFromQuery(query) {
+  if (!query) return null;
+  const l = String(query).toLowerCase();
+
+  // 1. Proximity phrases
+  if (/\b(near\s*me|around\s*me|nearby|close\s*by|près\s*de\s*moi|dichtbij)\b/i.test(l)) {
+    return (userGeo && userGeo.available) ? 'near' : 'all';
+  }
+
+  // 2. Region / country (broad spatial intent — show everywhere)
+  if (/\b(belgium|belgique|belgi[eë]|wallonia|wallonie|wallonië|flanders|flandres|vlaanderen)\b/i.test(l)) {
+    return 'all';
+  }
+
+  // 3. Anchor area labels (substring match — labels are multi-word and
+  //    unlikely to appear inside unrelated words)
+  for (const area of AREAS) {
+    if (l.includes(area.label.toLowerCase())) {
+      return 'area:' + area.id;
+    }
+  }
+
+  // 4. Specific city in CITY_MAP. Sort longest-first so multi-word keys
+  //    like "saint-gilles" win over their substrings ("gilles").
+  const cityKeys = Object.keys(CITY_MAP).sort((a, b) => b.length - a.length);
+  for (const key of cityKeys) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('(?:^|[^a-z\\u00C0-\\u017F])' + escaped + '(?:[^a-z\\u00C0-\\u017F]|$)', 'i');
+    if (re.test(l)) {
+      const canonical = CITY_MAP[key];
+      const areaId = cityArea(canonical);
+      // City not in any anchor area → just clear the pill.
+      return areaId === 'other' ? 'all' : 'area:' + areaId;
+    }
+  }
+
+  return null;
+}
+
 // Parse a free-text query into structured filter criteria.
 // Handles: categories (techno/jazz/theatre), cities, time ("this weekend"/"tonight"),
 // keywords as OPTIONAL signals (not required filters).
@@ -2623,16 +2680,13 @@ function applyF(){
     // anchor-city area (Brussels Area covers Brussels + Leuven + Mechelen
     // + Aalst; etc).
     //
-    // EXCEPTION: when AI search is active, bypass the city filter entirely.
-    // The AI has already reasoned about geography — the user's location was
-    // sent when actC==='near', and the LLM may surface results from any city
-    // it considers relevant. Forcing a post-filter on city after the LLM has
-    // already curated results creates contradictions like "AI: I found one
-    // in Brussels" + UI: "No events found" when the pill is set to Antwerp.
-    // The search bar is intent-driven; the pill is browse-driven. Search
-    // wins when both are present.
+    // AI search respects the area filter too. showAI() preemptively clears
+    // the pill (sets actC to 'all') whenever the query itself mentions
+    // geography — so queries with explicit geo intent don't collide with a
+    // stale pill selection. Queries without explicit geo respect whatever
+    // area the user has selected.
     let cm;
-    if (aiQ || actC === 'all' || actC === 'near') {
+    if (actC === 'all' || actC === 'near') {
       cm = true;
     } else if (typeof actC === 'string' && actC.startsWith('area:')) {
       const areaId = actC.slice(5);
@@ -3674,6 +3728,27 @@ async function showAI(q) {
     const allBtn = document.querySelector('.fb[data-c="all"]');
     if (allBtn) allBtn.classList.add('on');
   }
+
+  // If the query itself mentions geography (e.g. "jazz in Brussels", "techno
+  // near me"), the user's search intent overrides whatever area they had
+  // selected in the city pill. Without this, an Antwerp-Area pill would
+  // post-filter Brussels search results to zero. When the query has NO geo
+  // mention, leave actC alone — the pill continues to filter results in
+  // applyF() so "jazz this weekend" with Antwerp Area selected returns
+  // only Antwerp jazz.
+  const geoOverride = extractGeoFromQuery(q);
+  if (geoOverride && geoOverride !== actC) {
+    actC = geoOverride;
+    aiPrefetchCache.clear();   // cached prefetches were keyed on a different area
+    const sel = document.getElementById('csel');
+    if (sel) {
+      const opt = sel.querySelector(`option[value="${actC}"]`);
+      if (opt) sel.value = actC;
+      else sel.value = 'all';  // selected area has no events in the catalog
+    }
+    updateCityPillLabel();
+  }
+
   pushToSearchHistory(q);
   aiHistory = loadSearchHistory();
   closeSearchHistoryDropdown();
@@ -3721,6 +3796,16 @@ async function showAI(q) {
     if (aiShouldUseLocation()) {
       body.lat = Number(userGeo.latitude);
       body.lng = Number(userGeo.longitude);
+    }
+    // Pass the area filter to the backend so the LLM can scope its search.
+    // For 'all' or 'near' we omit the cities list (LLM is free to roam, or
+    // distance-sorts via lat/lng). For 'area:<id>' we send the canonical
+    // city list the area contains so the backend can WHERE-filter the
+    // candidate events before the LLM sees them.
+    if (typeof actC === 'string' && actC.startsWith('area:')) {
+      const areaId = actC.slice(5);
+      const area = AREAS.find(a => a.id === areaId);
+      if (area) body.cities = area.cities;
     }
     const res = await fetch(API_BASE + '/api/search', {
       method:  'POST',
@@ -3800,6 +3885,12 @@ function aiPrefetch(q) {
   if (aiShouldUseLocation()) {
     body.lat = Number(userGeo.latitude);
     body.lng = Number(userGeo.longitude);
+  }
+  // Mirror showAI's area handling so prefetch and the real call agree.
+  if (typeof actC === 'string' && actC.startsWith('area:')) {
+    const areaId = actC.slice(5);
+    const area = AREAS.find(a => a.id === areaId);
+    if (area) body.cities = area.cities;
   }
   fetch(API_BASE + '/api/search', {
     method:  'POST',
