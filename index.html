@@ -1631,6 +1631,7 @@ let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes();
 // explanation, shown in the suggestions banner. aiSearching is true while
 // a request is in flight so we can show a skeleton.
 let aiResultIds = null;     // null = no active search; Set = filter is active
+let aiSuggestedIds = new Set();  // out-of-area alternatives the LLM proposed (Option 3 UX)
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
 let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
@@ -2307,6 +2308,7 @@ function sf(f,btn){
   if (aiQ) {
     aiQ = '';
     aiResultIds = null;
+    aiSuggestedIds = new Set();
     aiReasoning = '';
     aiSearching = false;
     syncAiActiveClass();
@@ -2403,6 +2405,7 @@ function goHome() {
     // we still want to clear any active AI query manually.
     aiQ = '';
     aiResultIds = null;
+    aiSuggestedIds = new Set();
     aiReasoning = '';
     aiSearching = false;
     syncAiActiveClass();
@@ -3664,7 +3667,7 @@ const AR={
 function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q);}
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
 function clearAI(){
-  aiQ=''; aiResultIds=null; aiReasoning=''; aiSearching=false; vis=6;
+  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; vis=6;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
   if (aiInput) aiInput.value='';
@@ -3673,9 +3676,37 @@ function clearAI(){
   applyF();
 }
 
+// When the user clicks the "see N nearby alternatives" CTA in the banner,
+// promote the LLM's suggestions to the main result set. We also clear the
+// area pill (suggestions are by definition outside it) so the grid renders
+// them correctly. The LLM's reasoning stays — it already explained the
+// situation in its own words.
+function showAISuggested() {
+  if (!aiSuggestedIds || aiSuggestedIds.size === 0) return;
+  aiResultIds   = new Set(aiSuggestedIds);  // grid now renders the alternatives
+  aiSuggestedIds = new Set();               // consumed
+  actC = 'all';                             // matches were out-of-area; broaden to match
+  const sel = document.getElementById('csel');
+  if (sel) sel.value = 'all';
+  updateCityPillLabel();
+  applyF();
+  renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
+}
+
+// Per-language label for the "show suggestions" CTA. Kept local to renderAIBanner
+// instead of in T so the change is self-contained — easy to delete if we revert.
+const SUGGESTION_BTN_LABEL = {
+  en: n => `See ${n} nearby ${n === 1 ? 'alternative' : 'alternatives'} →`,
+  fr: n => `Voir ${n} ${n === 1 ? 'alternative' : 'alternatives'} à proximité →`,
+  nl: n => `Toon ${n} alternatie${n === 1 ? 'f' : 'ven'} in de buurt →`,
+  de: n => `${n} Alternative${n === 1 ? '' : 'n'} in der Nähe →`,
+  es: n => `Ver ${n} alternativa${n === 1 ? '' : 's'} cercana${n === 1 ? '' : 's'} →`,
+  it: n => `Vedi ${n} alternativ${n === 1 ? 'a' : 'e'} vicine →`,
+};
+
 // Render the suggestions banner. Two modes:
 //   - searching:true → skeleton placeholder (3 dots animation + "Searching...")
-//   - searching:false → reasoning text + active-search badge + Clear button
+//   - searching:false → reasoning text + Clear button (+ optional "see N alternatives" CTA)
 function renderAIBanner({ searching, query, reasoning, count }) {
   const p = document.getElementById('aip');
   const txt = document.getElementById('ait');
@@ -3699,10 +3730,20 @@ function renderAIBanner({ searching, query, reasoning, count }) {
     ? `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">${t('resultsFor')(safeQuery, count)}</div>`
     : `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">${t('noMatchesFor')(safeQuery)}</div>`;
 
+  // "See N alternatives" CTA — only when in-area is empty AND the LLM proposed
+  // out-of-area suggestions. Clicking it promotes those suggestions to the
+  // main result set and broadens the area filter to 'all'.
+  const suggestionsCount = aiSuggestedIds ? aiSuggestedIds.size : 0;
+  const showSuggestionsCTA = count === 0 && suggestionsCount > 0;
+  const suggestionsBtnLabel = (SUGGESTION_BTN_LABEL[lang] || SUGGESTION_BTN_LABEL.en)(suggestionsCount);
+  const suggestionsBtn = showSuggestionsCTA
+    ? `<button onclick="showAISuggested()" style="background:var(--magenta);border:none;color:#fff;padding:8px 18px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-left:8px;transition:all .2s;box-shadow:0 0 14px rgba(255,46,126,0.35);" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">${suggestionsBtnLabel}</button>`
+    : '';
+
   txt.innerHTML = `
     ${matchesLine}
     <div style="margin-bottom:14px;font-size:15px;color:var(--bone);line-height:1.5;">${safeReasoning}</div>
-    <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(255,153,102,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,153,102,0.08)'" onmouseout="this.style.background='transparent'">${t('clearSearchBtn')}</button>
+    <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(255,153,102,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,153,102,0.08)'" onmouseout="this.style.background='transparent'">${t('clearSearchBtn')}</button>${suggestionsBtn}
   `;
   p.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -3758,13 +3799,18 @@ async function showAI(q) {
   const cached = aiPrefetchCache.get(q);
   if (cached) {
     aiResultIds = new Set(cached.ids);
+    aiSuggestedIds = new Set(Array.isArray(cached.suggestedIds) ? cached.suggestedIds : []);
     aiReasoning = cached.reasoning;
     aiSearching = false;
     syncAiActiveClass();
-    // Merge cached events too — same dedup logic as the live response
-    if (Array.isArray(cached.events) && cached.events.length > 0) {
+    // Merge cached events (matched + suggested) — same dedup logic as the live response
+    const cachedMerged = [
+      ...(Array.isArray(cached.events) ? cached.events : []),
+      ...(Array.isArray(cached.suggestedEvents) ? cached.suggestedEvents : []),
+    ];
+    if (cachedMerged.length > 0) {
       const existingIds = new Set(all.map(e => e.id));
-      const newEvents = cached.events
+      const newEvents = cachedMerged
         .filter(e => e && e.id && !existingIds.has(e.id))
         .map(shapeAIEvent);
       if (newEvents.length > 0) {
@@ -3819,18 +3865,24 @@ async function showAI(q) {
     const data = await res.json();
 
     aiResultIds = new Set(Array.isArray(data.matchingIds) ? data.matchingIds : []);
+    aiSuggestedIds = new Set(Array.isArray(data.suggestedIds) ? data.suggestedIds : []);
     aiReasoning = data.reasoning || '';
     aiSearching = false;
     syncAiActiveClass();
 
-    // Merge full event data from search response into 'all'. The frontend
-    // only loaded the top-500 popular events; AI search may pick events
-    // outside that set. Adding them here ensures applyF() can find them.
-    // Deduplicate by id — if event is already in 'all', keep the existing
-    // copy (which may have client-side enrichment like distance computed).
-    if (Array.isArray(data.events) && data.events.length > 0) {
+    // Merge full event data (matched + suggested) from search response into
+    // 'all'. The frontend only loaded the top-500 popular events; AI search
+    // may pick events outside that set. Adding them ensures applyF() and the
+    // "Show suggestions" CTA can render them. Deduplicate by id — if an event
+    // is already in 'all', keep the existing copy (it may have client-side
+    // enrichment like distance computed).
+    const mergedEvents = [
+      ...(Array.isArray(data.events) ? data.events : []),
+      ...(Array.isArray(data.suggestedEvents) ? data.suggestedEvents : []),
+    ];
+    if (mergedEvents.length > 0) {
       const existingIds = new Set(all.map(e => e.id));
-      const newEvents = data.events
+      const newEvents = mergedEvents
         .filter(e => e && e.id && !existingIds.has(e.id))
         .map(shapeAIEvent);
       if (newEvents.length > 0) {
@@ -3841,8 +3893,10 @@ async function showAI(q) {
     // Cache for prefetch hits on later identical queries.
     aiPrefetchCache.set(q, {
       ids: Array.from(aiResultIds),
+      suggestedIds: Array.from(aiSuggestedIds),
       reasoning: aiReasoning,
       events: data.events || [],
+      suggestedEvents: data.suggestedEvents || [],
     });
     if (aiPrefetchCache.size > AI_PREFETCH_CACHE_MAX) {
       // Drop the oldest entry (Map preserves insertion order)
@@ -3857,9 +3911,11 @@ async function showAI(q) {
     aiSearching = false;
     // Fallback to local keyword parser so the user still sees SOMETHING.
     // matchesAIQuery is the old local matcher we kept around for exactly
-    // this case.
+    // this case. No suggestions in fallback mode — we can't compute them
+    // locally without re-implementing the LLM logic.
     const criteria = parseAIQuery(q);
     aiResultIds = new Set(all.filter(e => matchesAIQuery(e, criteria)).map(e => e.id));
+    aiSuggestedIds = new Set();
     aiReasoning = 'Showing keyword-matched events (AI search is temporarily unavailable).';
     syncAiActiveClass();
     applyF();
@@ -3902,8 +3958,10 @@ function aiPrefetch(q) {
       if (!data || !Array.isArray(data.matchingIds)) return;
       aiPrefetchCache.set(q, {
         ids: data.matchingIds,
+        suggestedIds: Array.isArray(data.suggestedIds) ? data.suggestedIds : [],
         reasoning: data.reasoning || '',
         events: data.events || [],
+        suggestedEvents: data.suggestedEvents || [],
       });
       if (aiPrefetchCache.size > AI_PREFETCH_CACHE_MAX) {
         const firstKey = aiPrefetchCache.keys().next().value;
