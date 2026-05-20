@@ -3123,22 +3123,33 @@ function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  // Open Facebook's sharer in a new tab. Works on iOS Safari, Android
-  // Chrome, and desktop browsers. Facebook scrapes the URL via the bot-UA
-  // rewrite to /api/og and shows the OG card (title, description, image)
-  // in the compose preview.
+
+  // FB sharer URL — the host depends on the platform:
   //
-  // We don't use navigator.share() here because:
-  //   - On desktop, the OS share sheet (Windows/macOS) has no real FB
-  //     integration — clicking the FB icon opens fb.com without composing.
-  //   - On iOS, the FB app doesn't scrape OG when receiving URLs via the
-  //     iOS Share Sheet; it posts a bare URL with no preview card.
-  // Direct sharer.php avoids both problems.
+  // - On iOS, www.facebook.com is configured as a Universal Link target
+  //   for the FB iOS app. When Safari opens a www.facebook.com URL, iOS
+  //   hands it to the FB app, which receives the sharer URL but doesn't
+  //   parse it — it just shows the home feed. NOT the compose dialog
+  //   the user wanted.
+  //   m.facebook.com is NOT a Universal Link target, so Safari opens it
+  //   in a new tab and serves the actual mobile compose page. The OG
+  //   card is scraped from /api/og via the bot-UA rewrite and shown in
+  //   the preview.
   //
-  // No &quote= parameter: Facebook silently ignored it since 2017. The
-  // OG meta supplies title/description/image instead.
+  // - On desktop and Android, www.facebook.com is the right host; m.*
+  //   redirects you anyway, and on desktop the desktop layout is
+  //   preferred.
+  //
+  // Detection: iOS Safari has /iPhone|iPod/ in UA, or is iPad on iOS 13+
+  // which reports as Mac with touch points. We pick m. only when both
+  // signals agree (iOS device).
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPod/.test(ua)
+             || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
+  const host = isIOS ? 'm.facebook.com' : 'www.facebook.com';
+
   window.open(
-    'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(u),
+    'https://' + host + '/sharer/sharer.php?u=' + encodeURIComponent(u),
     '_blank'
   );
 }
@@ -3675,6 +3686,18 @@ async function showAI(q) {
 
   aiQ = q;
   vis = 6;
+  // Reset the category filter to 'all'. AI search and category filters
+  // are mutually exclusive ways of narrowing the catalog — sf() already
+  // clears AI when a category is clicked; this mirrors that in the other
+  // direction so an AI search starts from a clean filter state. Users
+  // typing "techno tonight" don't expect to be silently re-filtered by
+  // whatever category they had selected before.
+  if (actF !== 'all') {
+    actF = 'all';
+    document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+    const allBtn = document.querySelector('.fb[data-c="all"]');
+    if (allBtn) allBtn.classList.add('on');
+  }
   pushToSearchHistory(q);
   aiHistory = loadSearchHistory();
   closeSearchHistoryDropdown();
