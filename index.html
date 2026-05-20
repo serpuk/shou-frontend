@@ -3119,42 +3119,57 @@ function stw(id){
   const tweet = intro + ' #shou';
   window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweet)+'&url='+encodeURIComponent(u),'_blank');
 }
+// True iff the device is a phone or tablet (touch-only, no mouse).
+// We require BOTH signals to agree:
+//   - pointer:coarse media query → primary input is touch, not mouse
+//   - mobile/Android/iPhone UA string → device class is phone/tablet
+//
+// Either signal alone is unreliable:
+//   - Windows laptops with touch screens have pointer:coarse but a mouse
+//   - Desktop browsers in dev-tools "responsive mode" can spoof mobile UA
+// Requiring both keeps the OS share sheet to actual mobiles where it works
+// well, and routes desktop (including touch laptops) to the Facebook
+// sharer.php URL which opens fb.com/share directly.
+function isMobileDevice() {
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const mobileUA = /Android|iPhone|iPad|iPod|Mobile|Phone/i.test(navigator.userAgent || '');
+  return coarse && mobileUA;
+}
+
 function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
   const intro = buildShareIntro(e);
 
-  // On mobile, navigator.share opens the native share sheet — the user
-  // picks Facebook, Messenger, WhatsApp, X, etc. from their installed apps.
-  // This is the right UX on mobile because:
-  //   - window.open('_blank') is unreliable in mobile browsers and in-app
-  //     WebViews (Instagram, Twitter, etc) which often block popups
-  //   - Facebook's sharer.php is desktop-oriented; on mobile it lands in
-  //     a stripped-down view that confuses users
-  //   - Facebook ignored &quote= since 2017, so the desktop fallback that
-  //     "prefills" text was never actually doing anything
+  // Mobile: OS share sheet — user picks Facebook, Messenger, WhatsApp, X,
+  // etc. from their installed apps. window.open('_blank') is unreliable
+  // in mobile browsers and in-app WebViews (Instagram, Twitter), which
+  // often block popups.
   //
-  // The native share sheet uses the OG meta from the URL (via the bot-UA
-  // rewrite to /api/og) for the preview card. The user sees a rich card
-  // when they pick Facebook/Messenger, or text+URL when they pick SMS.
+  // Desktop: go directly to Facebook's sharer URL. The OS share sheets
+  // on Windows/macOS don't have a real Facebook integration — they open
+  // a generic web view that doesn't actually compose a post. Users
+  // expect a click on "f" to open facebook.com's compose page.
   //
-  // canShare() lets us check whether the payload is acceptable to the
-  // browser before invoking — some browsers reject text-only or restrict
-  // certain fields.
-  const payload = { title: e.name || 'shou', text: intro, url: u };
-  if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
-    navigator.share(payload).catch(err => {
-      // AbortError means user dismissed the sheet — not a failure, no action.
-      // Anything else: fall through to desktop sharer as a last resort.
-      if (err && err.name !== 'AbortError') {
-        window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
-      }
-    });
-    return;
+  // We no longer pass &quote=: Facebook silently ignored it since 2017
+  // (anti-spam measure). The OG preview card scraped from the URL via
+  // the bot-UA rewrite to /api/og supplies title/desc/image instead.
+  if (isMobileDevice() && navigator.share) {
+    const payload = { title: e.name || 'shou', text: intro, url: u };
+    if (!navigator.canShare || navigator.canShare(payload)) {
+      navigator.share(payload).catch(err => {
+        // AbortError = user dismissed the sheet, not a failure.
+        // Anything else: fall through to the sharer URL.
+        if (err && err.name !== 'AbortError') {
+          window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
+        }
+      });
+      return;
+    }
   }
-  // Desktop fallback: open the sharer URL in a new tab. Note we no longer
-  // pass &quote= since Facebook silently ignores it.
+  // Desktop (or mobile without Web Share API): open Facebook's sharer
+  // in a new tab. Compose page renders with the OG card from /api/og.
   window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
 }
 function cp2(id){
