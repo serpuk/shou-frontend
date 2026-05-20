@@ -1409,7 +1409,7 @@ footer p {
   <div class="stats">
     <div class="stat"><div class="sn" id="st">—</div><div class="sl" data-k="s1">Events Live</div></div>
     <div class="stat"><div class="sn" id="sc">18</div><div class="sl" data-k="s2">Cities</div></div>
-    <div class="stat"><div class="sn">4</div><div class="sl" data-k="s3">Sources</div></div>
+    <div class="stat"><div class="sn" id="ss">4</div><div class="sl" data-k="s3">Sources</div></div>
     <div class="stat"><div class="sn" id="sv">—</div><div class="sl" data-k="s4">Venues</div></div>
   </div>
 
@@ -1646,11 +1646,25 @@ function pushToSearchHistory(query) {
 // from /api/events. The backend returns the same fields but skips client-side
 // normalizations (canonicalCity, desc fallback). Without this, AI-merged
 // events render with 'null' descriptions or wrong city labels.
+// Shape an event coming from /api/search the same way fetchEvts shapes events
+// from /api/events. The backend returns the same fields, but some come back
+// as null when the source data lacks them (time, end_date, img, prices).
+// Without normalization, `${e.time}` in templates renders the literal
+// string "null". This mirrors the same defaults fetchEvts applies for
+// catalog events so AI-merged events look identical in the UI.
 function shapeAIEvent(e) {
   return {
     ...e,
     city:    canonicalCity(e.city),
     rawCity: e.city || 'Belgium',
+    venue:   e.venue || 'TBA',
+    genre:   e.genre || '',
+    time:    e.time || 'TBA',
+    date:    e.date || '',
+    img:     e.img || null,
+    url:     e.url || '#',
+    pop:     e.pop || 50,
+    likes:   e.likes || 0,
     // Backend returns desc as null when source has no description. Frontend
     // renders that literal "null" in cards. Use the same fallback fetchEvts
     // uses for catalog events.
@@ -1943,8 +1957,21 @@ async function fetchEvts(){
     // every other path through here needs this explicit refresh.
     updateCityPillLabel();
     document.getElementById('st').textContent=d.total||all.length;
-    document.getElementById('sv').textContent=[...new Set(all.map(e=>e.venue))].length;
-    document.getElementById('sc').textContent=cities.length;
+    // Stats cards: prefer catalog-wide totals from the backend when available.
+    // Falls back to deriving from the events page when the backend doesn't
+    // ship totals (e.g. migration_stats.sql not yet deployed). Derived
+    // counts heavily undercount because the page is ~500 of ~5000 events.
+    const totals = d.totals || {};
+    document.getElementById('sv').textContent =
+      totals.venues  ?? [...new Set(all.map(e=>e.venue))].length;
+    document.getElementById('sc').textContent =
+      totals.cities  ?? cities.length;
+    // Sources stat: if backend ships the real count, use it. Otherwise leave
+    // whatever was rendered server-side / initial-paint untouched (the
+    // hardcoded "4" is acceptable as a fallback since source count is stable).
+    if (totals.sources != null) {
+      document.getElementById('ss').textContent = totals.sources;
+    }
     applyF();
     // If the page was loaded with ?event=<id>, auto-open that event's modal.
     // Has to run AFTER the catalog populates, since om() looks up the event
@@ -2393,7 +2420,17 @@ function applyF(){
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
     // City filter: 'all' and 'near' both show all cities, but 'near' sorts
     // by distance. An explicit city name filters to that city.
-    const cm = actC==='all' || actC==='near' || e.city===actC;
+    //
+    // EXCEPTION: when AI search is active, bypass the city filter entirely.
+    // The AI has already reasoned about geography — the user's location was
+    // sent when actC==='near', and the LLM may surface results from any city
+    // it considers relevant. Forcing a post-filter on city after the LLM has
+    // already curated results creates contradictions like "AI: I found one
+    // in Brussels" + UI: "No events found" when the pill is set to Antwerp.
+    // The search bar is intent-driven; the pill is browse-driven. Search
+    // wins when both are present.
+    const cm = aiQ
+            || actC==='all' || actC==='near' || e.city===actC;
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
@@ -2614,7 +2651,7 @@ function bigCard(e){
       <p class="feat-desc">${e.desc}</p>
       <div class="feat-meta">
         <span class="feat-meta-item"><span class="mi">📍</span>${e.venue}, ${e.city}</span>
-        <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${e.time!=='TBA'?' · '+e.time:''}</span>
+        <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${e.time && e.time !== 'TBA' && e.time !== 'null' ? ' · '+e.time : ''}</span>
         ${hasRealPrice?`<span class="feat-meta-item"><span class="mi">🎫</span>${priceText}</span>`:''}
       </div>
       <div class="feat-actions">
@@ -2639,7 +2676,7 @@ function smCard(e){
   const priceText = pStr(e);
   const hasRealPrice = priceText !== t('see');
   // Time formatting: append "· HH:MM" when we have a real time, skip 'TBA'.
-  const timeStr = (e.time && e.time !== 'TBA') ? ' · ' + e.time : '';
+  const timeStr = (e.time && e.time !== 'TBA' && e.time !== 'null') ? ' · ' + e.time : '';
   return`<div class="card" onclick="om('${e.id}')">
 <div style="position:relative">${th(e,false)}<div class="srcpill s-tm" style="bottom:10px;left:10px;">TM</div></div>
 <div class="cb">
@@ -2807,7 +2844,7 @@ function buildShareIntro(e) {
   if (e.city && e.city !== e.venue) locParts.push(e.city);
   if (locParts.length) parts.push('📍 ' + locParts.join(', '));
   if (e.date) {
-    const timeStr = (e.time && e.time !== 'TBA') ? ' · ' + e.time : '';
+    const timeStr = (e.time && e.time !== 'TBA' && e.time !== 'null') ? ' · ' + e.time : '';
     parts.push('📅 ' + fmtD(e.date) + timeStr);
   }
   return parts.join(' · ');
@@ -2830,15 +2867,39 @@ function sfb(id){
   const e=all.find(x=>x.id===id);if(!e)return;
   const u=eventCanonicalUrl(id);
   track(id,'share');
-  // &quote= pre-fills the user's compose box with our intro text.
-  // The OG preview card (scraped from the URL via the bot-UA rewrite to
-  // /api/og) supplies title/desc/image. The quote text is what users
-  // optionally write themselves above the preview card.
   const intro = buildShareIntro(e);
-  window.open(
-    'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u)+'&quote='+encodeURIComponent(intro),
-    '_blank'
-  );
+
+  // On mobile, navigator.share opens the native share sheet — the user
+  // picks Facebook, Messenger, WhatsApp, X, etc. from their installed apps.
+  // This is the right UX on mobile because:
+  //   - window.open('_blank') is unreliable in mobile browsers and in-app
+  //     WebViews (Instagram, Twitter, etc) which often block popups
+  //   - Facebook's sharer.php is desktop-oriented; on mobile it lands in
+  //     a stripped-down view that confuses users
+  //   - Facebook ignored &quote= since 2017, so the desktop fallback that
+  //     "prefills" text was never actually doing anything
+  //
+  // The native share sheet uses the OG meta from the URL (via the bot-UA
+  // rewrite to /api/og) for the preview card. The user sees a rich card
+  // when they pick Facebook/Messenger, or text+URL when they pick SMS.
+  //
+  // canShare() lets us check whether the payload is acceptable to the
+  // browser before invoking — some browsers reject text-only or restrict
+  // certain fields.
+  const payload = { title: e.name || 'shou', text: intro, url: u };
+  if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
+    navigator.share(payload).catch(err => {
+      // AbortError means user dismissed the sheet — not a failure, no action.
+      // Anything else: fall through to desktop sharer as a last resort.
+      if (err && err.name !== 'AbortError') {
+        window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
+      }
+    });
+    return;
+  }
+  // Desktop fallback: open the sharer URL in a new tab. Note we no longer
+  // pass &quote= since Facebook silently ignores it.
+  window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(u),'_blank');
 }
 function cp2(id){
   const e=all.find(x=>x.id===id);if(!e)return;
@@ -2939,7 +3000,7 @@ function om(id, _opts){
 <div class="mdet">
 <div><div class="dk">Venue</div><div class="dv">${e.venue}${directionsUrl(e) ? `<a class="dir-link" href="${directionsUrl(e)}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div>
 <div><div class="dk">City</div><div class="dv">${e.city}</div></div>
-<div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${e.time!=='TBA'?' · '+e.time:''}</div></div>
+<div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${e.time && e.time !== 'TBA' && e.time !== 'null' ? ' · '+e.time : ''}</div></div>
 <div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
 </div>
 ${mSourcesRow(e)}
