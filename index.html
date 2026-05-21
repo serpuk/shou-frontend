@@ -1348,7 +1348,342 @@ footer p {
   .filters { padding: 12px; gap: 6px; }
   .grid { grid-template-columns: 1fr; }
 }
+
+/* ── PROFILE SHEET ────────────────────────────────────────────────
+   Replaces the old dropdown. Modal-style sheet centered on screen,
+   shows the user's avatar/name/status with an edit mode for changes.
+   Re-uses .mov backdrop pattern from event modal. */
+
+.profile-mov {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.profile-mov.on { display: flex; }
+
+.profile-sheet {
+  background: rgba(24, 16, 31, 0.98);
+  border: 1px solid rgba(255,153,102,0.3);
+  border-radius: var(--radius);
+  padding: 30px 28px 24px;
+  max-width: 460px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(255,46,126,0.06);
+  position: relative;
+}
+.profile-sheet .mcl {
+  position: absolute; top: 14px; right: 14px;
+  background: transparent; border: none;
+  color: var(--bone3); font-size: 20px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.profile-sheet .mcl:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
+
+/* Profile view (default state) */
+.pv-head { display: flex; gap: 18px; align-items: center; margin-bottom: 20px; }
+.pv-pic {
+  width: 84px; height: 84px; border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 700; letter-spacing: 1px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.1);
+}
+.pv-pic img {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+}
+.pv-meta { flex: 1; min-width: 0; }
+.pv-name {
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 36;
+  font-size: 22px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--bone); margin-bottom: 4px;
+  word-break: break-word;
+}
+.pv-email {
+  font-size: 12px; color: var(--bone3);
+  word-break: break-all;
+  margin-bottom: 8px;
+}
+.pv-status {
+  font-size: 13.5px; line-height: 1.5;
+  color: var(--bone2);
+  font-style: italic;
+  padding: 8px 12px;
+  background: rgba(255,153,102,0.06);
+  border-left: 2px solid var(--cyan);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+.pv-status.empty {
+  color: var(--bone3); font-style: normal;
+  background: transparent; border-left-color: rgba(255,255,255,0.1);
+}
+
+.pv-privacy {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; margin: 14px 0;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  font-size: 12.5px; color: var(--bone2);
+}
+.pv-privacy .pv-priv-icon { font-size: 16px; }
+.pv-privacy.public  { border-color: rgba(255,153,102,0.3); color: var(--cyan); }
+.pv-privacy.private { color: var(--bone3); }
+
+.pv-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.pv-btn {
+  padding: 11px 16px; border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+  cursor: pointer; transition: all .15s;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--bone);
+  text-align: center;
+}
+.pv-btn:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.25); }
+.pv-btn.primary {
+  background: var(--magenta); border-color: var(--magenta); color: #fff;
+}
+.pv-btn.primary:hover {
+  background: var(--magenta2); box-shadow: 0 0 18px rgba(255,46,126,0.4);
+}
+.pv-btn.danger {
+  color: var(--magenta2); border-color: rgba(255,46,126,0.3);
+}
+.pv-btn.danger:hover { background: rgba(255,46,126,0.06); }
+
+/* Profile edit (form state) */
+.pe-form { display: none; }
+.pe-form.on { display: block; }
+.pv-view { display: block; }
+.pv-view.hidden { display: none; }
+
+.pe-pic-row { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+.pe-pic-preview {
+  width: 84px; height: 84px; border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 700;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.1);
+  position: relative;
+}
+.pe-pic-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pe-pic-preview.dragover { border-color: var(--cyan); box-shadow: 0 0 24px rgba(255,153,102,0.4); }
+.pe-pic-controls { flex: 1; }
+.pe-pic-btn {
+  display: inline-block; padding: 8px 14px;
+  background: rgba(255,153,102,0.1);
+  border: 1px solid rgba(255,153,102,0.35);
+  border-radius: 20px;
+  color: var(--cyan); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.5px; cursor: pointer;
+  transition: all .15s;
+}
+.pe-pic-btn:hover { background: rgba(255,153,102,0.18); }
+.pe-pic-hint { font-size: 11px; color: var(--bone3); margin-top: 8px; line-height: 1.4; }
+.pe-pic-input { display: none; }   /* hidden file input */
+
+.pe-field { margin-bottom: 16px; }
+.pe-label {
+  display: block; font-size: 10px; color: var(--bone3);
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
+  margin-bottom: 6px;
+}
+.pe-input,
+.pe-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--bone);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  transition: all .15s;
+}
+.pe-input:focus,
+.pe-textarea:focus {
+  outline: none;
+  border-color: var(--cyan);
+  background: rgba(255,153,102,0.04);
+}
+.pe-textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+.pe-charcount { font-size: 11px; color: var(--bone3); text-align: right; margin-top: 4px; }
+.pe-charcount.warn { color: var(--magenta); }
+
+/* Privacy toggle — pill style */
+.pe-priv-toggle {
+  display: flex; gap: 8px; margin-bottom: 18px;
+}
+.pe-priv-opt {
+  flex: 1;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+}
+.pe-priv-opt:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.25); }
+.pe-priv-opt.on {
+  border-color: var(--cyan);
+  background: rgba(255,153,102,0.08);
+}
+.pe-priv-opt-head {
+  font-size: 13px; font-weight: 700; color: var(--bone);
+  margin-bottom: 2px;
+}
+.pe-priv-opt.on .pe-priv-opt-head { color: var(--cyan); }
+.pe-priv-opt-sub {
+  font-size: 11px; color: var(--bone3); line-height: 1.4;
+}
+
+.pe-actions { display: flex; gap: 10px; margin-top: 10px; }
+.pe-actions .pv-btn { flex: 1; }
+
+.pe-err {
+  font-size: 12px; color: var(--magenta2);
+  margin-top: 12px; line-height: 1.4;
+  display: none;
+}
+.pe-err.on { display: block; }
+
+/* Onboarding nudge — a subtle banner inside the profile sheet on first visit. */
+.pv-nudge {
+  background: linear-gradient(135deg, rgba(255,153,102,0.08), rgba(255,46,126,0.06));
+  border: 1px solid rgba(255,153,102,0.3);
+  border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 16px;
+  font-size: 12.5px; color: var(--bone);
+  line-height: 1.5;
+}
+.pv-nudge strong { color: var(--cyan); }
+
+/* ── NAV AVATAR (image variant) ──────────────────────────────
+   When the user has uploaded an avatar, the nav button shows an
+   <img> instead of initials. Same circular shape, no letter. */
+.avatar-btn.has-img {
+  background: var(--ink); /* fallback for transparent PNGs */
+  padding: 0; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.avatar-btn img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+/* ── LIKED-BY MODAL ──────────────────────────────────────────
+   Triggered by clicking the like-count next to the heart on any
+   event card. Lists public profiles who liked the event. */
+.liked-by-mov {
+  position: fixed; inset: 0; z-index: 280;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.liked-by-mov.on { display: flex; }
+.liked-by-sheet {
+  background: rgba(24, 16, 31, 0.98);
+  border: 1px solid rgba(255,153,102,0.3);
+  border-radius: var(--radius);
+  padding: 0;
+  max-width: 440px; width: 100%;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  position: relative;
+}
+.lb-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.lb-title {
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 36;
+  font-size: 18px; font-weight: 500; color: var(--bone);
+}
+.lb-close {
+  background: transparent; border: none;
+  color: var(--bone3); font-size: 20px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.lb-close:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
+
+.lb-body { padding: 8px 14px 14px; overflow-y: auto; flex: 1; }
+
+.lb-row {
+  display: flex; gap: 12px; align-items: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  transition: background .15s;
+}
+.lb-row:hover { background: rgba(255,255,255,0.03); }
+
+.lb-pic {
+  width: 44px; height: 44px; border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.lb-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lb-text { flex: 1; min-width: 0; }
+.lb-name { font-size: 14px; font-weight: 600; color: var(--bone); margin-bottom: 2px; }
+.lb-status {
+  font-size: 12.5px; color: var(--bone3);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.lb-status.empty { font-style: italic; }
+
+.lb-loading,
+.lb-empty {
+  text-align: center; padding: 40px 20px;
+  color: var(--bone3); font-size: 13px;
+}
+.lb-loading .spin {
+  width: 28px; height: 28px; margin: 0 auto 12px;
+  border: 2px solid rgba(255,153,102,0.15);
+  border-top-color: var(--cyan); border-radius: 50%;
+  animation: sp 0.9s linear infinite;
+}
+
+/* Click target for the like-count when an event has public likers.
+   When count is clickable (count > 0), make it look subtly interactive. */
+.like-count.clickable,
+.ln.clickable {
+  cursor: pointer;
+  border-bottom: 1px dotted transparent;
+  transition: border-color .15s, color .15s;
+}
+.like-count.clickable:hover,
+.ln.clickable:hover {
+  border-bottom-color: var(--bone3);
+  color: var(--bone);
+}
 </style>
+
 
 <!-- Supabase JS client — used for auth flows and user-scoped writes (likes via
      RLS, ensure_profile RPC). Loaded from jsDelivr, version pinned to avoid
@@ -1523,6 +1858,104 @@ footer p {
   </div>
 </div>
 
+<!-- Profile sheet modal: opened by clicking the avatar when signed in.
+     Two states: view (default) and edit. Toggled via .pe-form/.pv-view classes.
+     All editable fields are inside .pe-form so we can flip states without
+     re-rendering the whole sheet. -->
+<div class="profile-mov" id="profileMov" onclick="closeProfileSheetIfBackdrop(event)">
+  <div class="profile-sheet">
+    <button class="mcl" onclick="closeProfileSheet()" aria-label="Close">✕</button>
+
+    <!-- VIEW state -->
+    <div class="pv-view" id="pvView">
+      <!-- Onboarding nudge — shown only when onboarded_at is null. Set
+           textContent dynamically in renderProfileView to support i18n
+           without polluting the T dictionary. -->
+      <div class="pv-nudge" id="pvNudge" style="display:none;"></div>
+
+      <div class="pv-head">
+        <div class="pv-pic" id="pvPic">--</div>
+        <div class="pv-meta">
+          <div class="pv-name" id="pvName">—</div>
+          <div class="pv-email" id="pvEmail">—</div>
+        </div>
+      </div>
+      <div class="pv-status empty" id="pvStatus">No status set</div>
+      <div class="pv-privacy private" id="pvPrivacy">
+        <span class="pv-priv-icon">🔒</span>
+        <span id="pvPrivacyText">Private — only you can see your profile and likes</span>
+      </div>
+      <div class="pv-actions">
+        <button class="pv-btn primary" onclick="openProfileEdit()">Edit profile</button>
+        <button class="pv-btn danger" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+
+    <!-- EDIT state -->
+    <div class="pe-form" id="peForm">
+      <div class="pe-pic-row">
+        <div class="pe-pic-preview" id="pePicPreview"
+             ondrop="handleAvatarDrop(event)"
+             ondragover="handleAvatarDragOver(event)"
+             ondragleave="handleAvatarDragLeave(event)">--</div>
+        <div class="pe-pic-controls">
+          <label class="pe-pic-btn" for="pePicInput">Choose photo</label>
+          <input type="file" id="pePicInput" class="pe-pic-input"
+                 accept="image/jpeg,image/png,image/webp"
+                 onchange="handleAvatarFileSelected(event)">
+          <div class="pe-pic-hint">Drag-and-drop or click. Square crop, ≤2 MB. JPEG/PNG/WebP.</div>
+        </div>
+      </div>
+
+      <div class="pe-field">
+        <label class="pe-label" for="peName">Display name</label>
+        <input type="text" class="pe-input" id="peName" maxlength="50" placeholder="How you'd like to appear">
+      </div>
+
+      <div class="pe-field">
+        <label class="pe-label" for="peStatus">Status</label>
+        <textarea class="pe-textarea" id="peStatus" maxlength="100" placeholder="What you're up to (optional)" oninput="updateStatusCharCount()"></textarea>
+        <div class="pe-charcount" id="peCharCount">0 / 100</div>
+      </div>
+
+      <div class="pe-field">
+        <div class="pe-label">Privacy</div>
+        <div class="pe-priv-toggle">
+          <button type="button" class="pe-priv-opt on" id="pePrivOff" onclick="setPrivacyChoice(false)">
+            <div class="pe-priv-opt-head">🔒 Private</div>
+            <div class="pe-priv-opt-sub">Only you see your profile and likes.</div>
+          </button>
+          <button type="button" class="pe-priv-opt" id="pePrivOn" onclick="setPrivacyChoice(true)">
+            <div class="pe-priv-opt-head">👋 Public</div>
+            <div class="pe-priv-opt-sub">Other users see your profile when you like an event.</div>
+          </button>
+        </div>
+      </div>
+
+      <p class="pe-err" id="peErr"></p>
+
+      <div class="pe-actions">
+        <button class="pv-btn" onclick="cancelProfileEdit()">Cancel</button>
+        <button class="pv-btn primary" id="peSaveBtn" onclick="saveProfileEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Liked-by modal: shows public profiles that liked an event. Opened
+     by clicking the like-count on any event card (small or featured). -->
+<div class="liked-by-mov" id="likedByMov" onclick="closeLikedByIfBackdrop(event)">
+  <div class="liked-by-sheet">
+    <div class="lb-head">
+      <span class="lb-title" id="lbTitle">Liked by</span>
+      <button class="lb-close" onclick="closeLikedBy()" aria-label="Close">✕</button>
+    </div>
+    <div class="lb-body" id="lbBody">
+      <div class="lb-loading"><div class="spin"></div>Loading…</div>
+    </div>
+  </div>
+</div>
+
 <!-- GDPR / storage consent banner. Shown once on first visit; dismissing -->
 <!-- it sets a flag in localStorage that gates other localStorage writes.   -->
 <div class="gdpr-banner" id="gdpr">
@@ -1577,6 +2010,18 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
 // Holds the current Supabase session, or null if signed out.
 // Mutated by handleAuthStateChange and the bootstrap flow.
 let currentSession = null;
+
+// Holds the current user's profile row (display_name, avatar_url, status,
+// is_public, onboarded_at). Populated after sign-in by fetchProfile().
+// Persists across renderAuthSurface calls so the nav avatar paints
+// correctly without re-fetching.
+let currentProfile = null;
+
+// Local draft for the avatar being uploaded — captured during the file-pick
+// or drag-drop flow, processed to a square 300px JPEG blob, then uploaded on
+// Save. Null between edits.
+let pendingAvatarBlob = null;
+let pendingAvatarDataUrl = null;   // for preview rendering before save
 
 const T={
   en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,showing:'Showing'},
@@ -3000,7 +3445,7 @@ function bigCard(e){
       <div class="feat-actions">
         <div class="socs">
           <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
-          <span class="ln">${e.likes+(isL?1:0)}</span>
+          <span class="ln${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
           <button class="sb" onclick="event.stopPropagation();stw('${e.id}')">𝕏</button>
           <button class="sb" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
@@ -3034,7 +3479,7 @@ ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:
 <div class="cf2">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">♥</span>
-  <span class="like-count">${e.likes+(isL?1:0)}</span>
+  <span class="like-count${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
 </button>
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;
@@ -3327,7 +3772,7 @@ ${mSourcesRow(e)}
 <div class="mact-primary">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">♥</span>
-  <span class="like-count">${e.likes+(isL?1:0)}</span>
+  <span class="like-count${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
 </button>
 ${mTicketBtn(e)}
 </div></div>`;
@@ -4351,6 +4796,10 @@ async function handleAuthStateChange(event, session) {
     // Important: do this AFTER ensureProfileAndMerge so the freshly-migrated
     // localStorage likes are included.
     await refreshLikesFromServer();
+    // Fetch profile (display_name, avatar_url, status, is_public, onboarded_at)
+    // BEFORE renderAuthSurface so the nav circle paints with the right avatar
+    // instead of flashing initials → image.
+    await fetchProfile();
     renderAuthSurface();
     // Close any open modals; we just signed them in.
     closeSignInModal();
@@ -4364,12 +4813,14 @@ async function handleAuthStateChange(event, session) {
   } else if (event === 'SIGNED_OUT') {
     // Keep localStorage as-is — user's likes don't visually disappear on sign-out.
     // They'll fall back to anonymous-mode persistence.
+    currentProfile = null;
     renderAuthSurface();
     renderAll();
   } else if (event === 'INITIAL_SESSION') {
     // Fired on every page load. If a session exists, this is a returning user.
     // Sync likes from server so device A and device B stay consistent.
     if (session) {
+      await fetchProfile();
       renderAuthSurface();
       await refreshLikesFromServer();
     }
@@ -4463,31 +4914,29 @@ function renderAuthSurface() {
     return;
   }
 
-  // Derive initials from email (display_name will come later when we have
-  // a profile-edit UI). For "alice@example.com" → "AL".
+  // Decide avatar visual: image if uploaded, initials fallback otherwise.
+  // currentProfile may be null while it's loading (renderAuthSurface fires
+  // immediately on SIGNED_IN, profile fetch is async). Initials are a safe
+  // first-paint; the avatar image swaps in once fetchProfile resolves.
   const email = currentSession.user.email || '';
-  const initials = email.slice(0, 2).toUpperCase();
+  const initials = (currentProfile?.display_name?.trim()?.[0] || email.charAt(0) || 'S').toUpperCase();
+  const avatarUrl = currentProfile?.avatar_url || null;
+  const inner = avatarUrl
+    ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.parentElement.classList.remove('has-img');this.outerHTML='${initials}';">`
+    : initials;
+  const cls = avatarUrl ? 'avatar-btn has-img' : 'avatar-btn';
 
   box.innerHTML = `
-    <button class="avatar-btn" onclick="toggleAvatarMenu(event)" aria-label="Account menu">${initials}</button>
-    <div class="avatar-menu" id="avatarMenu">
-      <div class="am-email">${escapeHtml(email)}</div>
-      <button class="am-item" onclick="signOut()">${t('signOut')}</button>
-    </div>
+    <button class="${cls}" onclick="openProfileSheet()" aria-label="Profile">${inner}</button>
   `;
 }
 
-function toggleAvatarMenu(ev) {
-  ev.stopPropagation();
-  const menu = document.getElementById('avatarMenu');
-  if (!menu) return;
-  closeLangMenu();
-  menu.classList.toggle('on');
-}
-
-function closeAvatarMenu() {
-  document.getElementById('avatarMenu')?.classList.remove('on');
-}
+// Legacy stubs for the old dropdown menu — the existing document-level
+// "click outside closes dropdown" handler still calls closeAvatarMenu(),
+// and toggleAvatarMenu is referenced from a few places. Both are now
+// no-ops because the dropdown was replaced by the full profile sheet.
+function toggleAvatarMenu(ev) { ev?.stopPropagation?.(); openProfileSheet(); }
+function closeAvatarMenu() { /* legacy no-op */ }
 
 // HTML-escape user-supplied strings (emails) before injecting into innerHTML.
 function escapeHtml(s) {
@@ -4507,6 +4956,480 @@ document.addEventListener('keydown', e => {
     closeSignInModal();
   }
 });
+
+// ==========================================================================
+// PROFILE SHEET + LIKED-BY (Phase 1+2)
+// ==========================================================================
+// Profile sheet: a centered modal that opens when the user clicks their
+// avatar. Two states — view (default) and edit. Edit lets them update
+// display name, avatar image, status text, and privacy. Saves to the
+// profiles table.
+//
+// Liked-by modal: opened by clicking the like-count on any event card.
+// Fetches via get_event_likers RPC, which only returns users with
+// is_public = true. Anonymous likes never surface.
+//
+// Privacy model: is_public defaults to false on new profiles (set by
+// the DB schema). Onboarding shows a soft nudge encouraging opt-in but
+// never auto-enables. Users can flip the toggle any time in edit mode.
+// ==========================================================================
+
+// ── Profile fetching ──────────────────────────────────────────────
+async function fetchProfile() {
+  if (!currentSession) { currentProfile = null; return; }
+  try {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('id, display_name, avatar_url, status_text, status_updated_at, is_public, onboarded_at')
+      .eq('id', currentSession.user.id)
+      .maybeSingle();
+    if (error) {
+      console.warn('fetchProfile failed:', error.message);
+      currentProfile = null;
+      return;
+    }
+    currentProfile = data || { id: currentSession.user.id };
+  } catch (err) {
+    console.warn('fetchProfile exception:', err);
+    currentProfile = null;
+  }
+}
+
+// ── Profile sheet: open / close / state toggling ──────────────────
+function openProfileSheet() {
+  if (!currentSession) { openSignInModal(); return; }
+  // Reset to view state on every open
+  showProfileView();
+  renderProfileView();
+  document.getElementById('profileMov')?.classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProfileSheet() {
+  document.getElementById('profileMov')?.classList.remove('on');
+  document.body.style.overflow = '';
+  // Discard any pending unsaved avatar
+  pendingAvatarBlob = null;
+  pendingAvatarDataUrl = null;
+}
+
+function closeProfileSheetIfBackdrop(ev) {
+  if (ev.target.id === 'profileMov') closeProfileSheet();
+}
+
+function showProfileView() {
+  document.getElementById('pvView')?.classList.remove('hidden');
+  document.getElementById('peForm')?.classList.remove('on');
+}
+
+function showProfileEdit() {
+  document.getElementById('pvView')?.classList.add('hidden');
+  document.getElementById('peForm')?.classList.add('on');
+}
+
+function renderProfileView() {
+  if (!currentProfile) return;
+  const email = currentSession?.user?.email || '';
+  const name = currentProfile.display_name?.trim() || email.split('@')[0] || 'Your profile';
+  const initials = (name.charAt(0) || email.charAt(0) || 'S').toUpperCase();
+  const status = currentProfile.status_text?.trim() || '';
+  const isPublic = !!currentProfile.is_public;
+
+  // Avatar preview block
+  const pic = document.getElementById('pvPic');
+  if (pic) {
+    pic.innerHTML = currentProfile.avatar_url
+      ? `<img src="${escapeHtml(currentProfile.avatar_url)}" alt="">`
+      : initials;
+  }
+
+  document.getElementById('pvName').textContent = name;
+  document.getElementById('pvEmail').textContent = email;
+
+  const statusEl = document.getElementById('pvStatus');
+  if (status) {
+    statusEl.textContent = status;
+    statusEl.classList.remove('empty');
+  } else {
+    statusEl.textContent = 'No status set yet';
+    statusEl.classList.add('empty');
+  }
+
+  const privEl = document.getElementById('pvPrivacy');
+  const privText = document.getElementById('pvPrivacyText');
+  if (isPublic) {
+    privEl.className = 'pv-privacy public';
+    privEl.querySelector('.pv-priv-icon').textContent = '👋';
+    privText.textContent = 'Public — other shou users see your profile when you like an event';
+  } else {
+    privEl.className = 'pv-privacy private';
+    privEl.querySelector('.pv-priv-icon').textContent = '🔒';
+    privText.textContent = 'Private — only you see your profile and likes';
+  }
+
+  // Onboarding nudge: shown once until they save their profile for the first
+  // time. Setting onboarded_at on save dismisses it permanently.
+  const nudge = document.getElementById('pvNudge');
+  if (nudge) {
+    if (!currentProfile.onboarded_at) {
+      nudge.innerHTML = `👋 <strong>Welcome to shou.</strong> Tap <em>Edit profile</em> to add a photo and let other users discover events through you. Or stay private — it's up to you.`;
+      nudge.style.display = '';
+    } else {
+      nudge.style.display = 'none';
+    }
+  }
+}
+
+// ── Edit mode: open / cancel / save ───────────────────────────────
+function openProfileEdit() {
+  if (!currentProfile) return;
+  // Hydrate form from current state
+  document.getElementById('peName').value = currentProfile.display_name || '';
+  document.getElementById('peStatus').value = currentProfile.status_text || '';
+  updateStatusCharCount();
+  setPrivacyChoice(!!currentProfile.is_public);
+
+  // Avatar preview: show current avatar OR initials
+  const preview = document.getElementById('pePicPreview');
+  pendingAvatarBlob = null;
+  pendingAvatarDataUrl = null;
+  renderEditAvatarPreview();
+
+  document.getElementById('peErr')?.classList.remove('on');
+  document.getElementById('peSaveBtn').disabled = false;
+  document.getElementById('peSaveBtn').textContent = 'Save';
+  showProfileEdit();
+}
+
+function cancelProfileEdit() {
+  pendingAvatarBlob = null;
+  pendingAvatarDataUrl = null;
+  showProfileView();
+}
+
+// Update char count display + apply warn color near limit
+function updateStatusCharCount() {
+  const el = document.getElementById('peStatus');
+  const cnt = document.getElementById('peCharCount');
+  if (!el || !cnt) return;
+  const n = el.value.length;
+  cnt.textContent = `${n} / 100`;
+  cnt.classList.toggle('warn', n > 90);
+}
+
+function setPrivacyChoice(isPublic) {
+  document.getElementById('pePrivOff')?.classList.toggle('on', !isPublic);
+  document.getElementById('pePrivOn')?.classList.toggle('on', isPublic);
+  document.getElementById('pePrivOn').dataset.value = 'true';
+  document.getElementById('pePrivOff').dataset.value = 'false';
+}
+
+function getPrivacyChoice() {
+  return document.getElementById('pePrivOn')?.classList.contains('on') === true;
+}
+
+// Render the avatar preview inside the edit form. Priority order:
+//   pendingAvatarDataUrl > existing avatar_url > initials fallback
+function renderEditAvatarPreview() {
+  const preview = document.getElementById('pePicPreview');
+  if (!preview) return;
+  const email = currentSession?.user?.email || '';
+  const name = currentProfile?.display_name || email;
+  const initials = (name.charAt(0) || 'S').toUpperCase();
+  if (pendingAvatarDataUrl) {
+    preview.innerHTML = `<img src="${pendingAvatarDataUrl}" alt="">`;
+  } else if (currentProfile?.avatar_url) {
+    preview.innerHTML = `<img src="${escapeHtml(currentProfile.avatar_url)}" alt="">`;
+  } else {
+    preview.innerHTML = initials;
+  }
+}
+
+// ── Avatar file selection (file picker + drag-drop) ────────────────
+function handleAvatarFileSelected(ev) {
+  const file = ev.target.files?.[0];
+  if (file) processAvatarFile(file);
+  // Reset input so picking the same file again still triggers change.
+  ev.target.value = '';
+}
+
+function handleAvatarDragOver(ev) {
+  ev.preventDefault();
+  document.getElementById('pePicPreview')?.classList.add('dragover');
+}
+
+function handleAvatarDragLeave(ev) {
+  document.getElementById('pePicPreview')?.classList.remove('dragover');
+}
+
+function handleAvatarDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('pePicPreview')?.classList.remove('dragover');
+  const file = ev.dataTransfer?.files?.[0];
+  if (file && /^image\//.test(file.type)) {
+    processAvatarFile(file);
+  }
+}
+
+// Process the picked file: validate, decode, square-crop, resize, encode
+// as a JPEG blob. Mutates pendingAvatarBlob and pendingAvatarDataUrl,
+// re-renders the preview. The Blob is what we actually upload on Save.
+async function processAvatarFile(file) {
+  const errEl = document.getElementById('peErr');
+  errEl?.classList.remove('on');
+
+  if (!/^image\//.test(file.type)) {
+    errEl.textContent = 'Please choose an image file.';
+    errEl.classList.add('on');
+    return;
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    errEl.textContent = 'Image too large (max 4 MB).';
+    errEl.classList.add('on');
+    return;
+  }
+
+  try {
+    const { blob, dataUrl } = await squareCropResize(file, 300);
+    pendingAvatarBlob = blob;
+    pendingAvatarDataUrl = dataUrl;
+    renderEditAvatarPreview();
+  } catch (err) {
+    console.warn('processAvatarFile error:', err);
+    errEl.textContent = "Couldn't process that image. Try another.";
+    errEl.classList.add('on');
+  }
+}
+
+// Decode an image file, center-crop to a square, downscale to targetPx,
+// re-encode as JPEG. Returns both a Blob (for upload) and a data URL
+// (for preview rendering).
+function squareCropResize(file, targetPx) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = targetPx;
+        canvas.height = targetPx;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, targetPx, targetPx);
+        canvas.toBlob(
+          blob => {
+            if (!blob) return reject(new Error('canvas.toBlob returned null'));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            resolve({ blob, dataUrl });
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => reject(new Error('Image decode failed'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Save flow ─────────────────────────────────────────────────────
+async function saveProfileEdit() {
+  if (!currentSession) return;
+  const saveBtn = document.getElementById('peSaveBtn');
+  const errEl = document.getElementById('peErr');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+  errEl?.classList.remove('on');
+
+  try {
+    let nextAvatarUrl = currentProfile?.avatar_url || null;
+
+    // 1. If there's a pending avatar blob, upload to Storage and capture
+    //    the public URL. Filename includes a cache-busting timestamp so
+    //    the new avatar replaces the old one in browser caches.
+    if (pendingAvatarBlob) {
+      const userId = currentSession.user.id;
+      const filename = `avatar-${Date.now()}.jpg`;
+      const path = `${userId}/${filename}`;
+      const { error: upErr } = await sb.storage
+        .from('avatars')
+        .upload(path, pendingAvatarBlob, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/jpeg',
+        });
+      if (upErr) throw new Error('Upload failed: ' + upErr.message);
+      // Get the public URL for the uploaded file. Bucket is configured
+      // public so this URL is loadable without auth.
+      const { data: urlData } = sb.storage.from('avatars').getPublicUrl(path);
+      nextAvatarUrl = urlData?.publicUrl || null;
+      // Best-effort cleanup: delete previous avatar to avoid orphaned files.
+      // Fire-and-forget — failure here doesn't undo the new upload.
+      if (currentProfile?.avatar_url) {
+        const oldPath = extractAvatarPath(currentProfile.avatar_url, userId);
+        if (oldPath) {
+          sb.storage.from('avatars').remove([oldPath]).then(({ error }) => {
+            if (error) console.warn('old avatar delete:', error.message);
+          });
+        }
+      }
+    }
+
+    // 2. Collect form values
+    const displayName = document.getElementById('peName').value.trim() || null;
+    const statusText  = document.getElementById('peStatus').value.trim() || null;
+    const isPublic    = getPrivacyChoice();
+
+    // 3. Decide whether status_updated_at needs bumping. Only update
+    //    timestamp when the status text actually changed; saving an
+    //    unchanged status (e.g. user just toggled privacy) shouldn't
+    //    refresh its timestamp.
+    const statusChanged = (currentProfile?.status_text || null) !== statusText;
+    const updates = {
+      id: currentSession.user.id,   // upsert needs id for the primary-key match
+      display_name: displayName,
+      avatar_url: nextAvatarUrl,
+      status_text: statusText,
+      is_public: isPublic,
+    };
+    if (statusChanged) {
+      updates.status_updated_at = statusText ? new Date().toISOString() : null;
+    }
+    // First-time save: mark onboarding complete so the nudge dismisses.
+    if (!currentProfile?.onboarded_at) {
+      updates.onboarded_at = new Date().toISOString();
+    }
+
+    const { error: profErr } = await sb
+      .from('profiles')
+      .upsert(updates, { onConflict: 'id' });
+    if (profErr) throw new Error('Save failed: ' + profErr.message);
+
+    // 4. Refresh in-memory state, re-render nav + view
+    await fetchProfile();
+    renderAuthSurface();
+    pendingAvatarBlob = null;
+    pendingAvatarDataUrl = null;
+    showProfileView();
+    renderProfileView();
+  } catch (err) {
+    console.warn('saveProfileEdit error:', err);
+    errEl.textContent = err.message || 'Save failed. Please try again.';
+    errEl.classList.add('on');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+// Extract the Storage object path from a public avatar URL so we can
+// delete the old file on replace. Returns null if the URL doesn't look
+// like ours (e.g. external avatar from a social provider).
+function extractAvatarPath(avatarUrl, userId) {
+  if (!avatarUrl || !userId) return null;
+  // Public URLs look like:
+  //   https://<project>.supabase.co/storage/v1/object/public/avatars/<user_id>/<file>
+  const m = avatarUrl.match(/\/storage\/v1\/object\/public\/avatars\/(.+)$/);
+  if (!m) return null;
+  const path = m[1];
+  // Sanity: only delete files within the user's own folder.
+  if (!path.startsWith(userId + '/')) return null;
+  return path;
+}
+
+// ── Liked-by modal ────────────────────────────────────────────────
+// Opened by clicking the like-count on an event card. Fetches public
+// profiles that liked the event via get_event_likers RPC.
+let likedByCurrentEventId = null;
+
+async function openLikedBy(eventId) {
+  if (!eventId) return;
+  likedByCurrentEventId = eventId;
+  const mov = document.getElementById('likedByMov');
+  const body = document.getElementById('lbBody');
+  if (!mov || !body) return;
+  // Reset to loading state
+  body.innerHTML = `<div class="lb-loading"><div class="spin"></div>Loading…</div>`;
+  document.getElementById('lbTitle').textContent = 'Liked by';
+  mov.classList.add('on');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const { data, error } = await sb.rpc('get_event_likers', { p_event_id: eventId });
+    if (error) throw new Error(error.message);
+    // Late-response guard: another openLikedBy may have replaced this one.
+    if (likedByCurrentEventId !== eventId) return;
+    renderLikedByList(data || []);
+  } catch (err) {
+    console.warn('get_event_likers failed:', err);
+    body.innerHTML = `<div class="lb-empty">Couldn't load likes right now.</div>`;
+  }
+}
+
+function renderLikedByList(rows) {
+  const body = document.getElementById('lbBody');
+  const title = document.getElementById('lbTitle');
+  if (!body || !title) return;
+
+  if (rows.length === 0) {
+    title.textContent = 'Liked by 0 people';
+    body.innerHTML = `<div class="lb-empty">No public likers yet.<br><span style="font-size:11px;color:var(--bone3);display:inline-block;margin-top:8px;">Only people with public profiles appear here.</span></div>`;
+    return;
+  }
+
+  title.textContent = `Liked by ${rows.length}${rows.length === 100 ? '+' : ''} ${rows.length === 1 ? 'person' : 'people'}`;
+  body.innerHTML = rows.map(r => {
+    const name = (r.display_name || 'shou user').trim();
+    const initials = (name.charAt(0) || 'S').toUpperCase();
+    const pic = r.avatar_url
+      ? `<img src="${escapeHtml(r.avatar_url)}" alt="" onerror="this.parentElement.textContent='${initials}';">`
+      : initials;
+    const status = (r.status_text || '').trim();
+    const statusEl = status
+      ? `<div class="lb-status">${escapeHtml(status)}</div>`
+      : `<div class="lb-status empty">—</div>`;
+    return `
+      <div class="lb-row">
+        <div class="lb-pic">${pic}</div>
+        <div class="lb-text">
+          <div class="lb-name">${escapeHtml(name)}</div>
+          ${statusEl}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function closeLikedBy() {
+  document.getElementById('likedByMov')?.classList.remove('on');
+  document.body.style.overflow = '';
+  likedByCurrentEventId = null;
+}
+
+function closeLikedByIfBackdrop(ev) {
+  if (ev.target.id === 'likedByMov') closeLikedBy();
+}
+
+// ESC closes profile sheet OR liked-by, whichever is open. Handlers are
+// added once at script-eval time; safe to define alongside existing key handlers.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('likedByMov')?.classList.contains('on')) {
+    closeLikedBy();
+    return;
+  }
+  if (document.getElementById('profileMov')?.classList.contains('on')) {
+    closeProfileSheet();
+  }
+});
+
+// ==========================================================================
+// END PROFILE SHEET + LIKED-BY
+// ==========================================================================
 
 setLang(lang);
 maybeShowConsentBanner();
