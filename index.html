@@ -4812,23 +4812,34 @@ async function handleAuthStateChange(event, session) {
   renderAuthSurface();
 
   if (justSignedIn) {
-    // First-time-sign-in housekeeping: profile row + anon→user merge +
-    // likes migration. Order matters: ensureProfileAndMerge first so the
-    // merged anon-mode likes are picked up by refreshLikesFromServer.
-    await ensureProfileAndMerge();
-    await refreshLikesFromServer();
-    // Fetch profile (display_name, avatar_url, status, is_public, onboarded_at)
-    // and re-render with the avatar URL once it loads.
-    await fetchProfile();
-    renderAuthSurface();
-    // Close any open sign-in modal; we just signed them in.
+    // First-time-sign-in housekeeping runs in parallel and non-blocking.
+    // Previously these were sequential awaits, which meant a hang in any
+    // one of them blocked all subsequent steps (including fetchProfile,
+    // which is what populates the modal data). PostgREST occasionally
+    // hangs specific RPCs — making this resilient.
+    //
+    // Each task carries its own timeout via withTimeout(). On success
+    // it re-renders the affected surface. On failure it logs and moves on.
+    withTimeout(ensureProfileAndMerge(), 8000, 'ensureProfileAndMerge')
+      .catch(err => console.warn('ensureProfileAndMerge:', err.message));
+
+    withTimeout(refreshLikesFromServer(), 8000, 'refreshLikesFromServer')
+      .catch(err => console.warn('refreshLikesFromServer:', err.message));
+
+    withTimeout(fetchProfile(), 8000, 'fetchProfile')
+      .then(() => {
+        // Re-render nav + any open profile modal with the freshly loaded data.
+        renderAuthSurface();
+        const modalOpen = document.getElementById('profileMov')?.classList.contains('on');
+        if (modalOpen) renderProfileView();
+      })
+      .catch(err => console.warn('fetchProfile:', err.message));
+
     closeSignInModal();
-    // Clean up the URL — strip any leftover auth params.
     try {
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
     } catch {}
-    // Re-render: Liked tab empty state drops sign-in nudge, likes counter updates.
     renderAll();
   } else if (justSignedOut) {
     // Keep localStorage as-is — user's likes don't visually disappear on sign-out.
@@ -4837,15 +4848,32 @@ async function handleAuthStateChange(event, session) {
     renderAuthSurface();
     renderAll();
   } else if (nowSignedIn && !currentProfile) {
-    // Session is healthy but profile hasn't loaded yet (e.g. tab reload with
-    // persisted session, or rare race conditions). Load profile + re-render
-    // so the nav shows the right avatar.
-    await fetchProfile();
-    renderAuthSurface();
+    // Session healthy but profile hasn't loaded yet. Same non-blocking
+    // pattern as justSignedIn — fire fetchProfile with timeout and
+    // re-render when it resolves.
+    withTimeout(fetchProfile(), 8000, 'fetchProfile')
+      .then(() => {
+        renderAuthSurface();
+        const modalOpen = document.getElementById('profileMov')?.classList.contains('on');
+        if (modalOpen) renderProfileView();
+      })
+      .catch(err => console.warn('fetchProfile:', err.message));
   }
   // Other transitions (TOKEN_REFRESHED on already-signed-in session,
   // USER_UPDATED, etc.) need no UI work — currentSession was already updated
   // at the top of this handler, and the avatar/profile haven't changed.
+}
+
+// Wrap any promise with a hard timeout. Lets us protect Supabase calls
+// from hanging the UI indefinitely. Resolves with the original result, or
+// rejects with a clear "timeout" error after `ms` milliseconds.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label || 'request'} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
 }
 
 sb.auth.onAuthStateChange(handleAuthStateChange);
