@@ -5017,19 +5017,31 @@ async function fetchProfile() {
 }
 
 // ── Profile sheet: open / close / state toggling ──────────────────
-async function openProfileSheet() {
+function openProfileSheet() {
   if (!currentSession) { openSignInModal(); return; }
-  // Defensive: if the post-sign-in chain didn't load currentProfile (because
-  // some upstream await threw or hung), load it on demand here. Without this,
-  // renderProfileView returns early and the modal shows blank placeholders.
-  if (!currentProfile) {
-    await fetchProfile();
-  }
-  // Reset to view state on every open
+  // Open the modal IMMEDIATELY with whatever profile data is cached (which
+  // may be nothing). We never block on the network here because if Supabase
+  // is slow or degraded, awaiting fetchProfile would freeze the modal
+  // indefinitely. renderProfileView handles null currentProfile by falling
+  // back to session-derived defaults (email-based name, initials).
   showProfileView();
   renderProfileView();
   document.getElementById('profileMov')?.classList.add('on');
   document.body.style.overflow = 'hidden';
+
+  // Background: try to load fresh profile data if we don't have it yet.
+  // Fire-and-forget — if it succeeds, silently update the modal contents.
+  // If it fails (Supabase slow/down/RLS error), the modal stays usable
+  // with the defaults we already painted.
+  if (!currentProfile) {
+    fetchProfile().then(() => {
+      // Re-render only if modal is still open and profile actually loaded
+      const isOpen = document.getElementById('profileMov')?.classList.contains('on');
+      if (currentProfile && isOpen) {
+        renderProfileView();
+      }
+    }).catch(err => console.warn('background fetchProfile failed:', err));
+  }
 }
 
 function closeProfileSheet() {
@@ -5055,18 +5067,23 @@ function showProfileEdit() {
 }
 
 function renderProfileView() {
-  if (!currentProfile) return;
+  // No hard requirement on currentProfile — render with session defaults if
+  // profile hasn't loaded yet. The modal stays usable while fetchProfile
+  // runs in the background; values get updated when (if) it resolves.
   const email = currentSession?.user?.email || '';
-  const name = currentProfile.display_name?.trim() || email.split('@')[0] || 'Your profile';
+  const profileName = currentProfile?.display_name?.trim();
+  const name = profileName || email.split('@')[0] || 'Your profile';
   const initials = (name.charAt(0) || email.charAt(0) || 'S').toUpperCase();
-  const status = currentProfile.status_text?.trim() || '';
-  const isPublic = !!currentProfile.is_public;
+  const status = currentProfile?.status_text?.trim() || '';
+  const isPublic = !!currentProfile?.is_public;
+  const avatarUrl = currentProfile?.avatar_url;
+  const profileLoaded = !!currentProfile;
 
   // Avatar preview block
   const pic = document.getElementById('pvPic');
   if (pic) {
-    pic.innerHTML = currentProfile.avatar_url
-      ? `<img src="${escapeHtml(currentProfile.avatar_url)}" alt="">`
+    pic.innerHTML = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="">`
       : initials;
   }
 
@@ -5078,7 +5095,7 @@ function renderProfileView() {
     statusEl.textContent = status;
     statusEl.classList.remove('empty');
   } else {
-    statusEl.textContent = 'No status set yet';
+    statusEl.textContent = profileLoaded ? 'No status set yet' : 'Loading profile…';
     statusEl.classList.add('empty');
   }
 
@@ -5098,7 +5115,7 @@ function renderProfileView() {
   // time. Setting onboarded_at on save dismisses it permanently.
   const nudge = document.getElementById('pvNudge');
   if (nudge) {
-    if (!currentProfile.onboarded_at) {
+    if (currentProfile && !currentProfile.onboarded_at) {
       nudge.innerHTML = `👋 <strong>Welcome to shou.</strong> Tap <em>Edit profile</em> to add a photo and let other users discover events through you. Or stay private — it's up to you.`;
       nudge.style.display = '';
     } else {
@@ -5108,23 +5125,16 @@ function renderProfileView() {
 }
 
 // ── Edit mode: open / cancel / save ───────────────────────────────
-async function openProfileEdit() {
-  // Defensive: same as openProfileSheet — if currentProfile is missing
-  // (which would normally only happen if the user clicked Edit before the
-  // sheet had finished loading the profile), load on demand instead of
-  // silently returning.
-  if (!currentProfile) {
-    await fetchProfile();
-  }
-  if (!currentProfile) {
-    console.warn('openProfileEdit: currentProfile still null after fetchProfile — check Supabase RLS / RPCs.');
-    return;
-  }
-  // Hydrate form from current state
-  document.getElementById('peName').value = currentProfile.display_name || '';
-  document.getElementById('peStatus').value = currentProfile.status_text || '';
+function openProfileEdit() {
+  // Render the edit form immediately with whatever profile data we have.
+  // If currentProfile is null (Supabase slow or hasn't loaded yet), the
+  // fields start empty — user can still fill them in and save. The
+  // saveProfileEdit() upserts on currentSession.user.id, so it works even
+  // if currentProfile was never populated client-side.
+  document.getElementById('peName').value = currentProfile?.display_name || '';
+  document.getElementById('peStatus').value = currentProfile?.status_text || '';
   updateStatusCharCount();
-  setPrivacyChoice(!!currentProfile.is_public);
+  setPrivacyChoice(!!currentProfile?.is_public);
 
   // Avatar preview: show current avatar OR initials
   const preview = document.getElementById('pePicPreview');
