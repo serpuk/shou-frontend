@@ -5303,13 +5303,19 @@ async function saveProfileEdit() {
       const userId = currentSession.user.id;
       const filename = `avatar-${Date.now()}.jpg`;
       const path = `${userId}/${filename}`;
-      const { error: upErr } = await sb.storage
+      // 30s timeout — uploads can legitimately take longer than queries,
+      // but we still cap it so a hung storage endpoint doesn't freeze the UI.
+      const uploadPromise = sb.storage
         .from('avatars')
         .upload(path, pendingAvatarBlob, {
           cacheControl: '3600',
           upsert: false,
           contentType: 'image/jpeg',
         });
+      const uploadTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timed out. Try again in a moment.')), 30000)
+      );
+      const { error: upErr } = await Promise.race([uploadPromise, uploadTimeout]);
       if (upErr) throw new Error('Upload failed: ' + upErr.message);
       // Get the public URL for the uploaded file. Bucket is configured
       // public so this URL is loadable without auth.
@@ -5352,13 +5358,28 @@ async function saveProfileEdit() {
       updates.onboarded_at = new Date().toISOString();
     }
 
-    const { error: profErr } = await sb
+    // 4. Upsert with a hard timeout. If Supabase is degraded (which has
+    //    been the case during this session), the request can hang forever,
+    //    leaving the Save button stuck on "Saving…" with no feedback. The
+    //    15s timeout converts that into a clear error message so the user
+    //    knows to retry, instead of staring at a frozen button.
+    const upsertPromise = sb
       .from('profiles')
       .upsert(updates, { onConflict: 'id' });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Save timed out. Supabase may be slow — please try again in a moment.')), 15000)
+    );
+    const { error: profErr } = await Promise.race([upsertPromise, timeoutPromise]);
     if (profErr) throw new Error('Save failed: ' + profErr.message);
 
-    // 4. Refresh in-memory state, re-render nav + view
-    await fetchProfile();
+    // 5. Update in-memory state from the values we just saved. We
+    //    deliberately do NOT re-fetch from Supabase: the upsert succeeded,
+    //    so we already know the authoritative state, and re-fetching would
+    //    risk another long hang if Supabase is still slow.
+    currentProfile = {
+      ...(currentProfile || {}),
+      ...updates,
+    };
     renderAuthSurface();
     pendingAvatarBlob = null;
     pendingAvatarDataUrl = null;
