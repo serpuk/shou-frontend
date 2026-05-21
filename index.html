@@ -5017,8 +5017,14 @@ async function fetchProfile() {
 }
 
 // ── Profile sheet: open / close / state toggling ──────────────────
-function openProfileSheet() {
+async function openProfileSheet() {
   if (!currentSession) { openSignInModal(); return; }
+  // Defensive: if the post-sign-in chain didn't load currentProfile (because
+  // some upstream await threw or hung), load it on demand here. Without this,
+  // renderProfileView returns early and the modal shows blank placeholders.
+  if (!currentProfile) {
+    await fetchProfile();
+  }
   // Reset to view state on every open
   showProfileView();
   renderProfileView();
@@ -5102,8 +5108,18 @@ function renderProfileView() {
 }
 
 // ── Edit mode: open / cancel / save ───────────────────────────────
-function openProfileEdit() {
-  if (!currentProfile) return;
+async function openProfileEdit() {
+  // Defensive: same as openProfileSheet — if currentProfile is missing
+  // (which would normally only happen if the user clicked Edit before the
+  // sheet had finished loading the profile), load on demand instead of
+  // silently returning.
+  if (!currentProfile) {
+    await fetchProfile();
+  }
+  if (!currentProfile) {
+    console.warn('openProfileEdit: currentProfile still null after fetchProfile — check Supabase RLS / RPCs.');
+    return;
+  }
   // Hydrate form from current state
   document.getElementById('peName').value = currentProfile.display_name || '';
   document.getElementById('peStatus').value = currentProfile.status_text || '';
