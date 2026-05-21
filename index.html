@@ -1632,6 +1632,7 @@ let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes();
 // a request is in flight so we can show a skeleton.
 let aiResultIds = null;     // null = no active search; Set = filter is active
 let aiSuggestedIds = new Set();  // out-of-area alternatives the LLM proposed (Option 3 UX)
+let aiAbortController = null;    // in-flight /api/search AbortController, or null
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
 let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
@@ -3667,6 +3668,7 @@ const AR={
 function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q);}
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
 function clearAI(){
+  if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
   aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; vis=6;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
@@ -3674,6 +3676,19 @@ function clearAI(){
   const panel = document.getElementById('aip');
   if (panel) panel.classList.remove('show');
   applyF();
+}
+
+// User-initiated cancel of an in-flight AI refinement. Keeps the local
+// keyword-matched fast results visible (those are already populated in
+// aiResultIds before the network call) and updates the banner to make
+// the keyword fallback explicit so users aren't confused about whether
+// they're seeing AI-curated content.
+function cancelAISearch() {
+  if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
+  aiSearching = false;
+  aiReasoning = AI_CANCELLED_LABEL[lang] || AI_CANCELLED_LABEL.en;
+  syncAiActiveClass();
+  renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
 }
 
 // When the user clicks the "see N nearby alternatives" CTA in the banner,
@@ -3693,8 +3708,8 @@ function showAISuggested() {
   renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
 }
 
-// Per-language label for the "show suggestions" CTA. Kept local to renderAIBanner
-// instead of in T so the change is self-contained — easy to delete if we revert.
+// Per-language labels for new banner UI. Kept local to renderAIBanner
+// instead of polluting T so the change is self-contained.
 const SUGGESTION_BTN_LABEL = {
   en: n => `See ${n} nearby ${n === 1 ? 'alternative' : 'alternatives'} →`,
   fr: n => `Voir ${n} ${n === 1 ? 'alternative' : 'alternatives'} à proximité →`,
@@ -3703,15 +3718,43 @@ const SUGGESTION_BTN_LABEL = {
   es: n => `Ver ${n} alternativa${n === 1 ? '' : 's'} cercana${n === 1 ? '' : 's'} →`,
   it: n => `Vedi ${n} alternativ${n === 1 ? 'a' : 'e'} vicine →`,
 };
+const REFINING_LABEL = {
+  en: 'Refining with AI…',
+  fr: 'Affinage par IA…',
+  nl: 'Verfijnen met AI…',
+  de: 'Verfeinerung mit KI…',
+  es: 'Refinando con IA…',
+  it: 'Affinamento con IA…',
+};
+const CANCEL_BTN_LABEL = {
+  en: 'Cancel',
+  fr: 'Annuler',
+  nl: 'Annuleren',
+  de: 'Abbrechen',
+  es: 'Cancelar',
+  it: 'Annulla',
+};
+const AI_CANCELLED_LABEL = {
+  en: 'Showing keyword-matched events. AI refinement was cancelled — these are the local matches.',
+  fr: 'Affichage des résultats par mots-clés. L\'affinage par IA a été annulé.',
+  nl: 'Trefwoord-resultaten worden getoond. AI-verfijning is geannuleerd.',
+  de: 'Stichwort-basierte Ergebnisse. KI-Verfeinerung wurde abgebrochen.',
+  es: 'Mostrando resultados por palabras clave. El refinado con IA fue cancelado.',
+  it: 'Risultati basati su parole chiave. Affinamento IA annullato.',
+};
 
-// Render the suggestions banner. Two modes:
-//   - searching:true → skeleton placeholder (3 dots animation + "Searching...")
-//   - searching:false → reasoning text + Clear button (+ optional "see N alternatives" CTA)
-function renderAIBanner({ searching, query, reasoning, count }) {
+// Render the suggestions banner. Three modes:
+//   - searching:true → cold skeleton (no fast results yet, very brief)
+//   - refining:true  → fast keyword-matched results already visible in grid;
+//                      banner shows count + spinner + Cancel button
+//   - default        → final LLM reasoning + Clear + optional "alternatives" CTA
+function renderAIBanner({ searching, refining, query, reasoning, count, fastCount }) {
   const p = document.getElementById('aip');
   const txt = document.getElementById('ait');
   if (!p || !txt) return;
   p.classList.add('show');
+
+  const safeQuery = (query || '').replace(/[<>]/g, '');
 
   if (searching) {
     txt.innerHTML = `
@@ -3723,8 +3766,28 @@ function renderAIBanner({ searching, query, reasoning, count }) {
     return;
   }
 
-  // Done. Render reasoning + Clear button.
-  const safeQuery = (query || '').replace(/[<>]/g, '');
+  if (refining) {
+    // Fast-first results are already in the grid; show the user how many
+    // they have, and a clear path to abort (keep them) or wait (replace with
+    // LLM curation).
+    const refiningText = REFINING_LABEL[lang] || REFINING_LABEL.en;
+    const cancelText   = CANCEL_BTN_LABEL[lang] || CANCEL_BTN_LABEL.en;
+    const matchesLine = fastCount > 0
+      ? `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">${t('resultsFor')(safeQuery, fastCount)}</div>`
+      : `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">${t('noMatchesFor')(safeQuery)}</div>`;
+    txt.innerHTML = `
+      ${matchesLine}
+      <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--bone2);margin-bottom:14px;">
+        <div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <span>${refiningText}</span>
+      </div>
+      <button onclick="cancelAISearch()" style="background:transparent;border:1px solid rgba(255,153,102,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,153,102,0.08)'" onmouseout="this.style.background='transparent'">${cancelText} ✕</button>
+    `;
+    return;
+  }
+
+  // Final state: LLM curation done (or fallback active). Show reasoning,
+  // Clear button, and optional "alternatives" CTA when applicable.
   const safeReasoning = (reasoning || '').replace(/[<>]/g, '');
   const matchesLine = count > 0
     ? `<div style="font-size:12px;color:var(--bone3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">${t('resultsFor')(safeQuery, count)}</div>`
@@ -3822,13 +3885,33 @@ async function showAI(q) {
     return;
   }
 
-  // No cache → run the search. Show skeleton immediately so the UI feels
-  // responsive even though the network call takes 1-3s.
-  aiSearching = true;
-  aiResultIds = new Set();   // empty Set → applyF filters everything out → grid shows nothing
+  // No cache → fast-first strategy: show local keyword matches IMMEDIATELY
+  // (in <50ms) so the user has real events to scan while we wait on the LLM
+  // (~3-5s). When the LLM responds we silently replace with its curated set
+  // and full reasoning. If the user cancels mid-flight, the keyword matches
+  // stay put — they're already a useful answer for most queries.
+  //
+  // Abort any earlier search that's still in flight (e.g. user clicked
+  // again before the previous request returned) so its late response
+  // doesn't overwrite the current view.
+  if (aiAbortController) { aiAbortController.abort(); }
+  aiAbortController = new AbortController();
+  const signal = aiAbortController.signal;
+
+  // Compute local keyword matches synchronously. parseAIQuery + matchesAIQuery
+  // are the same matchers used in the catastrophic-failure fallback below;
+  // here we use them eagerly to seed the grid before the LLM arrives.
+  const fastCriteria = parseAIQuery(q);
+  const fastIds = new Set(
+    all.filter(e => matchesAIQuery(e, fastCriteria)).map(e => e.id)
+  );
+  aiResultIds = fastIds;
+  aiSuggestedIds = new Set();
+  aiReasoning = '';   // empty until LLM replies; banner shows the "refining" UI
+  aiSearching = false;
   syncAiActiveClass();
-  applyF();                  // clear current grid
-  renderAIBanner({ searching: true });
+  applyF();
+  renderAIBanner({ refining: true, query: q, fastCount: filtered.length });
 
   try {
     const body = {
@@ -3857,12 +3940,17 @@ async function showAI(q) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
+      signal,   // <-- enables cancelAISearch() to abort mid-flight
     });
 
     if (!res.ok) {
       throw new Error(`search api ${res.status}`);
     }
     const data = await res.json();
+
+    // Late-response guard: another search started after us and aborted this
+    // controller. Don't clobber the newer state.
+    if (signal.aborted) return;
 
     aiResultIds = new Set(Array.isArray(data.matchingIds) ? data.matchingIds : []);
     aiSuggestedIds = new Set(Array.isArray(data.suggestedIds) ? data.suggestedIds : []);
@@ -3907,19 +3995,29 @@ async function showAI(q) {
     applyF();
     renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
   } catch (err) {
+    // AbortError = user clicked Cancel OR a newer search displaced us.
+    // Either way, do nothing — cancelAISearch already updated the banner,
+    // and the newer search will redraw on its own. Critically, we must NOT
+    // touch aiResultIds here because that would erase the newer search's
+    // results.
+    if (err.name === 'AbortError') return;
+
     console.warn('AI search failed:', err.message);
     aiSearching = false;
-    // Fallback to local keyword parser so the user still sees SOMETHING.
-    // matchesAIQuery is the old local matcher we kept around for exactly
-    // this case. No suggestions in fallback mode — we can't compute them
-    // locally without re-implementing the LLM logic.
-    const criteria = parseAIQuery(q);
-    aiResultIds = new Set(all.filter(e => matchesAIQuery(e, criteria)).map(e => e.id));
+    // True API failure (not a cancel). The local keyword matches are still
+    // in aiResultIds from the fast-first step; just refresh the banner to
+    // make the fallback explicit so users aren't confused.
     aiSuggestedIds = new Set();
-    aiReasoning = 'Showing keyword-matched events (AI search is temporarily unavailable).';
+    aiReasoning = 'Showing keyword-matched events (AI refinement is temporarily unavailable).';
     syncAiActiveClass();
     applyF();
     renderAIBanner({ searching: false, query: q, reasoning: aiReasoning, count: filtered.length });
+  } finally {
+    // Clear the controller only if it's still our own — a newer showAI
+    // call would have already replaced it.
+    if (aiAbortController && aiAbortController.signal === signal) {
+      aiAbortController = null;
+    }
   }
 }
 
