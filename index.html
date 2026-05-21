@@ -568,42 +568,65 @@ h1 .bl {
 }
 .err.on { display: block; }
 
-/* ── STATS ── */
-.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 50px; }
-.stat {
-  background: var(--glass);
-  border: 1px solid var(--border-cy);
-  border-radius: var(--radius);
-  padding: 24px 22px 20px;
-  position: relative; overflow: hidden;
+/* ── STATS (compact pill bar) ──
+   Slim status row showing catalog size — replaces the old 4-card layout
+   which pushed event results below the fold. Hidden during active AI
+   search (see body.ai-active rule) so results sit directly under the
+   suggestions banner. On mobile, items wrap to multiple lines gracefully
+   via flex-wrap; no separate breakpoint needed.
+
+   Color treatment per stat preserved from the old design — keeps the
+   recognizable shou palette (magenta / coral / mix-gradient / bone)
+   even at smaller scale. */
+.stats {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 32px;
+  padding: 10px 22px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 100px;
   backdrop-filter: blur(12px);
-  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  width: fit-content;
+  max-width: 100%;
 }
-.stat:hover {
-  transform: translateY(-4px); border-color: rgba(255,46,126,0.4);
-  box-shadow: 0 10px 32px rgba(0,0,0,0.35), 0 0 20px rgba(255,46,126,0.15);
+.stat {
+  display: inline-flex; align-items: baseline; gap: 7px;
+  position: relative;
 }
-.stat::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+/* Dot separator between stats. ::after on each stat except the last
+   so we never get a trailing dot. margin-left matches the .stats gap
+   so spacing reads as "stat · stat" rather than "stat  ·  stat". */
+.stat:not(:last-child)::after {
+  content: '·';
+  color: var(--bone4);
+  margin-left: 16px;
+  font-weight: 700;
 }
-.stat:nth-child(1)::before { background: var(--magenta); box-shadow: 0 0 10px rgba(255,46,126,0.5); }
-.stat:nth-child(2)::before { background: var(--cyan); box-shadow: 0 0 10px rgba(255,153,102,0.5); }
-.stat:nth-child(3)::before { background: var(--grad-mix); }
-.stat:nth-child(4)::before { background: linear-gradient(90deg, var(--bone), var(--cyan)); }
 .sn {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 48;
-  font-size: 44px; font-weight: 500;
-  line-height: 1; letter-spacing: -0.025em; margin-bottom: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.01em;
 }
-.stat:nth-child(1) .sn { color: var(--magenta); text-shadow: 0 0 24px rgba(255, 46, 126, 0.4); }
-.stat:nth-child(2) .sn { color: var(--coral); text-shadow: 0 0 24px rgba(255, 153, 102, 0.4); }
+.stat:nth-child(1) .sn { color: var(--magenta); }
+.stat:nth-child(2) .sn { color: var(--coral); }
 .stat:nth-child(3) .sn { background: var(--grad-mix); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .stat:nth-child(4) .sn { color: var(--bone); }
 .sl {
   font-size: 10px; color: var(--bone3);
-  text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
 }
+
+/* Hide stats during active AI search — the user is hunting for results,
+   not browsing the catalog. Triggered by syncAiActiveClass() which
+   toggles body.ai-active whenever aiResultIds/aiSearching is truthy. */
+body.ai-active .stats { display: none; }
+
+/* Anchor the AI suggestions banner clear of the fixed top nav (70px)
+   when scrollIntoView({block:'start'}) snaps it into view. Without
+   this, the banner's top edge slides under the nav and the user has
+   to scroll up to read the first line. */
+.aip { scroll-margin-top: 90px; }
 
 /* ── FILTERS ──
    Subtle elevated surface — filter zone reads as a distinct functional area
@@ -1319,7 +1342,6 @@ footer p {
   .hero { padding: 110px 20px 50px; }
   h1 { font-size: 44px; letter-spacing: -1.5px; }
   .sub { font-size: 15px; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
   .si { padding: 14px 120px 14px 48px; font-size: 13px; }
   .sbtn { padding: 9px 14px; font-size: 10px; }
   .main { padding: 0 20px 70px; }
@@ -3808,7 +3830,7 @@ function renderAIBanner({ searching, refining, query, reasoning, count, fastCoun
     <div style="margin-bottom:14px;font-size:15px;color:var(--bone);line-height:1.5;">${safeReasoning}</div>
     <button onclick="clearAI()" style="background:transparent;border:1px solid rgba(255,153,102,0.35);color:var(--cyan);padding:6px 14px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,153,102,0.08)'" onmouseout="this.style.background='transparent'">${t('clearSearchBtn')}</button>${suggestionsBtn}
   `;
-  p.scrollIntoView({behavior:'smooth',block:'nearest'});
+  p.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 // Run an AI search via /api/search. Async — shows skeleton during the call.
