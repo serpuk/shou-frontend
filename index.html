@@ -4801,6 +4801,16 @@ async function handleAuthStateChange(event, session) {
   const justSignedIn  = !wasSignedIn && nowSignedIn;
   const justSignedOut =  wasSignedIn && !nowSignedIn;
 
+  // FIRST PAINT: render the nav avatar immediately based on currentSession
+  // alone, before any await. This guarantees the UI reflects the session
+  // state even if the post-sign-in housekeeping below throws, hangs, or
+  // gets interrupted mid-chain. Without this, a silent failure inside
+  // ensureProfileAndMerge / refreshLikesFromServer / fetchProfile would
+  // leave the user staring at a "Sign In" button despite being signed in.
+  // We re-render after fetchProfile resolves so the avatar image (if any)
+  // replaces the initials.
+  renderAuthSurface();
+
   if (justSignedIn) {
     // First-time-sign-in housekeeping: profile row + anon→user merge +
     // likes migration. Order matters: ensureProfileAndMerge first so the
@@ -4808,8 +4818,7 @@ async function handleAuthStateChange(event, session) {
     await ensureProfileAndMerge();
     await refreshLikesFromServer();
     // Fetch profile (display_name, avatar_url, status, is_public, onboarded_at)
-    // BEFORE renderAuthSurface so the nav circle paints with the right avatar
-    // instead of flashing initials → image.
+    // and re-render with the avatar URL once it loads.
     await fetchProfile();
     renderAuthSurface();
     // Close any open sign-in modal; we just signed them in.
