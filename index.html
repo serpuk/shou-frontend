@@ -1563,7 +1563,14 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,   // auto-handles ?code=...&access_token=... on page load
+    detectSessionInUrl: true,   // auto-handles #access_token=... on page load
+    // IMPORTANT: must be 'implicit' to match how the Supabase project's
+    // email auth is configured. The default in supabase-js v2 is 'pkce',
+    // which expects ?code=... in query params and silently ignores
+    // hash-based tokens. Our magic-link emails redirect back with
+    // #access_token=...&refresh_token=... (legacy implicit flow), so the
+    // client must be told to process that shape.
+    flowType: 'implicit',
   },
 });
 
@@ -4514,6 +4521,92 @@ fetchUserGeo().then(() => {
 // Render auth surface on first paint based on whatever session might be
 // restored from localStorage. onAuthStateChange will also fire INITIAL_SESSION.
 renderAuthSurface();
+
+// ────────────────────────────────────────────────────────────────────
+// Defensive auth bootstrap.
+//
+// Runs once on page load to make sure the UI reflects the actual auth
+// state, regardless of what the SDK's automatic detection did. Three
+// scenarios handled:
+//
+//   1. URL hash contains #access_token=...&refresh_token=...
+//      → Supabase just redirected us back from a successful magic link
+//        verification. Set the session manually (belt-and-suspenders even
+//        with flowType:'implicit'), then clean the URL.
+//
+//   2. URL hash contains #error_code=otp_expired (or similar)
+//      → The magic link was already used, expired, or pre-fetched by an
+//        email scanner. Show a friendly toast and clean the URL so the
+//        user can request a fresh link without staring at a hash they
+//        can't parse.
+//
+//   3. No auth params in URL
+//      → Just check getSession() and update UI if a session is persisted.
+//        Covers the case where onAuthStateChange hasn't fired yet by the
+//        time we get here.
+// ────────────────────────────────────────────────────────────────────
+(async function bootstrapAuth() {
+  const hash = window.location.hash || '';
+
+  // Scenario 1: tokens in hash → manually establish session
+  if (hash.includes('access_token=')) {
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const access_token  = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (access_token && refresh_token) {
+      try {
+        const { data, error } = await sb.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          console.warn('setSession from URL hash failed:', error.message);
+        } else if (data?.session) {
+          // onAuthStateChange will fire SIGNED_IN and run the rest of the
+          // post-sign-in flow (ensureProfile, refreshLikes, etc.); we don't
+          // need to duplicate that here.
+        }
+      } catch (err) {
+        console.warn('setSession exception:', err);
+      }
+    }
+    // Clean URL regardless of outcome — leftover tokens in the address bar
+    // are noisy and would re-trigger this code on a refresh.
+    history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    return;
+  }
+
+  // Scenario 2: error in hash → friendly message, clean URL
+  if (hash.includes('error_code=')) {
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const errCode = params.get('error_code') || '';
+    const errDesc = params.get('error_description') || '';
+    const friendlyMsg = errCode === 'otp_expired'
+      ? 'That sign-in link has expired. Please request a new one.'
+      : (errDesc ? errDesc.replace(/\+/g, ' ') : 'Sign-in failed. Please try again.');
+    // Lightweight inline notification: write into the existing #err element
+    // (the same banner used by fetchEvts when API is unavailable).
+    const errEl = document.getElementById('err');
+    if (errEl) {
+      errEl.textContent = friendlyMsg;
+      errEl.classList.add('on');
+      // Auto-dismiss after 8s so it doesn't linger.
+      setTimeout(() => errEl.classList.remove('on'), 8000);
+    }
+    history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    return;
+  }
+
+  // Scenario 3: no auth params → defensively sync UI with whatever session
+  // supabase-js has resolved (or not) by now.
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && !currentSession) {
+      currentSession = session;
+      renderAuthSurface();
+      refreshLikesFromServer();
+    }
+  } catch (err) {
+    console.warn('bootstrap getSession error:', err);
+  }
+})();
 </script>
 </body>
 </html>
