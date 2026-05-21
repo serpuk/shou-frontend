@@ -4787,44 +4787,56 @@ async function sendMagicLink() {
 // React to auth state changes (sign in, sign out, token refresh).
 // ------------------------------------------------------------------
 async function handleAuthStateChange(event, session) {
+  // Track state transitions instead of dispatching by event name. supabase-js
+  // fires SIGNED_IN for direct sign-in actions, INITIAL_SESSION on page-load
+  // session restore, and TOKEN_REFRESHED for programmatic setSession (which
+  // is how our bootstrapAuth establishes the session from URL hash tokens).
+  // If we only listened for SIGNED_IN, the bootstrapAuth path would update
+  // currentSession but never re-render the UI, leaving the user looking
+  // signed-out even though their session was correctly stored.
+  const wasSignedIn = !!currentSession;
   currentSession = session || null;
+  const nowSignedIn = !!currentSession;
 
-  if (event === 'SIGNED_IN' && session) {
-    // First-time housekeeping: profile row + anon→user merge + likes migration.
+  const justSignedIn  = !wasSignedIn && nowSignedIn;
+  const justSignedOut =  wasSignedIn && !nowSignedIn;
+
+  if (justSignedIn) {
+    // First-time-sign-in housekeeping: profile row + anon→user merge +
+    // likes migration. Order matters: ensureProfileAndMerge first so the
+    // merged anon-mode likes are picked up by refreshLikesFromServer.
     await ensureProfileAndMerge();
-    // Pull the user's authoritative likes from user_likes (overwrites local Set).
-    // Important: do this AFTER ensureProfileAndMerge so the freshly-migrated
-    // localStorage likes are included.
     await refreshLikesFromServer();
     // Fetch profile (display_name, avatar_url, status, is_public, onboarded_at)
     // BEFORE renderAuthSurface so the nav circle paints with the right avatar
     // instead of flashing initials → image.
     await fetchProfile();
     renderAuthSurface();
-    // Close any open modals; we just signed them in.
+    // Close any open sign-in modal; we just signed them in.
     closeSignInModal();
-    // Clean up the URL — remove any auth params Supabase added.
+    // Clean up the URL — strip any leftover auth params.
     try {
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
     } catch {}
     // Re-render: Liked tab empty state drops sign-in nudge, likes counter updates.
     renderAll();
-  } else if (event === 'SIGNED_OUT') {
+  } else if (justSignedOut) {
     // Keep localStorage as-is — user's likes don't visually disappear on sign-out.
     // They'll fall back to anonymous-mode persistence.
     currentProfile = null;
     renderAuthSurface();
     renderAll();
-  } else if (event === 'INITIAL_SESSION') {
-    // Fired on every page load. If a session exists, this is a returning user.
-    // Sync likes from server so device A and device B stay consistent.
-    if (session) {
-      await fetchProfile();
-      renderAuthSurface();
-      await refreshLikesFromServer();
-    }
+  } else if (nowSignedIn && !currentProfile) {
+    // Session is healthy but profile hasn't loaded yet (e.g. tab reload with
+    // persisted session, or rare race conditions). Load profile + re-render
+    // so the nav shows the right avatar.
+    await fetchProfile();
+    renderAuthSurface();
   }
+  // Other transitions (TOKEN_REFRESHED on already-signed-in session,
+  // USER_UPDATED, etc.) need no UI work — currentSession was already updated
+  // at the top of this handler, and the avatar/profile haven't changed.
 }
 
 sb.auth.onAuthStateChange(handleAuthStateChange);
