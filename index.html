@@ -1002,6 +1002,19 @@ body.ai-active .stats { display: none; }
 }
 .lb-status .status-link:hover .link-ico { opacity: 1; }
 
+/* When BOTH a manual status_text AND a going-event are shown for the same
+   user, this is the secondary "Going to X 🔗" line that sits under the
+   primary manual status. Visually demoted — slightly smaller, tighter
+   top margin — so it reads as "additional context" rather than competing
+   with the user's own voice. When the going line is the ONLY status
+   (no manual text), this class still applies but inherits the regular
+   .lb-status size from the cascade, which reads fine standalone. */
+.lb-status.lb-going-line {
+  font-size: 12px;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
 /* Pulse animation triggered when transitioning to liked state.
    The heart bounces: 1 → 1.4 → 0.9 → 1 over 400ms. Matches Instagram's
    "pop" timing pretty closely. */
@@ -6008,33 +6021,39 @@ async function openLikedBy(eventId) {
 }
 
 // Shared row template for both Liked-by and Going modals. Each row shows
-// avatar + name + status. The status rule: if user has a manual status_text,
-// show it; otherwise if they have a next_going_event, show "Going to X 🔗"
-// where the link opens that event; otherwise show "—".
+// avatar + name + status. Two pieces of status info can be shown:
+//   - Manual status_text (what the user typed)        ← primary
+//   - Synthesized "Going to X 🔗" (when going)        ← secondary
+// Both render when both exist (stacked); either falls back gracefully.
+// When neither exists, shows "—".
 function lbRowHtml(r) {
   const name = (r.display_name || 'shou user').trim();
   const initials = (name.charAt(0) || 'S').toUpperCase();
   const pic = renderAvatarInner(r.avatar_url, initials);
   const status = (r.status_text || '').trim();
-  let statusEl;
+  const goingEv = r.next_going_event;
+  const hasGoing = goingEv && goingEv.id && goingEv.title;
+
+  // Build status lines. Both can be present; render whichever exist.
+  // The going line is a secondary visual treatment (smaller, dimmer)
+  // since manual status is the user's voice and going is auto-derived.
+  let parts = [];
   if (status) {
-    // Manual status wins (per the design decision earlier).
-    statusEl = `<div class="lb-status">${escapeHtml(status)}</div>`;
-  } else if (r.next_going_event && r.next_going_event.id && r.next_going_event.title) {
-    // No manual status: synthesize from next upcoming going event. Title links
-    // back into the app via om() — opens the event modal so the viewer can see
-    // what the person is going to.
-    const ev = r.next_going_event;
-    statusEl = `<div class="lb-status">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${ev.id}')">${escapeHtml(ev.title)}<span class="link-ico">🔗</span></a></div>`;
-  } else {
-    statusEl = `<div class="lb-status empty">—</div>`;
+    parts.push(`<div class="lb-status">${escapeHtml(status)}</div>`);
   }
+  if (hasGoing) {
+    parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a></div>`);
+  }
+  if (parts.length === 0) {
+    parts.push(`<div class="lb-status empty">—</div>`);
+  }
+
   return `
     <div class="lb-row">
       <div class="lb-pic">${pic}</div>
       <div class="lb-text">
         <div class="lb-name">${escapeHtml(name)}</div>
-        ${statusEl}
+        ${parts.join('')}
       </div>
     </div>`;
 }
