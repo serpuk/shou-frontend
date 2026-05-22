@@ -1488,18 +1488,21 @@ body.ai-active .stats { display: none; }
   border: 0;
   padding: 3px 10px;
   cursor: pointer;
-  color: var(--bone2);
+  /* Brighter cream + stronger underline so the count reads clearly against
+     the dark modal bg. Earlier version used bone2 + 30% opacity underline
+     which vanished on mobile at small sizes. */
+  color: var(--bone1);
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   text-decoration: underline;
-  text-decoration-color: rgba(245,230,211,0.3);
+  text-decoration-color: rgba(245,230,211,0.55);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   transition: text-decoration-color .15s, color .15s;
 }
 .iact-num:hover {
-  text-decoration-color: rgba(245,230,211,0.8);
+  text-decoration-color: rgba(245,230,211,0.95);
   color: var(--cyan);
 }
 /* Spacer: empty placeholder so icons stay aligned when count is absent.
@@ -1514,7 +1517,9 @@ body.ai-active .stats { display: none; }
   /* On mobile, ensure tap targets are generous */
   .iact-icon  { padding: 8px 14px; }
   .iact-glyph { font-size: 30px; }
-  .iact-num   { padding: 5px 12px; font-size: 13px; }
+  /* Slightly larger count on mobile so the underlined number is clearly
+     legible below the glyph. 13px desktop → 15px mobile. */
+  .iact-num   { padding: 5px 12px; font-size: 15px; }
   .iact-spacer { height: 28px; }
 }
 
@@ -4535,13 +4540,13 @@ ${mSourcesRow(e)}
 <div class="mact-primary">
 <div class="mact-secondary">
   <div class="iact iact-save${isL ? ' on' : ''}">
-    <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
+    <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
       <span class="iact-glyph">${isL ? '♥' : '♡'}</span>
     </button>
     ${e.likes > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" aria-label="See who liked this">${e.likes}</button>` : '<span class="iact-spacer"></span>'}
   </div>
   <div class="iact iact-going${isG ? ' on' : ''}">
-    <button class="iact-icon" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" aria-pressed="${isG}">
+    <button class="iact-icon" onclick="event.stopPropagation();tg('${e.id}', this)" title="${t('going')}" aria-label="${t('going')}" aria-pressed="${isG}">
       <span class="iact-glyph">${isG ? '✓' : '○'}</span>
     </button>
     ${goingN > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" aria-label="See who's going">${goingN}</button>` : '<span class="iact-spacer"></span>'}
