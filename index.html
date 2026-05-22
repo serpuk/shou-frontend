@@ -1385,32 +1385,35 @@ body.ai-active .stats { display: none; }
 }
 
 /* ── Modal action redesign ──────────────────────────────────────────────
-   Replaces the old like-btn / going-btn / shb-share trio with a unified
-   .act-btn component. Each button has:
-     - A top zone (icon + label) that toggles the user's state (save/going)
-     - A bottom zone (count + chevron) that opens the "who liked / who's
-       going" list — only rendered when the count is > 0
-   Share is a single-zone variant (no count). The whole secondary group
-   sits in a grid above the full-width Get Tickets primary CTA.
-   Active states use color-tinted backgrounds + colored icons so the
-   on-state is immediately readable on the dark backdrop (the old empty
-   ♥ outline on dark was nearly invisible). */
+   Single-row layout: Save | Going | <share area>, all stacked above a
+   full-width Get Tickets primary CTA. The <share area> is viewport-
+   dependent:
+     - Desktop: 3 small platform-specific buttons (X / FB / Copy) grouped
+       inline. They sit next to Going on the right.
+     - Mobile: a single ↗ Share button that opens the native iOS/Android
+       share sheet. Takes its own slot in the row.
+   The .share-platform / .share-generic display toggles handle the swap.
+   Active states (Save, Going) use color-tinted backgrounds so the
+   on-state is immediately readable on the dark backdrop. */
 .mact-secondary {
-  display: grid;
-  /* Desktop: 2 columns (Save, Going). Share lives in the .mact-share row
-     above as platform-specific buttons. The act-share button is hidden
-     on desktop via .share-generic display:none. */
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 8px;
+  align-items: stretch;       /* equal height across all children */
   margin-bottom: 10px;
 }
-@media (max-width: 768px) {
-  .mact-secondary {
-    /* Mobile: 3 columns (Save, Going, Share). The .mact-share row is
-       hidden entirely on mobile, so we surface the single share button
-       here for parity. */
-    grid-template-columns: 1fr 1fr 1fr;
-  }
+.mact-secondary > .act-btn {
+  flex: 1;                    /* Save, Going (and mobile Share) expand evenly */
+  min-width: 0;               /* allow shrinking, prevents overflow */
+}
+/* Desktop platform-share group sits at row end, compact (not flex-grown) */
+.act-share-platforms {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.act-share-platforms > .shb {
+  height: auto;               /* match parent flex height (Save/Going) */
+  min-height: 60px;           /* same as .act-btn min-height */
 }
 
 .act-btn {
@@ -1461,7 +1464,6 @@ body.ai-active .stats { display: none; }
   justify-content: center;
   gap: 2px;
   transition: background .15s;
-  /* This zone has its own onclick — make it look tappable */
   cursor: pointer;
 }
 .act-bottom:hover {
@@ -4480,11 +4482,6 @@ function om(id, _opts){
 <div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
 </div>
 ${mSourcesRow(e)}
-<div class="mact-share">
-<button class="shb share-platform" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
-<button class="shb share-platform" onclick="sfb('${e.id}')" title="${t('fb2')}">f</button>
-<button class="shb share-platform" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
-</div>
 <div class="mact-primary">
 <div class="mact-secondary">
   <button class="act-btn act-save${isL?' on':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="${isL ? t('saved') : t('save')}">
@@ -4501,6 +4498,11 @@ ${mSourcesRow(e)}
     </div>
     ${goingN > 0 ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')"><span>${goingN}</span><span class="act-chev">›</span></div>` : ''}
   </button>
+  <div class="act-share-platforms share-platform">
+    <button class="shb" onclick="event.stopPropagation();stw('${e.id}')" title="${t('xs')}">𝕏</button>
+    <button class="shb" onclick="event.stopPropagation();sfb('${e.id}')" title="${t('fb2')}">f</button>
+    <button class="shb" onclick="event.stopPropagation();cp2('${e.id}')" title="${t('cp')}">🔗</button>
+  </div>
   <button class="act-btn act-share share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
     <div class="act-top">
       <span class="act-icon">↗</span>
