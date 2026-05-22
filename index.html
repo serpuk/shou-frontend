@@ -892,7 +892,31 @@ body.ai-active .stats { display: none; }
 }
 .sb:hover { background: rgba(255,46,126,0.1); border-color: rgba(255,46,126,0.4); color: var(--magenta); }
 .sb.lk { color: var(--magenta); border-color: rgba(255,46,126,0.5); box-shadow: 0 0 10px rgba(255,46,126,0.3); }
-.ln { font-size: 11px; color: var(--bone3); margin-left: 1px; }
+/* Heart-only inner span on .sb — uses -webkit-text-stroke to render the
+   ♥ character as outline (unsaved) or filled (saved). Scoped via this
+   inner span so the other .sb buttons sharing this class (𝕏, f, 🔗)
+   render their text/symbols normally instead of also getting outlined. */
+.sb-heart {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--bone1);
+  display: inline-block;
+  transition: color .2s, -webkit-text-stroke-color .2s;
+  line-height: 1;
+}
+.sb:hover .sb-heart { -webkit-text-stroke-color: var(--magenta); }
+.sb.lk .sb-heart {
+  color: var(--magenta);
+  -webkit-text-stroke: 0;
+}
+.ln {
+  /* Count next to the heart on bigCard. Was 11px which is unreadably small
+     beside the now-larger .sb button (36px / 18px glyph). 13px keeps the
+     count subordinate to the heart but actually legible. */
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bone2);
+  margin-left: 2px;
+}
 
 /* Card-level like button — pill-shaped, matches Get Tickets button height.
    Used in smCard. The big card (.featured) keeps the smaller .sb for now
@@ -1481,6 +1505,21 @@ body.ai-active .stats { display: none; }
 /* Active states — color the glyph only, no background fill */
 .iact-save.on .iact-glyph  { color: #ff2e7e; }   /* magenta */
 .iact-going.on .iact-glyph { color: #ff9966; }   /* coral */
+
+/* Heart glyph: render ♥ as outline (transparent + stroke) when unsaved,
+   filled when saved. We can't rely on swapping ♥/♡ because ♡ (U+2661)
+   doesn't render on iOS Safari — drops to blank, leaving an empty button.
+   This stroke trick uses only ♥ (which renders reliably everywhere) and
+   handles the visual toggle in CSS. Active state overrides the stroke. */
+.iact-glyph-heart {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--bone1);
+  transition: color .2s, -webkit-text-stroke-color .2s;
+}
+.iact-save.on .iact-glyph-heart {
+  color: var(--magenta);
+  -webkit-text-stroke: 0;
+}
 
 /* Count: subtle underline signals "tappable for details (see who liked)" */
 .iact-num {
@@ -3897,8 +3936,8 @@ function bigCard(e){
       </div>
       <div class="feat-actions">
         <div class="socs">
-          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">${isL ? '♥' : '♡'}</button>
-          <span class="ln${e.likes>0?' clickable':''}" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes}</span>
+          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}"><span class="sb-heart">♥</span></button>
+          ${e.likes > 0 ? `<span class="ln clickable" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes}</span>` : ''}
           <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
             <span class="going-icon">🎟</span>
             ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
@@ -3938,7 +3977,7 @@ ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:
 <div class="cf2">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">♥</span>
-  <span class="like-count${e.likes>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>
+  ${e.likes > 0 ? `<span class="like-count clickable" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>` : ''}
 </button>
 <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
   <span class="going-icon">🎟</span>
@@ -4012,14 +4051,14 @@ function updateModalLikeButton(id) {
   if (!e) return;
   iact.classList.toggle('on', isL);
   iconBtn.setAttribute('aria-label', isL ? t('saved') : t('save'));
+  iconBtn.setAttribute('title', isL ? t('saved') : t('save'));
   iconBtn.setAttribute('aria-pressed', String(isL));
-  // Swap the heart glyph between outline (not saved) and filled (saved)
-  const glyph = iconBtn.querySelector('.iact-glyph');
-  if (glyph) glyph.textContent = isL ? '♥' : '♡';
-  // Rebuild the count button or spacer based on current count. We replace
-  // the trailing child each time — simpler than diffing and the row only
-  // re-renders on user toggle, never in a hot path.
-  const old = iact.querySelector('.iact-num, .iact-spacer');
+  // Heart glyph stays as ♥ — outline-vs-filled is handled by CSS via the
+  // .iact-save.on class on the parent .iact wrapper. No textContent swap.
+  // Rebuild the count display. Show count only when > 0; spacer otherwise
+  // to keep this .iact column vertically aligned with sibling columns
+  // (Going, share buttons) that also use spacers.
+  const old = iact.querySelector('.iact-num, .iact-num-zero, .iact-spacer');
   if (old) old.remove();
   if (e.likes > 0) {
     const num = document.createElement('button');
@@ -4146,10 +4185,11 @@ function updateModalGoingButton(id) {
   if (!e) return;
   iact.classList.toggle('on', isG);
   iconBtn.setAttribute('aria-pressed', String(isG));
+  iconBtn.setAttribute('title', t('going'));
   const glyph = iconBtn.querySelector('.iact-glyph');
   if (glyph) glyph.textContent = isG ? '✓' : '○';
   const n = e.going_count || 0;
-  const old = iact.querySelector('.iact-num, .iact-spacer');
+  const old = iact.querySelector('.iact-num, .iact-num-zero, .iact-spacer');
   if (old) old.remove();
   if (n > 0) {
     const num = document.createElement('button');
@@ -4541,7 +4581,7 @@ ${mSourcesRow(e)}
 <div class="mact-secondary">
   <div class="iact iact-save${isL ? ' on' : ''}">
     <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
-      <span class="iact-glyph">${isL ? '♥' : '♡'}</span>
+      <span class="iact-glyph iact-glyph-heart">♥</span>
     </button>
     ${e.likes > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" aria-label="See who liked this">${e.likes}</button>` : '<span class="iact-spacer"></span>'}
   </div>
