@@ -1364,17 +1364,19 @@ body.ai-active .stats { display: none; }
 .shb:hover { background: rgba(255,153,102,0.08); border-color: rgba(255,153,102,0.3); color: var(--cyan); }
 
 /* Share-button viewport split.
-   Desktop (default): show the platform-specific buttons (X / FB / Copy link).
-   Mobile (≤768px): collapse to a single ↗ button that opens the OS native
-   share sheet via navigator.share(). The native sheet lets users pick X,
-   FB, WhatsApp, iMessage, Mail, Telegram, AirDrop, copy, etc., and avoids
-   the iOS universal-link interception bugs that plague platform-specific
-   share URLs on phones. */
+   Desktop (default): show the platform-specific buttons (X / FB / Copy link)
+   in the .mact-share row above primary actions. The share-generic button
+   sits unused in .mact-primary (hidden).
+   Mobile (≤768px): hide the whole .mact-share row, since its only remaining
+   content is the platform buttons that media queries hide. The share-generic
+   button in .mact-primary becomes visible so users get a single ↗ button
+   inline with like / going / Get Tickets — no orphaned row. */
 .share-generic  { display: none; }
 .share-platform { display: inline-flex; }
 @media (max-width: 768px) {
   .share-platform { display: none; }
   .share-generic  { display: inline-flex; }
+  .mact-share     { display: none; }   /* row now empty on mobile, drop entirely */
 }
 
 /* Multi-source picker — shown when an event is listed on 2+ platforms */
@@ -4244,11 +4246,19 @@ function eventCanonicalUrl(id) {
   return base + '?event=' + encodeURIComponent(id);
 }
 
-// Build the share URL — routed to /api/share via vercel.json rewrite.
-// This is what we hand to Twitter/Facebook/clipboard so the recipient's
-// preview is event-specific instead of the generic shou homepage.
+// Build the share URL passed to X / Facebook / clipboard / Web Share API.
+// Uses the same ?event=<id> pattern as the in-app canonical URL — when a
+// recipient clicks the link, the SPA loads and the event modal opens
+// automatically (handled by the page-load ?event= handler).
+//
+// We previously experimented with a /e/<id> pattern that routed through
+// a serverless /api/share Edge function returning per-event OG meta tags,
+// for richer link previews on WhatsApp/X/FB/iMessage. That infrastructure
+// is sketched in share.js + vercel.json (not currently deployed). If you
+// want to revisit it: deploy both files, then change the return below to
+//   window.location.origin + '/e/' + encodeURIComponent(id)
 function eventShareUrl(id) {
-  return window.location.origin + '/e/' + encodeURIComponent(id);
+  return eventCanonicalUrl(id);
 }
 
 // Web Share API gate. Returns true when we should use the native share sheet
@@ -4338,7 +4348,6 @@ ${mSourcesRow(e)}
 <button class="shb share-platform" onclick="stw('${e.id}')" title="${t('xs')}">𝕏</button>
 <button class="shb share-platform" onclick="sfb('${e.id}')" title="${t('fb2')}">f</button>
 <button class="shb share-platform" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
-<button class="shb share-generic" onclick="sgen('${e.id}')" title="${t('share')}" aria-label="${t('share')}">↗</button>
 </div>
 <div class="mact-primary">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
@@ -4349,6 +4358,7 @@ ${mSourcesRow(e)}
   <span class="going-icon">🎟</span>
   ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
 </button>
+<button class="shb share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">↗</button>
 ${mTicketBtn(e)}
 </div></div>`;
   document.getElementById('mov').classList.add('on');
