@@ -1501,6 +1501,44 @@ footer p {
 .pe-pic-hint { font-size: 11px; color: var(--bone3); margin-top: 8px; line-height: 1.4; }
 .pe-pic-input { display: none; }   /* hidden file input */
 
+/* Preset avatar picker — shown below the upload area. Users can either
+   upload their own photo OR pick one of these site-themed SVG avatars.
+   Storage scheme: avatar_url = 'preset:<id>' instead of an HTTPS URL.
+   Renderer detects the prefix and inlines the SVG. */
+.pe-presets { margin: 16px 0 4px; }
+.pe-presets-label {
+  display: block; font-size: 10px; color: var(--bone3);
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
+  margin-bottom: 10px;
+}
+.pe-presets-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (min-width: 500px) {
+  .pe-presets-grid { grid-template-columns: repeat(8, 1fr); }
+}
+.pe-preset {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: transform .12s, border-color .12s, box-shadow .12s;
+  position: relative;
+}
+.pe-preset:hover {
+  transform: scale(1.06);
+  border-color: rgba(255,153,102,0.35);
+}
+.pe-preset.on {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(255,153,102,0.25), 0 6px 18px rgba(255,46,126,0.35);
+}
+.pe-preset svg { width: 100%; height: 100%; display: block; }
+
 .pe-field { margin-bottom: 16px; }
 .pe-label {
   display: block; font-size: 10px; color: var(--bone3);
@@ -1640,6 +1678,110 @@ footer p {
   transition: background .15s;
 }
 .lb-row:hover { background: rgba(255,255,255,0.03); }
+/* Liked-by row becomes interactive when it links to a public profile.
+   Clicking opens get_user_public_profile and renders a read-only view of
+   that user's profile + their currently-liked events. */
+.lb-row.clickable { cursor: pointer; }
+.lb-row.clickable:hover { background: rgba(255,255,255,0.05); }
+
+/* ── User-profile modal (Phase 3) ─────────────────────────────────
+   Opened by clicking a Liked-by row. Shows that user's profile +
+   their currently-liked future events. Read-only — no editing here. */
+.user-mov {
+  position: fixed; inset: 0; z-index: 290;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.user-mov.on { display: flex; }
+.user-sheet {
+  background: rgba(24, 16, 31, 0.98);
+  border: 1px solid rgba(255,153,102,0.3);
+  border-radius: var(--radius);
+  padding: 0;
+  max-width: 560px; width: 100%;
+  max-height: 86vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  position: relative;
+}
+.up-head {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 16px; align-items: center;
+  position: relative;
+}
+.up-close {
+  position: absolute; top: 14px; right: 14px;
+  background: transparent; border: none;
+  color: var(--bone3); font-size: 20px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.up-close:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
+.up-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 22px; font-weight: 700;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.up-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Preset avatars are inline SVG inside the same round containers — make
+   them fill the parent the same way the <img> elements do. The squared
+   SVG content gets clipped to a circle by the container's border-radius. */
+.up-avatar svg,
+.lb-pic svg,
+.pv-pic svg,
+.pe-pic-preview svg,
+.avatar-btn svg { width: 100%; height: 100%; display: block; }
+.up-text { flex: 1; min-width: 0; }
+.up-name {
+  font-family: 'Fraunces', serif;
+  font-variation-settings: 'opsz' 36;
+  font-size: 22px; font-weight: 500;
+  color: var(--bone); margin-bottom: 4px;
+  line-height: 1.2;
+}
+.up-status {
+  font-size: 13px; color: var(--bone3);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.up-status.empty { font-style: italic; opacity: 0.55; }
+
+.up-body { padding: 18px 22px 22px; overflow-y: auto; flex: 1; }
+.up-section-h {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--bone3); margin-bottom: 14px;
+}
+.up-likes-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 600px) {
+  .up-likes-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.up-empty,
+.up-private,
+.up-loading {
+  text-align: center; padding: 40px 20px;
+  color: var(--bone3); font-size: 13px;
+}
+.up-private { padding-top: 14px; }
+.up-loading .spin {
+  width: 28px; height: 28px; margin: 0 auto 12px;
+  border: 2px solid rgba(255,153,102,0.15);
+  border-top-color: var(--cyan); border-radius: 50%;
+  animation: sp 0.9s linear infinite;
+}
 
 .lb-pic {
   width: 44px; height: 44px; border-radius: 50%;
@@ -1912,6 +2054,16 @@ footer p {
         </div>
       </div>
 
+      <!-- Preset avatars: site-themed SVGs (vinyl, disco ball, headphones, etc).
+           Populated by initPresetAvatars() on first render of the edit form.
+           Clicking one sets avatar_url = 'preset:<id>' on save, bypassing upload. -->
+      <div class="pe-presets">
+        <div class="pe-presets-label">Or pick a vibe</div>
+        <div class="pe-presets-grid" id="pePresetsGrid">
+          <!-- buttons injected here -->
+        </div>
+      </div>
+
       <div class="pe-field">
         <label class="pe-label" for="peName">Display name</label>
         <input type="text" class="pe-input" id="peName" maxlength="50" placeholder="How you'd like to appear">
@@ -1957,6 +2109,19 @@ footer p {
     </div>
     <div class="lb-body" id="lbBody">
       <div class="lb-loading"><div class="spin"></div>Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- User-profile modal (Phase 3). Opened when a Liked-by row is clicked.
+     Shows that user's avatar/name/status + their currently-liked future
+     events. Read-only; uses get_user_public_profile RPC which respects
+     the target's is_public flag and returns "private" state when needed. -->
+<div class="user-mov" id="userMov" onclick="closeUserProfileIfBackdrop(event)">
+  <div class="user-sheet">
+    <button class="up-close" onclick="closeUserProfile()" aria-label="Close">✕</button>
+    <div id="upContent">
+      <div class="up-loading"><div class="spin"></div>Loading…</div>
     </div>
   </div>
 </div>
@@ -2027,6 +2192,78 @@ let currentProfile = null;
 // Save. Null between edits.
 let pendingAvatarBlob = null;
 let pendingAvatarDataUrl = null;   // for preview rendering before save
+let pendingAvatarPreset = null;    // selected preset id (e.g. 'vinyl') or null
+
+// ── Preset avatars ────────────────────────────────────────────────────────
+// Site-themed inline SVG avatars users can pick instead of uploading a photo.
+// Storage scheme: avatar_url = 'preset:<id>' (e.g. 'preset:vinyl') — the
+// renderAvatarInner helper detects this prefix and inlines the SVG rather
+// than treating it as an <img src>.
+//
+// Visual design: each is a 100×100 viewBox; gets clipped to a circle by
+// any parent with border-radius:50% + overflow:hidden, which all avatar
+// containers (.up-avatar, .lb-pic, .pv-pic, .pe-pic-preview, .avatar-btn)
+// already use. SVG IDs prefixed with `pre-<id>-` so multiple presets can
+// render on the same page (picker grid) without gradient ID collisions.
+const PRESET_AVATARS = [
+  {
+    id: 'vinyl', name: 'Vinyl',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#1a0a1f"/><circle cx="50" cy="50" r="42" fill="#0a050d"/><g fill="none" stroke="#2a1530" stroke-width="0.5"><circle cx="50" cy="50" r="38"/><circle cx="50" cy="50" r="34"/><circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="26"/><circle cx="50" cy="50" r="22"/></g><circle cx="50" cy="50" r="14" fill="url(#pre-vinyl-g)"/><circle cx="50" cy="50" r="2" fill="#1a0a1f"/><defs><linearGradient id="pre-vinyl-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2e7e"/><stop offset="1" stop-color="#ff9966"/></linearGradient></defs></svg>`,
+  },
+  {
+    id: 'disco', name: 'Disco',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#2a0a30"/><line x1="50" y1="16" x2="50" y2="6" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/><defs><radialGradient id="pre-disco-g" cx="0.35" cy="0.35"><stop offset="0" stop-color="#ffd1ec"/><stop offset="0.5" stop-color="#ff5fb8"/><stop offset="1" stop-color="#8b3ee0"/></radialGradient><pattern id="pre-disco-dots" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse"><rect x="0.5" y="0.5" width="5" height="5" fill="rgba(255,255,255,0.18)" rx="0.5"/></pattern><clipPath id="pre-disco-ball"><circle cx="50" cy="52" r="34"/></clipPath></defs><circle cx="50" cy="52" r="34" fill="url(#pre-disco-g)"/><rect width="100" height="100" fill="url(#pre-disco-dots)" clip-path="url(#pre-disco-ball)"/><ellipse cx="40" cy="42" rx="8" ry="6" fill="rgba(255,255,255,0.35)"/></svg>`,
+  },
+  {
+    id: 'phones', name: 'Headphones',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#1a0a30"/><path d="M 18,58 Q 18,22 50,22 Q 82,22 82,58" fill="none" stroke="url(#pre-phones-g)" stroke-width="7" stroke-linecap="round"/><rect x="10" y="50" width="20" height="28" rx="5" fill="url(#pre-phones-g)"/><rect x="70" y="50" width="20" height="28" rx="5" fill="url(#pre-phones-g)"/><circle cx="20" cy="64" r="4" fill="#1a0a30"/><circle cx="80" cy="64" r="4" fill="#1a0a30"/><defs><linearGradient id="pre-phones-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2e7e"/><stop offset="1" stop-color="#ff9966"/></linearGradient></defs></svg>`,
+  },
+  {
+    id: 'cocktail', name: 'Cocktail',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#3a0a40"/><line x1="58" y1="14" x2="48" y2="46" stroke="#ffd966" stroke-width="1.4" stroke-linecap="round"/><path d="M 18,28 L 50,62 L 82,28 Z" fill="url(#pre-cocktail-g)" stroke="rgba(255,255,255,0.4)" stroke-width="1.2"/><rect x="49" y="60" width="2" height="20" fill="rgba(255,255,255,0.55)"/><rect x="34" y="80" width="32" height="3" rx="1.5" fill="rgba(255,255,255,0.55)"/><circle cx="48" cy="46" r="4.5" fill="#3ce85a"/><circle cx="48" cy="46" r="1.8" fill="#ff2e7e"/><defs><linearGradient id="pre-cocktail-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5fb8" stop-opacity="0.85"/><stop offset="1" stop-color="#ffa3d9" stop-opacity="0.95"/></linearGradient></defs></svg>`,
+  },
+  {
+    id: 'stars', name: 'Stars',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#1a0a30"/><path d="M 50,20 L 56,40 L 76,40 L 60,52 L 66,72 L 50,60 L 34,72 L 40,52 L 24,40 L 44,40 Z" fill="url(#pre-stars-a)"/><path d="M 80,28 L 82,34 L 88,34 L 83,38 L 85,44 L 80,40 L 75,44 L 77,38 L 72,34 L 78,34 Z" fill="url(#pre-stars-b)"/><path d="M 22,68 L 24,74 L 30,74 L 25,78 L 27,84 L 22,80 L 17,84 L 19,78 L 14,74 L 20,74 Z" fill="url(#pre-stars-c)"/><defs><linearGradient id="pre-stars-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2e7e"/><stop offset="1" stop-color="#ff9966"/></linearGradient><linearGradient id="pre-stars-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b3ee0"/><stop offset="1" stop-color="#c896ff"/></linearGradient><linearGradient id="pre-stars-c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5fb8"/><stop offset="1" stop-color="#ffa3d9"/></linearGradient></defs></svg>`,
+  },
+  {
+    id: 'bolt', name: 'Bolt',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#1a0a30"/><ellipse cx="50" cy="50" rx="34" ry="38" fill="url(#pre-bolt-glow)" opacity="0.5"/><path d="M 56 14 L 30 54 L 46 54 L 38 86 L 66 44 L 50 44 L 60 14 Z" fill="url(#pre-bolt-g)" stroke="rgba(255,255,255,0.5)" stroke-width="0.8" stroke-linejoin="round"/><defs><linearGradient id="pre-bolt-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd966"/><stop offset="0.5" stop-color="#ff9966"/><stop offset="1" stop-color="#ff2e7e"/></linearGradient><radialGradient id="pre-bolt-glow"><stop offset="0" stop-color="#ff9966"/><stop offset="1" stop-color="#ff9966" stop-opacity="0"/></radialGradient></defs></svg>`,
+  },
+  {
+    id: 'moon', name: 'Moon',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#0a0520"/><path d="M 64 20 A 30 30 0 1 0 64 80 A 22 22 0 1 1 64 20" fill="url(#pre-moon-g)"/><path d="M 24 28 L 25.6 33 L 30 34 L 25.6 35 L 24 40 L 22.4 35 L 18 34 L 22.4 33 Z" fill="#ffa3d9"/><circle cx="78" cy="74" r="1.5" fill="#ffa3d9"/><circle cx="20" cy="62" r="1" fill="#c896ff"/><defs><radialGradient id="pre-moon-g" cx="0.4" cy="0.5"><stop offset="0" stop-color="#ffa3d9"/><stop offset="0.7" stop-color="#ff5fb8"/><stop offset="1" stop-color="#8b3ee0"/></radialGradient></defs></svg>`,
+  },
+  {
+    id: 'wave', name: 'Soundwave',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#1a0a30"/><g fill="url(#pre-wave-g)"><rect x="12" y="42" width="9" height="16" rx="2"/><rect x="25" y="32" width="9" height="36" rx="2"/><rect x="38" y="22" width="9" height="56" rx="2"/><rect x="51" y="36" width="9" height="28" rx="2"/><rect x="64" y="26" width="9" height="48" rx="2"/><rect x="77" y="40" width="9" height="20" rx="2"/></g><defs><linearGradient id="pre-wave-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9966"/><stop offset="1" stop-color="#ff2e7e"/></linearGradient></defs></svg>`,
+  },
+];
+
+function getPresetSvg(id) {
+  const p = PRESET_AVATARS.find(p => p.id === id);
+  return p ? p.svg : null;
+}
+
+// Centralized avatar HTML renderer. Used by every render site (nav,
+// modal, edit form, liked-by row, user-profile view). Handles three
+// forms of avatar_url:
+//   - null/empty     → initials text
+//   - 'preset:<id>'  → inline SVG from PRESET_AVATARS
+//   - 'https://...'  → <img> with onerror fallback to initials
+// onerrorOverride exists so the nav avatar can do its
+// classList.remove('has-img') dance, which other sites don't need.
+function renderAvatarInner(avatarUrl, initials, onerrorOverride) {
+  const safe = (initials || 'S').toString();
+  const fallback = escapeHtml(safe);
+  if (!avatarUrl) return fallback;
+  if (avatarUrl.startsWith('preset:')) {
+    return getPresetSvg(avatarUrl.slice(7)) || fallback;
+  }
+  const onerror = onerrorOverride ||
+    `this.parentElement.textContent='${safe.replace(/'/g, "\\'")}';`;
+  return `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="${onerror}">`;
+}
 
 const T={
   en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,showing:'Showing'},
@@ -5033,7 +5270,7 @@ function renderAuthSurface() {
   const initials = (currentProfile?.display_name?.trim()?.[0] || email.charAt(0) || 'S').toUpperCase();
   const avatarUrl = currentProfile?.avatar_url || null;
   const inner = avatarUrl
-    ? `<img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.parentElement.classList.remove('has-img');this.outerHTML='${initials}';">`
+    ? renderAvatarInner(avatarUrl, initials, `this.parentElement.classList.remove('has-img');this.outerHTML='${initials}';`)
     : initials;
   const cls = avatarUrl ? 'avatar-btn has-img' : 'avatar-btn';
 
@@ -5172,9 +5409,7 @@ function renderProfileView() {
   // Avatar preview block
   const pic = document.getElementById('pvPic');
   if (pic) {
-    pic.innerHTML = avatarUrl
-      ? `<img src="${escapeHtml(avatarUrl)}" alt="">`
-      : initials;
+    pic.innerHTML = renderAvatarInner(avatarUrl, initials);
   }
 
   document.getElementById('pvName').textContent = name;
@@ -5230,6 +5465,10 @@ function openProfileEdit() {
   const preview = document.getElementById('pePicPreview');
   pendingAvatarBlob = null;
   pendingAvatarDataUrl = null;
+  pendingAvatarPreset = null;
+  // Render the preset picker grid and highlight the active preset (if the
+  // user's existing avatar_url is a preset reference like 'preset:vinyl').
+  initPresetPicker();
   renderEditAvatarPreview();
 
   document.getElementById('peErr')?.classList.remove('on');
@@ -5241,7 +5480,45 @@ function openProfileEdit() {
 function cancelProfileEdit() {
   pendingAvatarBlob = null;
   pendingAvatarDataUrl = null;
+  pendingAvatarPreset = null;
   showProfileView();
+}
+
+// Populate the preset-avatar grid with one button per design. Called once
+// each time the edit form opens; safe to call repeatedly (idempotent).
+// Marks the currently-saved preset (if any) as .on so the user can see
+// which one is "their" avatar.
+function initPresetPicker() {
+  const grid = document.getElementById('pePresetsGrid');
+  if (!grid) return;
+  const currentUrl = currentProfile?.avatar_url || '';
+  const activeId = currentUrl.startsWith('preset:') ? currentUrl.slice(7) : null;
+  grid.innerHTML = PRESET_AVATARS.map(p => `
+    <button type="button" class="pe-preset${p.id === activeId ? ' on' : ''}"
+            data-preset-id="${p.id}"
+            onclick="selectPresetAvatar('${p.id}')"
+            aria-label="${escapeHtml(p.name)} avatar">${p.svg}</button>
+  `).join('');
+}
+
+// Click handler for preset buttons. Selecting a preset implies the user
+// is NOT using an uploaded photo, so we clear any pending upload state
+// (otherwise saveProfileEdit would prefer the uploaded blob over the
+// preset). The change isn't persisted until the user clicks Save.
+function selectPresetAvatar(id) {
+  if (!getPresetSvg(id)) return;
+  pendingAvatarPreset = id;
+  pendingAvatarBlob = null;
+  pendingAvatarDataUrl = null;
+  // Toggle .on class on grid buttons
+  const grid = document.getElementById('pePresetsGrid');
+  if (grid) {
+    grid.querySelectorAll('.pe-preset').forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.presetId === id);
+    });
+  }
+  // Update the large preview to reflect the selection
+  renderEditAvatarPreview();
 }
 
 // Update char count display + apply warn color near limit
@@ -5266,7 +5543,9 @@ function getPrivacyChoice() {
 }
 
 // Render the avatar preview inside the edit form. Priority order:
-//   pendingAvatarDataUrl > existing avatar_url > initials fallback
+//   pendingAvatarDataUrl > pendingAvatarPreset > existing avatar_url > initials
+// The existing avatar_url itself may be a preset reference, which the
+// renderAvatarInner helper handles transparently.
 function renderEditAvatarPreview() {
   const preview = document.getElementById('pePicPreview');
   if (!preview) return;
@@ -5275,10 +5554,13 @@ function renderEditAvatarPreview() {
   const initials = (name.charAt(0) || 'S').toUpperCase();
   if (pendingAvatarDataUrl) {
     preview.innerHTML = `<img src="${pendingAvatarDataUrl}" alt="">`;
-  } else if (currentProfile?.avatar_url) {
-    preview.innerHTML = `<img src="${escapeHtml(currentProfile.avatar_url)}" alt="">`;
+  } else if (pendingAvatarPreset) {
+    preview.innerHTML = getPresetSvg(pendingAvatarPreset) || initials;
   } else {
-    preview.innerHTML = initials;
+    preview.innerHTML = renderAvatarInner(
+      currentProfile?.avatar_url,
+      initials
+    );
   }
 }
 
@@ -5330,6 +5612,12 @@ async function processAvatarFile(file) {
     const { blob, dataUrl } = await squareCropResize(file, 300);
     pendingAvatarBlob = blob;
     pendingAvatarDataUrl = dataUrl;
+    // Uploaded photo wins over any preset selection. Clear the preset
+    // state and un-highlight the picker grid so the form state matches
+    // what the user sees in the preview.
+    pendingAvatarPreset = null;
+    document.getElementById('pePresetsGrid')?.querySelectorAll('.pe-preset.on')
+      .forEach(btn => btn.classList.remove('on'));
     renderEditAvatarPreview();
   } catch (err) {
     console.warn('processAvatarFile error:', err);
@@ -5386,9 +5674,11 @@ async function saveProfileEdit() {
   try {
     let nextAvatarUrl = currentProfile?.avatar_url || null;
 
-    // 1. If there's a pending avatar blob, upload to Storage and capture
-    //    the public URL. Filename includes a cache-busting timestamp so
-    //    the new avatar replaces the old one in browser caches.
+    // 1. Avatar resolution:
+    //    - Pending blob → upload to Storage + delete any old uploaded file
+    //    - Pending preset → set avatar_url = 'preset:<id>', no upload + delete
+    //      any old uploaded file (because user switched from photo to preset)
+    //    - Neither → keep existing avatar_url unchanged
     if (pendingAvatarBlob) {
       const userId = currentSession.user.id;
       const filename = `avatar-${Date.now()}.jpg`;
@@ -5414,6 +5704,21 @@ async function saveProfileEdit() {
       // Best-effort cleanup: delete previous avatar to avoid orphaned files.
       // Fire-and-forget — failure here doesn't undo the new upload.
       if (currentProfile?.avatar_url) {
+        const oldPath = extractAvatarPath(currentProfile.avatar_url, userId);
+        if (oldPath) {
+          sb.storage.from('avatars').remove([oldPath]).then(({ error }) => {
+            if (error) console.warn('old avatar delete:', error.message);
+          });
+        }
+      }
+    } else if (pendingAvatarPreset) {
+      // Preset selection — no upload, just record the reference. If the
+      // user previously had an uploaded photo, clean it from Storage so
+      // we don't accumulate orphans. (No-op for preset → different-preset
+      // transitions, since the prior avatar_url won't be a real path.)
+      nextAvatarUrl = 'preset:' + pendingAvatarPreset;
+      if (currentProfile?.avatar_url && !currentProfile.avatar_url.startsWith('preset:')) {
+        const userId = currentSession.user.id;
         const oldPath = extractAvatarPath(currentProfile.avatar_url, userId);
         if (oldPath) {
           sb.storage.from('avatars').remove([oldPath]).then(({ error }) => {
@@ -5473,6 +5778,7 @@ async function saveProfileEdit() {
     renderAuthSurface();
     pendingAvatarBlob = null;
     pendingAvatarDataUrl = null;
+    pendingAvatarPreset = null;
     showProfileView();
     renderProfileView();
   } catch (err) {
@@ -5544,15 +5850,20 @@ function renderLikedByList(rows) {
   body.innerHTML = rows.map(r => {
     const name = (r.display_name || 'shou user').trim();
     const initials = (name.charAt(0) || 'S').toUpperCase();
-    const pic = r.avatar_url
-      ? `<img src="${escapeHtml(r.avatar_url)}" alt="" onerror="this.parentElement.textContent='${initials}';">`
-      : initials;
+    const pic = renderAvatarInner(r.avatar_url, initials);
     const status = (r.status_text || '').trim();
     const statusEl = status
       ? `<div class="lb-status">${escapeHtml(status)}</div>`
       : `<div class="lb-status empty">—</div>`;
+    // Row is clickable only when we have a user_id to look up. Backend
+    // already filters to public profiles, so every returned row should
+    // have one — but guard anyway in case of schema surprises.
+    const uid = r.user_id ? String(r.user_id) : '';
+    const clickAttrs = uid
+      ? `class="lb-row clickable" onclick="openUserProfile('${uid}')"`
+      : `class="lb-row"`;
     return `
-      <div class="lb-row">
+      <div ${clickAttrs}>
         <div class="lb-pic">${pic}</div>
         <div class="lb-text">
           <div class="lb-name">${escapeHtml(name)}</div>
@@ -5572,10 +5883,135 @@ function closeLikedByIfBackdrop(ev) {
   if (ev.target.id === 'likedByMov') closeLikedBy();
 }
 
-// ESC closes profile sheet OR liked-by, whichever is open. Handlers are
-// added once at script-eval time; safe to define alongside existing key handlers.
+// ── User-profile modal (Phase 3) ──────────────────────────────────
+// Opened when a Liked-by row is clicked. Renders a read-only view of
+// another user's profile + their currently-liked future events.
+// Backed by get_user_public_profile RPC, which:
+//   - Returns is_public=false (and null fields) for private users
+//   - Returns liked_event_ids array of future, published events where
+//     the user's most recent action was 'like' (not 'unlike')
+// Late-response guard: tracks current target so a rapid second click
+// on a different row doesn't have its result clobbered by the first.
+let userProfileCurrentId = null;
+
+async function openUserProfile(targetUserId) {
+  if (!targetUserId) return;
+  userProfileCurrentId = targetUserId;
+  const mov = document.getElementById('userMov');
+  const content = document.getElementById('upContent');
+  if (!mov || !content) return;
+  // Reset to loading state, show modal, lock body scroll
+  content.innerHTML = `<div class="up-loading"><div class="spin"></div>Loading…</div>`;
+  mov.classList.add('on');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const { data, error } = await sb.rpc('get_user_public_profile', { target_user_id: targetUserId });
+    if (error) throw new Error(error.message);
+    // Late-response guard
+    if (userProfileCurrentId !== targetUserId) return;
+    // RPC returns an array (because RETURNS TABLE); we want first row
+    const profile = Array.isArray(data) ? data[0] : data;
+    renderUserProfile(profile || { is_public: false });
+  } catch (err) {
+    console.warn('get_user_public_profile failed:', err);
+    if (userProfileCurrentId !== targetUserId) return;
+    content.innerHTML = `<div class="up-empty">Couldn't load this profile right now.</div>`;
+  }
+}
+
+function renderUserProfile(profile) {
+  const content = document.getElementById('upContent');
+  if (!content) return;
+
+  // Private (or non-existent) profile path. Show a soft message; no
+  // identifying info beyond the avatar fallback. We don't even know the
+  // name in this case (RPC returns null fields when is_public=false).
+  if (!profile.is_public) {
+    content.innerHTML = `
+      <div class="up-head">
+        <div class="up-avatar">·</div>
+        <div class="up-text">
+          <div class="up-name">Private profile</div>
+          <div class="up-status empty">This user keeps their likes to themselves.</div>
+        </div>
+      </div>
+      <div class="up-body">
+        <div class="up-private">Nothing to show here.</div>
+      </div>`;
+    return;
+  }
+
+  // Public path. Render header with profile fields, then the likes grid.
+  const name = (profile.display_name || 'shou user').trim();
+  const initials = (name.charAt(0) || 'S').toUpperCase();
+  const pic = renderAvatarInner(profile.avatar_url, initials);
+  const status = (profile.status_text || '').trim();
+  const statusEl = status
+    ? `<div class="up-status">${escapeHtml(status)}</div>`
+    : `<div class="up-status empty">No status yet.</div>`;
+
+  // Liked events: filter local catalog by ID. Events the user liked that
+  // aren't in `all` (lower-popularity, or different categories than the
+  // current filter) will be omitted gracefully — a small caveat noted
+  // below the grid when this happens, since otherwise the count would
+  // appear to mismatch.
+  const likedIds = Array.isArray(profile.liked_event_ids) ? profile.liked_event_ids : [];
+  const allMap = new Map((all || []).map(e => [e.id, e]));
+  const found  = likedIds.map(id => allMap.get(id)).filter(Boolean);
+  const missing = likedIds.length - found.length;
+
+  let likesSection;
+  if (likedIds.length === 0) {
+    likesSection = `<div class="up-empty">No public likes yet.</div>`;
+  } else {
+    const cards = found.map(e => smCard(e)).join('');
+    const note  = missing > 0
+      ? `<div class="up-empty" style="padding-top:14px;font-size:12px;opacity:0.7;">+${missing} more event${missing === 1 ? '' : 's'} not shown (outside current view).</div>`
+      : '';
+    likesSection = `
+      <div class="up-section-h">Likes (${likedIds.length})</div>
+      <div class="up-likes-grid">${cards}</div>
+      ${note}`;
+  }
+
+  content.innerHTML = `
+    <div class="up-head">
+      <div class="up-avatar">${pic}</div>
+      <div class="up-text">
+        <div class="up-name">${escapeHtml(name)}</div>
+        ${statusEl}
+      </div>
+    </div>
+    <div class="up-body">
+      ${likesSection}
+    </div>`;
+}
+
+function closeUserProfile() {
+  document.getElementById('userMov')?.classList.remove('on');
+  // Only unlock body scroll if no OTHER modal is still showing — the
+  // Liked-by modal often remains open underneath, since opening a
+  // user-profile is a drill-down from there, not a replacement.
+  const stillOpen = ['likedByMov', 'profileMov', 'mov'].some(id =>
+    document.getElementById(id)?.classList.contains('on')
+  );
+  if (!stillOpen) document.body.style.overflow = '';
+  userProfileCurrentId = null;
+}
+
+function closeUserProfileIfBackdrop(ev) {
+  if (ev.target.id === 'userMov') closeUserProfile();
+}
+
+// ESC closes user-profile (top of stack) → liked-by → profile sheet, in that
+// order. Same handler block as the existing Esc — extended, not replaced.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (document.getElementById('userMov')?.classList.contains('on')) {
+    closeUserProfile();
+    return;
+  }
   if (document.getElementById('likedByMov')?.classList.contains('on')) {
     closeLikedBy();
     return;
