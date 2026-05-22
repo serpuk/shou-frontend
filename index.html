@@ -879,8 +879,16 @@ body.ai-active .stats { display: none; }
 .socs { display: flex; align-items: center; gap: 5px; }
 .sb {
   background: var(--glass); border: 1px solid rgba(255,153,102,0.15); border-radius: 8px;
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 13px; transition: all .2s; color: var(--bone2);
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  /* Icon characters (♡ ♥ 𝕏 f 🔗) need to be visibly sized on dark backgrounds.
+     13px was too small — the inactive heart ♡ vanished into the bone2 color
+     against the near-black card. 18px reads cleanly. The button is sized up
+     marginally (32→36) to accommodate. */
+  font-size: 18px;
+  line-height: 1;
+  transition: all .2s;
+  color: var(--bone1);
 }
 .sb:hover { background: rgba(255,46,126,0.1); border-color: rgba(255,46,126,0.4); color: var(--magenta); }
 .sb.lk { color: var(--magenta); border-color: rgba(255,46,126,0.5); box-shadow: 0 0 10px rgba(255,46,126,0.3); }
@@ -1287,7 +1295,16 @@ body.ai-active .stats { display: none; }
 .mph span { filter: drop-shadow(0 0 20px rgba(255,153,102,0.3)); }
 
 /* Modal body */
-.mb { padding: 28px 32px 32px; display: flex; flex-direction: column; gap: 14px; }
+.mb {
+  padding: 28px 32px 32px;
+  /* Bottom padding extended so long description text can scroll clear of the
+     sticky .mact-primary footer (~120-140px tall: secondary icon row + Get
+     Tickets + gradient fade region). Without this, the last few lines of
+     text sit permanently behind the sticky bar gradient — visually fading
+     and unreadable. The padding gives content room to scroll past entirely. */
+  padding-bottom: 140px;
+  display: flex; flex-direction: column; gap: 14px;
+}
 .mb > .cpill { align-self: flex-start; margin-bottom: 0; }
 .mtitle {
   font-family: 'Fraunces', serif;
@@ -1450,6 +1467,16 @@ body.ai-active .stats { display: none; }
   font-weight: 800;
   font-family: 'Inter', -apple-system, sans-serif;
 }
+/* Inline SVG glyph (paper plane share icon, Instagram-style). Sized to
+   visually match the unicode glyphs at 28px. */
+.iact-glyph-svg svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  /* Slight vertical nudge so the paper plane aligns with the heart's optical
+     center — SVGs sit on baseline, unicode glyphs sit slightly above. */
+  margin-top: 1px;
+}
 
 /* Active states — color the glyph only, no background fill */
 .iact-save.on .iact-glyph  { color: #ff2e7e; }   /* magenta */
@@ -1528,7 +1555,13 @@ body.ai-active .stats { display: none; }
 
 @media (max-width: 640px) {
   .mth, .mph { height: 200px; }
-  .mb { padding: 22px 22px 24px; }
+  .mb {
+    padding: 22px 22px 24px;
+    /* Same rationale as desktop — bottom padding lets long text scroll past
+       the sticky action bar. Slightly less budget here (mobile has tighter
+       overall vertical space) but still enough to clear the bar. */
+    padding-bottom: 130px;
+  }
   .mtitle { font-size: 22px; }
   .mdet { grid-template-columns: 1fr; gap: 12px; padding: 12px 0; }
 
@@ -3859,7 +3892,7 @@ function bigCard(e){
       </div>
       <div class="feat-actions">
         <div class="socs">
-          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
+          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">${isL ? '♥' : '♡'}</button>
           <span class="ln${e.likes>0?' clickable':''}" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes}</span>
           <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
             <span class="going-icon">🎟</span>
@@ -4538,7 +4571,7 @@ ${mSourcesRow(e)}
        Hidden on desktop via .share-generic class. -->
   <div class="iact share-generic">
     <button class="iact-icon" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
-      <span class="iact-glyph">↗</span>
+      <span class="iact-glyph iact-glyph-svg" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></span>
     </button>
     <span class="iact-spacer"></span>
   </div>
