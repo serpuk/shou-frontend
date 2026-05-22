@@ -1779,11 +1779,11 @@ footer p {
        above. When the user selects "Near me", AI search uses their lat/lng
        so distance-aware queries ("concerts near me") work correctly. -->
   <div class="chips fu3">
-    <span class="chip" onclick="qAI('techno this weekend')">🎧 <span data-k="c1">techno tonight</span></span>
-    <span class="chip" onclick="qAI('rock this month')">🎸 <span data-k="c2">live concerts</span></span>
-    <span class="chip" onclick="qAI('electronic this weekend')">🪩 <span data-k="c3">club nights</span></span>
-    <span class="chip" onclick="qAI('festival')">☀️ <span data-k="c4">festivals</span></span>
-    <span class="chip" onclick="qAI('free')">🆓 <span data-k="c5">free entry</span></span>
+    <span class="chip" onclick="qChip('c1')">🎧 <span data-k="c1">techno tonight</span></span>
+    <span class="chip" onclick="qChip('c2')">🎸 <span data-k="c2">live concerts</span></span>
+    <span class="chip" onclick="qChip('c3')">🪩 <span data-k="c3">club nights</span></span>
+    <span class="chip" onclick="qChip('c4')">☀️ <span data-k="c4">festivals</span></span>
+    <span class="chip" onclick="qChip('c5')">🆓 <span data-k="c5">free entry</span></span>
   </div>
 </section>
 
@@ -4141,6 +4141,59 @@ const AR={
 };
 function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q);}
 function qAI(q){document.getElementById('ai').value=q;showAI(q);}
+
+// Per-chip query strings localized to all 6 supported languages. Chips
+// previously sent the English query regardless of UI language, which is
+// inconsistent (the user sees "techno tonight" in French but the actual
+// query is "techno this weekend"). The query reaches the LLM via /api/search
+// and the LLM expects natural-language input in the user's language for
+// best results.
+const CHIP_QUERIES = {
+  c1: { // techno tonight
+    en: 'techno tonight',
+    fr: 'techno ce soir',
+    nl: 'techno vanavond',
+    de: 'Techno heute Abend',
+    es: 'techno esta noche',
+    it: 'techno stasera',
+  },
+  c2: { // live concerts
+    en: 'live concerts',
+    fr: 'concerts live',
+    nl: 'live concerten',
+    de: 'Live-Konzerte',
+    es: 'conciertos en vivo',
+    it: 'concerti dal vivo',
+  },
+  c3: { // club nights
+    en: 'club nights this weekend',
+    fr: 'soirées club ce week-end',
+    nl: 'clubnachten dit weekend',
+    de: 'Clubnächte dieses Wochenende',
+    es: 'noches de club este fin de semana',
+    it: 'serate in club questo fine settimana',
+  },
+  c4: { // festivals
+    en: 'festivals',
+    fr: 'festivals',
+    nl: 'festivals',
+    de: 'Festivals',
+    es: 'festivales',
+    it: 'festival',
+  },
+  c5: { // free entry
+    en: 'free entry',
+    fr: 'entrée gratuite',
+    nl: 'gratis toegang',
+    de: 'kostenloser Eintritt',
+    es: 'entrada gratuita',
+    it: 'ingresso gratuito',
+  },
+};
+function qChip(id) {
+  const q = (CHIP_QUERIES[id] && CHIP_QUERIES[id][lang]) || CHIP_QUERIES[id]?.en || '';
+  if (q) qAI(q);
+}
 function clearAI(){
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
   aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; vis=6;
@@ -4509,6 +4562,10 @@ function aiPrefetch(q) {
     lang: lang || 'en',
     likedIds: Array.from(lk),
     userId: currentSession?.user?.id || null,
+    // Flag this as a prefetch — backend skips writing to user_searches so
+    // typing fragments don't pollute the Top Searches admin tile. Only
+    // the real Ask Shou submission (showAI) logs.
+    prefetch: true,
   };
   if (aiShouldUseLocation()) {
     body.lat = Number(userGeo.latitude);
