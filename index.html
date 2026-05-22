@@ -4247,16 +4247,15 @@ function eventCanonicalUrl(id) {
 }
 
 // Build the share URL passed to X / Facebook / clipboard / Web Share API.
-// Uses the same ?event=<id> pattern as the in-app canonical URL — when a
-// recipient clicks the link, the SPA loads and the event modal opens
-// automatically (handled by the page-load ?event= handler).
-//
-// We previously experimented with a /e/<id> pattern that routed through
-// a serverless /api/share Edge function returning per-event OG meta tags,
-// for richer link previews on WhatsApp/X/FB/iMessage. That infrastructure
-// is sketched in share.js + vercel.json (not currently deployed). If you
-// want to revisit it: deploy both files, then change the return below to
-//   window.location.origin + '/e/' + encodeURIComponent(id)
+// Uses the ?event=<id> query-param pattern. The existing vercel.json rewrite
+// in shou-frontend intercepts requests where:
+//   - URL is /
+//   - ?event=<id> query param is present
+//   - User-Agent matches a known crawler (facebookexternalhit, Twitterbot,
+//     WhatsApp, iMessage Applebot, Slackbot, LinkedInBot, etc.)
+// and rewrites them to shou-backend.vercel.app/api/og?event=<id>, which
+// returns HTML with per-event OG meta tags. Real users (non-bot UA) hit
+// the SPA as normal, and the ?event= page-load handler opens the modal.
 function eventShareUrl(id) {
   return eventCanonicalUrl(id);
 }
