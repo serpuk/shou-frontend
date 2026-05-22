@@ -3852,25 +3852,24 @@ async function refreshLikesFromServer() {
 }
 
 // ── Going feature ─────────────────────────────────────────────────────
-// Toggle going-state for an event. Parallels tl() for likes, but Going
-// has different storage semantics:
-//   - Likes use a dedicated user_likes table (denormalized for fast lookup).
-//   - Going uses user_events only — INSERT one row per toggle (action='going'
-//     or 'not_going'), latest-action-wins on read. No separate user_going
-//     table. Simpler, no schema change.
-//
-// The /api/track endpoint (called via track()) handles the INSERT to
-// user_events with proper user_id (when signed in) or anon_session_id
-// (when not). So tg() doesn't need a separate sync helper.
+// Toggle going-state for an event. Mirrors tl() for likes. State lives in
+// the user_going table (canonical, written directly via supabase-js with
+// auth context) plus a fire-and-forget track() call to user_events for
+// analytics. Anonymous users persist only to localStorage — they don't
+// appear in the Going modal until signed in.
 function tg(id, btnEl) {
   const wasGoing = gn.has(id);
   if (wasGoing) gn.delete(id); else gn.add(id);
   saveGoing(gn);
-  // /api/track does the user_events INSERT and respects consent
+  // Canonical state write to user_going (mirror of syncLikeToServer).
+  // RLS policy "Users manage own going" scopes this to auth.uid() = user_id.
+  syncGoingToServer(id, !wasGoing);
+  // Analytics ping. Lands in user_events with user_id=null because /api/track
+  // doesn't carry the JWT — that's fine for analytics, not used for state.
   track(id, wasGoing ? 'not_going' : 'going');
   // Optimistic count bump on the local event object — server is authoritative
   // but for instant UI feedback we adjust the displayed going_count too. On
-  // next page load refreshGoingCounts() will reconcile if needed.
+  // next page load fetchGoingCounts() will reconcile.
   const e = all.find(x => x.id === id);
   if (e) {
     e.going_count = Math.max(0, (e.going_count || 0) + (wasGoing ? -1 : 1));
@@ -3878,8 +3877,7 @@ function tg(id, btnEl) {
   renderAll();
   updateModalGoingButton(id);
 
-  // Pulse animation when transitioning INTO going (not out of it). Same
-  // pattern as the like-button pulse.
+  // Pulse animation when transitioning INTO going. Same pattern as like.
   if (!wasGoing) {
     document.querySelectorAll(`.going-btn[onclick*="${id}"]`).forEach(fresh => {
       fresh.classList.remove('just-going');
@@ -3887,6 +3885,24 @@ function tg(id, btnEl) {
       fresh.classList.add('just-going');
       setTimeout(() => fresh.classList.remove('just-going'), 500);
     });
+  }
+}
+
+// Push a single going/not-going to user_going. No-op when signed out
+// (anonymous users persist locally only). Mirrors syncLikeToServer exactly.
+function syncGoingToServer(eventId, isNowGoing) {
+  if (!currentSession) return;
+  const userId = currentSession.user.id;
+  if (isNowGoing) {
+    sb.from('user_going')
+      .upsert({ user_id: userId, event_id: eventId }, { onConflict: 'user_id,event_id', ignoreDuplicates: true })
+      .then(({ error }) => { if (error) console.warn('user_going insert failed:', error.message); });
+  } else {
+    sb.from('user_going')
+      .delete()
+      .eq('user_id', userId)
+      .eq('event_id', eventId)
+      .then(({ error }) => { if (error) console.warn('user_going delete failed:', error.message); });
   }
 }
 
@@ -3909,28 +3925,39 @@ function updateModalGoingButton(id) {
   }
 }
 
-// On sign-in (or initial load when signed in), reconcile local gn Set with
-// the server. Queries user_events with action in (going, not_going) and
-// applies latest-action-wins per event to derive the current going set.
+// On sign-in (or initial load when signed in), pull the user's going set
+// from user_going. Mirror of refreshLikesFromServer.
+//
+// One-time migration path: if the server returns empty but localStorage has
+// items, push the local set up to user_going. Handles the transition from
+// the broken v1 (which wrote to user_events via track() with user_id=null)
+// to v2 (which writes to user_going directly).
 async function refreshGoingFromServer() {
   if (!currentSession) return;
   try {
     const { data, error } = await sb
-      .from('user_events')
-      .select('event_id, action, created_at')
-      .eq('user_id', currentSession.user.id)
-      .in('action', ['going', 'not_going'])
-      .order('created_at', { ascending: false });
+      .from('user_going')
+      .select('event_id')
+      .eq('user_id', currentSession.user.id);
     if (error) { console.warn('refreshGoingFromServer failed:', error.message); return; }
-    // Dedupe by event_id keeping FIRST occurrence (most recent due to DESC order).
-    const latestByEvent = new Map();
-    for (const row of (data || [])) {
-      if (!latestByEvent.has(row.event_id)) latestByEvent.set(row.event_id, row.action);
+    const serverSet = new Set((data || []).map(r => r.event_id));
+
+    // One-time migration: server empty but local has rows → push them up.
+    // After this runs once per device, server is authoritative.
+    if (serverSet.size === 0 && gn.size > 0) {
+      const userId = currentSession.user.id;
+      const inserts = Array.from(gn).map(eventId => ({ user_id: userId, event_id: eventId }));
+      const { error: insErr } = await sb.from('user_going')
+        .upsert(inserts, { onConflict: 'user_id,event_id', ignoreDuplicates: true });
+      if (insErr) console.warn('user_going migration insert failed:', insErr.message);
+      // Local gn is already correct, no need to overwrite. Re-render so the
+      // counts pick up the newly-synced state on next fetchGoingCounts.
+      renderAll();
+      return;
     }
-    gn = new Set();
-    for (const [eventId, action] of latestByEvent) {
-      if (action === 'going') gn.add(eventId);
-    }
+
+    // Normal path: server is authoritative.
+    gn = serverSet;
     saveGoing(gn);
     renderAll();
   } catch (err) {
