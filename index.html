@@ -2628,21 +2628,18 @@ const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const ICON_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>';
 const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
 
-// Display-count helpers. Anonymous users never get a user_likes / user_going
-// row on the server, so e.likes / e.going_count never includes their action —
-// the user saves an event, the count stays at 0, the UI looks broken.
-// These helpers add a local +1 for anonymous saves so the count reflects
-// the user's own action. For signed-in users, the server count already
-// includes their action (their row is in user_likes / user_going), so we
-// return the server count unchanged — no double counting.
-function displayLikes(e) {
-  const base = e.likes || 0;
-  return !currentSession && lk.has(e.id) ? base + 1 : base;
-}
-function displayGoing(e) {
-  const base = e.going_count || 0;
-  return !currentSession && gn.has(e.id) ? base + 1 : base;
-}
+// Display-count helpers. Return the server-tracked count for likes/going.
+// We deliberately do NOT add a local +1 for anonymous saves: the count
+// represents COMMUNITY engagement (other people interested in this event),
+// not personal save state. The filled heart / checkmark already signals
+// the user's own action. Adding a private +1 would create misleading social
+// proof — the user would see "1 like" but anyone they share the URL with
+// would see "0 likes". Industry practice: count = community, icon = self.
+// Anonymous saves persist via localStorage but don't bump the public count.
+// When a user signs in, their local likes migrate to user_likes via
+// refreshLikesFromServer and the count updates accordingly.
+function displayLikes(e) { return e.likes || 0; }
+function displayGoing(e) { return e.going_count || 0; }
 
 // AI search state. aiQ is the active query string (shown in input + banner).
 // aiResultIds is the Set of event IDs returned by /api/search — replaces the
