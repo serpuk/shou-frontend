@@ -12,6 +12,11 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'><defs><linearGradient id='b' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff2e7e'/><stop offset='1' stop-color='%23ff9966'/></linearGradient><linearGradient id='s' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238b3ee0'/><stop offset='1' stop-color='%23c896ff'/></linearGradient><linearGradient id='p' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5fb8'/><stop offset='1' stop-color='%23ffa3d9'/></linearGradient></defs><path d='M 8,2 L 9.79,7.47 L 15.56,7.47 L 10.89,10.85 L 12.67,16.31 L 8,12.94 L 3.33,16.31 L 5.11,10.85 L 0.44,7.47 L 6.21,7.47 Z' transform='translate(0 4) scale(0.85)' fill='url(%23s)'/><path d='M 26,2 L 27.57,6.79 L 32.61,6.79 L 28.52,9.75 L 30.09,14.54 L 26,11.59 L 21.91,14.54 L 23.48,9.75 L 19.39,6.79 L 24.43,6.79 Z' transform='translate(0 4) scale(0.85)' fill='url(%23p)'/><rect x='3' y='22' width='3' height='10' rx='1' fill='url(%23b)'/><rect x='8' y='18' width='3' height='14' rx='1' fill='url(%23b)'/><rect x='13' y='15' width='3' height='17' rx='1' fill='url(%23b)'/><rect x='18' y='17' width='3' height='15' rx='1' fill='url(%23b)'/><rect x='23' y='20' width='3' height='12' rx='1' fill='url(%23b)'/><rect x='28' y='24' width='3' height='8' rx='1' fill='url(%23b)' opacity='0.85'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Open TLS to the backend + Supabase in parallel with HTML parsing.
+     By the time the JS makes its first /api/events call, the connection
+     is already warm. Saves ~100-200ms on cold loads. -->
+<link rel="preconnect" href="https://shou-backend.vercel.app">
+<link rel="preconnect" href="https://mpbrfnlmtdxnipyarsss.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -3408,7 +3413,7 @@ function th(e,big){
   if(e.img){
     // Use a unique id + global fallback function to avoid quote-escaping hell
     const fid='img_'+e.id.replace(/[^a-z0-9]/gi,'');
-    return `<img id="${fid}" src="${e.img}" style="width:100%;height:${h}px;object-fit:cover;object-position:center 30%;display:block;" onerror="imgFail('${fid}','${cls}','${tc}','${em}')">`;
+    return `<img id="${fid}" src="${e.img}" loading="lazy" decoding="async" style="width:100%;height:${h}px;object-fit:cover;object-position:center 30%;display:block;" onerror="imgFail('${fid}','${cls}','${tc}','${em}')">`;
   }
   return`<div class="${cls} ${tc}"><span>${em}</span></div>`;
 }
@@ -3750,7 +3755,7 @@ function om(id, _opts){
   const isL=lk.has(e.id);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
-    ? `<img id="${fid}" class="mth" src="${e.img}" onerror="mimgFail('${fid}','${segThumb(e.seg)}','${segEmoji(e.seg)}')">`
+    ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.seg)}','${segEmoji(e.seg)}')">`
     : `<div class="mph ${segThumb(e.seg)}"><span>${segEmoji(e.seg)}</span></div>`;
   document.getElementById('mc').innerHTML=`${bigTh}
 <div class="mb">
