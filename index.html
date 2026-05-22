@@ -1678,114 +1678,13 @@ footer p {
   transition: background .15s;
 }
 .lb-row:hover { background: rgba(255,255,255,0.03); }
-/* Liked-by row becomes interactive when it links to a public profile.
-   Clicking opens get_user_public_profile and renders a read-only view of
-   that user's profile + their currently-liked events. */
-.lb-row.clickable { cursor: pointer; }
-.lb-row.clickable:hover { background: rgba(255,255,255,0.05); }
-
-/* ── User-profile modal (Phase 3) ─────────────────────────────────
-   Opened by clicking a Liked-by row. Shows that user's profile +
-   their currently-liked future events. Read-only — no editing here. */
-.user-mov {
-  position: fixed; inset: 0; z-index: 290;
-  background: rgba(0,0,0,0.72);
-  backdrop-filter: blur(6px);
-  display: none; align-items: center; justify-content: center;
-  padding: 20px;
-}
-.user-mov.on { display: flex; }
-.user-sheet {
-  background: rgba(24, 16, 31, 0.98);
-  border: 1px solid rgba(255,153,102,0.3);
-  border-radius: var(--radius);
-  padding: 0;
-  max-width: 420px; width: 100%;
-  display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-  position: relative;
-}
-.up-head {
-  padding: 22px 22px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  display: flex; gap: 16px; align-items: center;
-  position: relative;
-}
-.up-close {
-  position: absolute; top: 14px; right: 14px;
-  background: transparent; border: none;
-  color: var(--bone3); font-size: 20px; cursor: pointer;
-  width: 32px; height: 32px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-.up-close:hover { background: rgba(255,255,255,0.06); color: var(--bone); }
-.up-avatar {
-  width: 64px; height: 64px; border-radius: 50%;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, var(--magenta) 0%, var(--cyan) 100%);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-family: 'Inter', sans-serif;
-  font-size: 22px; font-weight: 700;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.up-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* Preset avatars are inline SVG inside the same round containers — make
    them fill the parent the same way the <img> elements do. The squared
    SVG content gets clipped to a circle by the container's border-radius. */
-.up-avatar svg,
 .lb-pic svg,
 .pv-pic svg,
 .pe-pic-preview svg,
 .avatar-btn svg { width: 100%; height: 100%; display: block; }
-.up-text { flex: 1; min-width: 0; }
-.up-name {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 36;
-  font-size: 22px; font-weight: 500;
-  color: var(--bone); margin-bottom: 4px;
-  line-height: 1.2;
-}
-.up-status {
-  font-size: 13px; color: var(--bone3);
-  line-height: 1.4;
-  overflow: hidden;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-}
-.up-status.empty { font-style: italic; opacity: 0.55; }
-
-.up-body { padding: 18px 22px 22px; overflow-y: auto; flex: 1; }
-.up-stat {
-  font-size: 14px;
-  color: var(--bone);
-  background: rgba(255,153,102,0.08);
-  border: 1px solid rgba(255,153,102,0.18);
-  border-radius: 999px;
-  padding: 10px 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.up-stat.empty {
-  color: var(--bone3);
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.06);
-  font-style: italic;
-}
-
-.up-empty,
-.up-private,
-.up-loading {
-  text-align: center; padding: 40px 20px;
-  color: var(--bone3); font-size: 13px;
-}
-.up-private { padding-top: 14px; }
-.up-loading .spin {
-  width: 28px; height: 28px; margin: 0 auto 12px;
-  border: 2px solid rgba(255,153,102,0.15);
-  border-top-color: var(--cyan); border-radius: 50%;
-  animation: sp 0.9s linear infinite;
-}
 
 .lb-pic {
   width: 44px; height: 44px; border-radius: 50%;
@@ -2117,19 +2016,6 @@ footer p {
   </div>
 </div>
 
-<!-- User-profile modal (Phase 3). Opened when a Liked-by row is clicked.
-     Shows that user's avatar/name/status + their currently-liked future
-     events. Read-only; uses get_user_public_profile RPC which respects
-     the target's is_public flag and returns "private" state when needed. -->
-<div class="user-mov" id="userMov" onclick="closeUserProfileIfBackdrop(event)">
-  <div class="user-sheet">
-    <button class="up-close" onclick="closeUserProfile()" aria-label="Close">✕</button>
-    <div id="upContent">
-      <div class="up-loading"><div class="spin"></div>Loading…</div>
-    </div>
-  </div>
-</div>
-
 <!-- GDPR / storage consent banner. Shown once on first visit; dismissing -->
 <!-- it sets a flag in localStorage that gates other localStorage writes.   -->
 <div class="gdpr-banner" id="gdpr">
@@ -2206,9 +2092,9 @@ let pendingAvatarPreset = null;    // selected preset id (e.g. 'vinyl') or null
 //
 // Visual design: each is a 100×100 viewBox; gets clipped to a circle by
 // any parent with border-radius:50% + overflow:hidden, which all avatar
-// containers (.up-avatar, .lb-pic, .pv-pic, .pe-pic-preview, .avatar-btn)
-// already use. SVG IDs prefixed with `pre-<id>-` so multiple presets can
-// render on the same page (picker grid) without gradient ID collisions.
+// containers (.lb-pic, .pv-pic, .pe-pic-preview, .avatar-btn) already
+// use. SVG IDs prefixed with `pre-<id>-` so multiple presets can render
+// on the same page (picker grid) without gradient ID collisions.
 const PRESET_AVATARS = [
   {
     id: 'vinyl', name: 'Vinyl',
@@ -5859,15 +5745,8 @@ function renderLikedByList(rows) {
     const statusEl = status
       ? `<div class="lb-status">${escapeHtml(status)}</div>`
       : `<div class="lb-status empty">—</div>`;
-    // Row is clickable only when we have a user_id to look up. Backend
-    // already filters to public profiles, so every returned row should
-    // have one — but guard anyway in case of schema surprises.
-    const uid = r.user_id ? String(r.user_id) : '';
-    const clickAttrs = uid
-      ? `class="lb-row clickable" onclick="openUserProfile('${uid}')"`
-      : `class="lb-row"`;
     return `
-      <div ${clickAttrs}>
+      <div class="lb-row">
         <div class="lb-pic">${pic}</div>
         <div class="lb-text">
           <div class="lb-name">${escapeHtml(name)}</div>
@@ -5887,136 +5766,10 @@ function closeLikedByIfBackdrop(ev) {
   if (ev.target.id === 'likedByMov') closeLikedBy();
 }
 
-// ── User-profile modal (Phase 3) ──────────────────────────────────
-// Opened when a Liked-by row is clicked. Renders a read-only view of
-// another user's profile + their currently-liked future events.
-// Backed by get_user_public_profile RPC, which:
-//   - Returns is_public=false (and null fields) for private users
-//   - Returns liked_event_ids array of future, published events where
-//     the user's most recent action was 'like' (not 'unlike')
-// Late-response guard: tracks current target so a rapid second click
-// on a different row doesn't have its result clobbered by the first.
-let userProfileCurrentId = null;
-
-async function openUserProfile(targetUserId) {
-  if (!targetUserId) return;
-  userProfileCurrentId = targetUserId;
-  const mov = document.getElementById('userMov');
-  const content = document.getElementById('upContent');
-  if (!mov || !content) return;
-  // Reset to loading state, show modal, lock body scroll
-  content.innerHTML = `<div class="up-loading"><div class="spin"></div>Loading…</div>`;
-  mov.classList.add('on');
-  document.body.style.overflow = 'hidden';
-
-  try {
-    const { data, error } = await sb.rpc('get_user_public_profile', { target_user_id: targetUserId });
-    if (error) throw new Error(error.message);
-    // Late-response guard
-    if (userProfileCurrentId !== targetUserId) return;
-    // RPC returns an array (because RETURNS TABLE); we want first row
-    const profile = Array.isArray(data) ? data[0] : data;
-    renderUserProfile(profile || { is_public: false });
-  } catch (err) {
-    console.warn('get_user_public_profile failed:', err);
-    if (userProfileCurrentId !== targetUserId) return;
-    content.innerHTML = `<div class="up-empty">Couldn't load this profile right now.</div>`;
-  }
-}
-
-function renderUserProfile(profile) {
-  const content = document.getElementById('upContent');
-  if (!content) return;
-
-  // Private (or non-existent) profile path. Show a soft message; no
-  // identifying info beyond the avatar fallback. We don't even know the
-  // name in this case (RPC returns null fields when is_public=false).
-  if (!profile.is_public) {
-    content.innerHTML = `
-      <div class="up-head">
-        <div class="up-avatar">·</div>
-        <div class="up-text">
-          <div class="up-name">Private profile</div>
-          <div class="up-status empty">This user keeps their likes to themselves.</div>
-        </div>
-      </div>`;
-    return;
-  }
-
-  // Public path. Compact card: avatar + name + status + a "Likes N" stat.
-  // We deliberately don't render the actual liked-event cards here —
-  // that turned the modal into a long scrollable feed and didn't add
-  // much for the viewer (the cards have ticket buttons etc that feel
-  // out of place when you're just looking at someone's profile). If
-  // social discovery is ever needed, a future iteration could show
-  // compact thumbnails or "events you both like".
-  const name = (profile.display_name || 'shou user').trim();
-  const initials = (name.charAt(0) || 'S').toUpperCase();
-  const pic = renderAvatarInner(profile.avatar_url, initials);
-  const status = (profile.status_text || '').trim();
-  const statusEl = status
-    ? `<div class="up-status">${escapeHtml(status)}</div>`
-    : `<div class="up-status empty">No status yet.</div>`;
-
-  const likeCount = Array.isArray(profile.liked_event_ids)
-    ? profile.liked_event_ids.length
-    : 0;
-  const likeStat = likeCount > 0
-    ? `<div class="up-stat">♥ Likes ${likeCount} upcoming event${likeCount === 1 ? '' : 's'}</div>`
-    : `<div class="up-stat empty">No upcoming likes yet.</div>`;
-
-  content.innerHTML = `
-    <div class="up-head">
-      <div class="up-avatar">${pic}</div>
-      <div class="up-text">
-        <div class="up-name">${escapeHtml(name)}</div>
-        ${statusEl}
-      </div>
-    </div>
-    <div class="up-body">
-      ${likeStat}
-    </div>`;
-}
-
-function closeUserProfile() {
-  // Close the user-profile modal AND any liked-by modal underneath. This
-  // is the "X" behavior — collapse the whole drill-down (Liked-by →
-  // user-profile) and return the user to the page. Backdrop click uses
-  // closeUserProfileIfBackdrop which only closes the top layer, preserving
-  // the drill-back-to-Liked-by gesture.
-  document.getElementById('userMov')?.classList.remove('on');
-  document.getElementById('likedByMov')?.classList.remove('on');
-  // Restore body scroll only if no other modal is still up (e.g. event
-  // modal or profile sheet which we explicitly don't dismiss).
-  const stillOpen = ['profileMov', 'mov'].some(id =>
-    document.getElementById(id)?.classList.contains('on')
-  );
-  if (!stillOpen) document.body.style.overflow = '';
-  userProfileCurrentId = null;
-  likedByCurrentEventId = null;
-}
-
-// Backdrop click on user-profile closes ONLY the user-profile (preserves
-// the drill-back pattern: tap-outside to return to the Liked-by list,
-// from which the user can drill into a different person).
-function closeUserProfileIfBackdrop(ev) {
-  if (ev.target.id !== 'userMov') return;
-  document.getElementById('userMov')?.classList.remove('on');
-  const stillOpen = ['likedByMov', 'profileMov', 'mov'].some(id =>
-    document.getElementById(id)?.classList.contains('on')
-  );
-  if (!stillOpen) document.body.style.overflow = '';
-  userProfileCurrentId = null;
-}
-
-// ESC closes user-profile (top of stack) → liked-by → profile sheet, in that
-// order. Same handler block as the existing Esc — extended, not replaced.
+// ESC closes profile sheet OR liked-by, whichever is open. Handlers are
+// added once at script-eval time; safe to define alongside existing key handlers.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (document.getElementById('userMov')?.classList.contains('on')) {
-    closeUserProfile();
-    return;
-  }
   if (document.getElementById('likedByMov')?.classList.contains('on')) {
     closeLikedBy();
     return;
