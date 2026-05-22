@@ -1015,6 +1015,14 @@ body.ai-active .stats { display: none; }
   opacity: 0.85;
 }
 
+/* Going title shown when the event ISN'T in our local catalog (long-tail
+   event, or pruned upstream). Still coral so it visually matches the
+   linked version, but no underline/cursor — it's informational only. */
+.lb-status .going-title-plain {
+  color: var(--coral);
+  font-weight: 600;
+}
+
 /* Pulse animation triggered when transitioning to liked state.
    The heart bounces: 1 → 1.4 → 0.9 → 1 over 400ms. Matches Instagram's
    "pop" timing pretty closely. */
@@ -3724,7 +3732,7 @@ function bigCard(e){
       <div class="feat-actions">
         <div class="socs">
           <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')">♥</button>
-          <span class="ln${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
+          <span class="ln${e.likes>0?' clickable':''}" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes}</span>
           <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
             <span class="going-icon">🎟</span>
             ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
@@ -3763,7 +3771,7 @@ ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:
 <div class="cf2">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">♥</span>
-  <span class="like-count${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
+  <span class="like-count${e.likes>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>
 </button>
 <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
   <span class="going-icon">🎟</span>
@@ -3785,6 +3793,16 @@ function tl(id, btnEl){
   syncLikeToServer(id, !wasLiked);
   // Fire-and-forget tracking; respects consent (track() checks anonId).
   track(id, wasLiked ? 'unlike' : 'like');
+  // Optimistic count update on the local event object. events.like_count is
+  // maintained server-side (trigger on user_likes), so e.likes from /api/events
+  // ALREADY includes the user's like. Without this local bump, the card
+  // count wouldn't update until next page load. The previous +(isL?1:0)
+  // expression in the template was double-counting because it added 1 on
+  // top of an e.likes that already counted the user.
+  const e = all.find(x => x.id === id);
+  if (e) {
+    e.likes = Math.max(0, (e.likes || 0) + (wasLiked ? -1 : 1));
+  }
   updateLikedCount();
   renderAll();
 
@@ -3822,7 +3840,7 @@ function updateModalLikeButton(id) {
   const heart = btn.querySelector('.like-heart');
   const count = btn.querySelector('.like-count');
   if (heart) heart.textContent = '♥';
-  if (count) count.textContent = String(e.likes + (isL ? 1 : 0));
+  if (count) count.textContent = String(e.likes);
 }
 
 // Push a single like/unlike to user_likes. No-op when signed out.
@@ -4192,7 +4210,7 @@ ${mSourcesRow(e)}
 <div class="mact-primary">
 <button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
   <span class="like-heart">♥</span>
-  <span class="like-count${(e.likes+(isL?1:0))>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes+(isL?1:0)}</span>
+  <span class="like-count${e.likes>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>
 </button>
 <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
   <span class="going-icon">🎟</span>
@@ -6042,7 +6060,18 @@ function lbRowHtml(r) {
     parts.push(`<div class="lb-status">${escapeHtml(status)}</div>`);
   }
   if (hasGoing) {
-    parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a></div>`);
+    // Only render as a clickable link if the event is in our local catalog.
+    // /api/events caps at 500 most-popular events, so a going-event in the
+    // long tail (or one that's been pruned upstream) won't be findable by
+    // om(). Falling back to plain text avoids dispatching om() into a
+    // missing event — which previously could lead users to a stale Get
+    // Tickets URL pointing at a removed upstream page.
+    const inCatalog = all.some(x => x.id === goingEv.id);
+    if (inCatalog) {
+      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a></div>`);
+    } else {
+      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <span class="going-title-plain">${escapeHtml(goingEv.title)}</span></div>`);
+    }
   }
   if (parts.length === 0) {
     parts.push(`<div class="lb-status empty">—</div>`);
