@@ -1246,10 +1246,12 @@ body.ai-active .stats { display: none; }
 
 /* Swipe transition states for #mc.
    The container slides out in the swipe direction, then a new content
-   snaps to the opposite side and slides back to center. ~220ms each leg
-   feels snappy without being instant. */
+   snaps to the opposite side and slides back to center. Cubic-bezier
+   curve gives Instagram-like snap (faster ease near the end) instead
+   of the mechanical linear ease-out. */
 #mc {
-  transition: transform 220ms ease-out, opacity 220ms ease-out;
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity   280ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform, opacity;
 }
 #mc.swipe-out-left  { transform: translateX(-100%); opacity: 0.4; }
@@ -1640,7 +1642,21 @@ body.ai-active .stats { display: none; }
 }
 
 @media (max-width: 640px) {
-  .mth, .mph { height: 200px; }
+  .mth {
+    /* On mobile, give the hero image substantially more vertical space.
+       200px was cropping too tightly — portrait images (paintings, posters,
+       theatre stills) lost their entire lower half. 50vh adapts to viewport
+       so the image takes about half the screen on any phone. Capped at
+       500px so it never dominates short landscape viewports. */
+    height: 50vh;
+    max-height: 500px;
+    min-height: 240px;
+    /* Center the crop instead of biasing toward the top — important for
+       images where the subject extends vertically (full-body portraits,
+       landscape with horizon, etc). */
+    object-position: center center;
+  }
+  .mph { height: 50vh; max-height: 500px; min-height: 240px; }
   .mb {
     padding: 22px 22px 24px;
     /* Same rationale as desktop — bottom padding lets long text scroll past
@@ -4898,30 +4914,101 @@ function swipeToOffset(offset) {
 function initSwipeNav() {
   const mov = document.getElementById('mov');
   if (!mov) return;
+  // Axis lock for the in-progress gesture. Once we've moved enough to know
+  // the user is dragging horizontally vs scrolling vertically, lock it for
+  // the rest of the gesture so we don't accidentally toggle modes mid-swipe.
+  let dragLocked = null;  // 'horizontal' | 'vertical' | null
+
   mov.addEventListener('touchstart', (ev) => {
     if (ev.touches.length !== 1) return;
     swipeStartX = ev.touches[0].clientX;
     swipeStartY = ev.touches[0].clientY;
     swipeStartTime = Date.now();
+    dragLocked = null;
+  }, { passive: true });
+
+  mov.addEventListener('touchmove', (ev) => {
+    if (!swipeStartTime || ev.touches.length !== 1) return;
+    const touch = ev.touches[0];
+    const dx = touch.clientX - swipeStartX;
+    const dy = touch.clientY - swipeStartY;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    // Decide axis lock once movement is decisive. 8px threshold avoids
+    // accidentally locking on tiny jitter while a finger is settling.
+    if (dragLocked === null) {
+      if (adx < 8 && ady < 8) return;
+      dragLocked = adx > ady ? 'horizontal' : 'vertical';
+    }
+    if (dragLocked !== 'horizontal') return;  // let vertical scroll happen
+    // Translate the modal content with the finger. Disable the CSS transition
+    // during drag so movement is 1:1 with input — no easing, no lag.
+    const mc = document.getElementById('mc');
+    if (!mc) return;
+    mc.style.transition = 'none';
+    mc.style.transform = `translateX(${dx}px)`;
+    // Subtle fade as content moves off-screen. Floor at 0.6 so the user
+    // can still see what they're dragging.
+    mc.style.opacity = String(Math.max(0.6, 1 - adx / window.innerWidth));
   }, { passive: true });
 
   mov.addEventListener('touchend', (ev) => {
     if (!swipeStartTime) return;
     const elapsed = Date.now() - swipeStartTime;
-    swipeStartTime = 0;  // reset for next gesture
-    if (elapsed > 600) return;  // too slow — probably not a swipe
+    const wasHorizontal = dragLocked === 'horizontal';
+    const wasLocked = dragLocked !== null;
+    swipeStartTime = 0;
+    dragLocked = null;
+
+    const mc = document.getElementById('mc');
+    // Always re-enable CSS transition (was disabled in touchmove during drag).
+    if (mc) mc.style.transition = '';
+
+    // Vertical drag → not a swipe, leave content alone.
+    if (wasLocked && !wasHorizontal) return;
+
+    // Too slow → bail and let any inline styles unwind via CSS transition.
+    if (elapsed > 600) {
+      if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
+      return;
+    }
+
     const touch = ev.changedTouches[0];
-    if (!touch) return;
+    if (!touch) {
+      if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
+      return;
+    }
     const dx = touch.clientX - swipeStartX;
     const dy = touch.clientY - swipeStartY;
     const adx = Math.abs(dx);
     const ady = Math.abs(dy);
-    // Must be horizontal-dominant and exceed threshold
-    if (adx < 60) return;
-    if (adx < ady * 1.5) return;
-    // dx > 0 = swipe right (finger moved right) = previous event
-    // dx < 0 = swipe left (finger moved left) = next event
-    swipeToOffset(dx > 0 ? -1 : 1);
+    const velocity = adx / Math.max(elapsed, 1);  // px per ms
+
+    // Commit thresholds:
+    //   - moved >20% of viewport width   → solid intent to navigate
+    //   - velocity > 0.4 px/ms (a flick) → quick intent even with short distance
+    // Either threshold triggers the swap. Otherwise snap back to center.
+    const DISTANCE_THRESHOLD = window.innerWidth * 0.2;
+    const VELOCITY_THRESHOLD = 0.4;
+
+    let shouldCommit = false;
+    if (wasHorizontal) {
+      shouldCommit = (adx > DISTANCE_THRESHOLD || velocity > VELOCITY_THRESHOLD);
+    } else if (!wasLocked) {
+      // Movement never crossed the 8px threshold — quick flick before lock.
+      // Fall back to the original distance + axis check so short flicks still
+      // navigate. Keeps single-tap deadband intact (need >60px movement).
+      shouldCommit = (adx > 60 && adx > ady * 1.5);
+    }
+
+    // Clear inline drag styles. If we commit, swipeToOffset's own class-based
+    // animation takes over from here; if we don't, the cleared transform
+    // animates back to center via the .mc CSS transition (220ms ease-out).
+    if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
+
+    if (shouldCommit) {
+      swipeToOffset(dx > 0 ? -1 : 1);
+    }
   }, { passive: true });
 
   // Keyboard navigation — left/right arrow keys navigate between events
