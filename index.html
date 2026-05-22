@@ -1324,11 +1324,13 @@ body.ai-active .stats { display: none; }
 .dir-link:hover {
   color: #7FF; border-bottom-color: var(--cyan);
 }
-/* Modal action bars — split into primary (like + tickets) and share groups.
-   Primary becomes sticky-to-bottom inside the scrolling modal so Get Tickets
-   is always reachable, regardless of viewport size. */
+/* Modal action bars — split into primary (secondary action group + Get
+   Tickets) and platform-share groups. Primary becomes sticky-to-bottom
+   inside the scrolling modal so Get Tickets is always reachable.
+   Layout: column. Top row is the .mact-secondary 3-button grid
+   (Save / Going / Share); bottom row is the full-width Get Tickets CTA. */
 .mact-primary {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column;
   position: sticky; bottom: 0;
   margin-left: -32px; margin-right: -32px;      /* extend beyond .mb padding (28px 32px) */
   padding: 14px 32px;
@@ -1337,8 +1339,11 @@ body.ai-active .stats { display: none; }
   border-top: 1px solid rgba(255,255,255,0.06);
   z-index: 5;
 }
-.mact-primary > .tb { flex: 1; justify-content: center; }   /* Get Tickets fills available */
-.mact-primary > .like-btn { flex-shrink: 0; }              /* Heart keeps natural width */
+.mact-primary > .tb {
+  /* Get Tickets is the primary CTA — full-width below the secondary row */
+  width: 100%;
+  justify-content: center;
+}
 
 .mact-share {
   display: flex; gap: 8px; align-items: center;
@@ -1377,6 +1382,130 @@ body.ai-active .stats { display: none; }
   .share-platform { display: none; }
   .share-generic  { display: inline-flex; }
   .mact-share     { display: none; }   /* row now empty on mobile, drop entirely */
+}
+
+/* ── Modal action redesign ──────────────────────────────────────────────
+   Replaces the old like-btn / going-btn / shb-share trio with a unified
+   .act-btn component. Each button has:
+     - A top zone (icon + label) that toggles the user's state (save/going)
+     - A bottom zone (count + chevron) that opens the "who liked / who's
+       going" list — only rendered when the count is > 0
+   Share is a single-zone variant (no count). The whole secondary group
+   sits in a grid above the full-width Get Tickets primary CTA.
+   Active states use color-tinted backgrounds + colored icons so the
+   on-state is immediately readable on the dark backdrop (the old empty
+   ♥ outline on dark was nearly invisible). */
+.mact-secondary {
+  display: grid;
+  /* Desktop: 2 columns (Save, Going). Share lives in the .mact-share row
+     above as platform-specific buttons. The act-share button is hidden
+     on desktop via .share-generic display:none. */
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+@media (max-width: 768px) {
+  .mact-secondary {
+    /* Mobile: 3 columns (Save, Going, Share). The .mact-share row is
+       hidden entirely on mobile, so we surface the single share button
+       here for parity. */
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.act-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0;
+  color: var(--bone2);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+  min-height: 60px;
+  overflow: hidden;
+}
+.act-btn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.2);
+}
+.act-top {
+  padding: 8px 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+}
+.act-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.act-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.act-bottom {
+  border-top: 0.5px solid rgba(255,255,255,0.1);
+  padding: 4px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background .15s;
+  /* This zone has its own onclick — make it look tappable */
+  cursor: pointer;
+}
+.act-bottom:hover {
+  background: rgba(255,255,255,0.05);
+}
+.act-chev {
+  font-size: 14px;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+/* Save = magenta accent when liked */
+.act-save.on {
+  background: rgba(255,46,126,0.12);
+  border-color: rgba(255,46,126,0.5);
+  color: #ff2e7e;
+}
+.act-save.on .act-bottom {
+  border-top-color: rgba(255,46,126,0.3);
+}
+.act-save.on .act-bottom:hover {
+  background: rgba(255,46,126,0.08);
+}
+
+/* Going = coral accent when attending */
+.act-going.on {
+  background: rgba(255,153,102,0.12);
+  border-color: rgba(255,153,102,0.5);
+  color: #ff9966;
+}
+.act-going.on .act-bottom {
+  border-top-color: rgba(255,153,102,0.3);
+}
+.act-going.on .act-bottom:hover {
+  background: rgba(255,153,102,0.08);
+}
+
+/* The share-generic class is the viewport-toggle (hidden desktop, shown
+   mobile). For .act-btn variants we need display:flex (column layout) on
+   mobile, overriding the default .share-generic display:inline-flex which
+   would break the layout. */
+.act-btn.share-generic { display: none; }
+@media (max-width: 768px) {
+  .act-btn.share-generic { display: flex; }
 }
 
 /* Multi-source picker — shown when an event is listed on 2+ platforms */
@@ -2286,12 +2415,12 @@ function renderAvatarInner(avatarUrl, initials, onerrorOverride) {
 }
 
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,showing:'Showing',going:'Going',goingChip:'GOING',goingTo:'Going to',noGoersYet:"No one's marked Going yet.",share:"Share"},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',flive:'En direct',atLive:'🔴 En ce moment',neLive:'Aucun événement en cours pour le moment. Revenez dans un instant.',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atMusic:'Événements musique',atTheatre:'Arts & Théâtre',atSports:'Événements sport',atFamily:'Événements famille',atFY:'Recommandés pour vous',atL:'Vos favoris',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',dir:'→ Itinéraire',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.',resultsFor:(q,n)=>`Résultats pour "${q}" · ${n} événement${n===1?'':'s'}`,noMatchesFor:q=>`Aucun résultat pour "${q}"`,clearSearchBtn:'Effacer la recherche ✕',askThinking:'Recherche dans le catalogue belge…',sectionResultsFor:q=>`Résultats pour "${q}"`,showing:'Affichage',going:"J'y vais",goingChip:"J'Y VAIS",goingTo:'Va à',noGoersYet:"Personne n'a encore confirmé.",share:"Partager"},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',flive:'Live nu',atLive:'🔴 Nu bezig',neLive:'Geen evenementen op dit moment. Kom zo terug.',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Trending',at:'Alle evenementen',atMusic:'Muziekevenementen',atTheatre:'Theater & Kunst',atSports:'Sportevenementen',atFamily:'Familie-evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',dir:'→ Route',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.',resultsFor:(q,n)=>`Resultaten voor "${q}" · ${n} evenement${n===1?'':'en'}`,noMatchesFor:q=>`Geen resultaten voor "${q}"`,clearSearchBtn:'Zoekopdracht wissen ✕',askThinking:'Zoeken in de Belgische catalogus…',sectionResultsFor:q=>`Resultaten voor "${q}"`,showing:'Toont',going:'Ik ga',goingChip:'IK GA',goingTo:'Gaat naar',noGoersYet:'Nog niemand heeft zich aangemeld.',share:"Delen"},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',flive:'Live jetzt',atLive:'🔴 Gerade jetzt',neLive:'Aktuell keine Events. Schau gleich wieder vorbei.',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atMusic:'Musik-Events',atTheatre:'Kunst & Theater',atSports:'Sport-Events',atFamily:'Familien-Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',dir:'→ Route',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.',resultsFor:(q,n)=>`Ergebnisse für "${q}" · ${n} Event${n===1?'':'s'}`,noMatchesFor:q=>`Keine Ergebnisse für "${q}"`,clearSearchBtn:'Suche zurücksetzen ✕',askThinking:'Belgischer Katalog wird durchsucht…',sectionResultsFor:q=>`Ergebnisse für "${q}"`,showing:'Anzeige',going:'Ich gehe',goingChip:'ICH GEHE',goingTo:'Geht zu',noGoersYet:'Noch niemand hat zugesagt.',share:"Teilen"},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',flive:'En vivo',atLive:'🔴 Ahora mismo',neLive:'No hay eventos en este momento. Vuelve en un rato.',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atMusic:'Eventos de música',atTheatre:'Artes & Teatro',atSports:'Eventos deportivos',atFamily:'Eventos familiares',atFY:'Recomendados para ti',atL:'Tus favoritos',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',dir:'→ Cómo llegar',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.',resultsFor:(q,n)=>`Resultados para "${q}" · ${n} evento${n===1?'':'s'}`,noMatchesFor:q=>`Sin resultados para "${q}"`,clearSearchBtn:'Borrar búsqueda ✕',askThinking:'Buscando en el catálogo belga…',sectionResultsFor:q=>`Resultados para "${q}"`,showing:'Mostrando',going:'Voy',goingChip:'VOY',goingTo:'Va a',noGoersYet:'Nadie ha confirmado todavía.',share:"Compartir"},
-  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Concerti, club, festival, teatro e altro — la guida after-dark per Bruxelles, Anversa, Gand e oltre.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'club nights',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',flive:'In diretta',atLive:'🔴 In questo momento',neLive:'Nessun evento in corso. Riprova tra poco.',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atMusic:'Eventi musicali',atTheatre:'Arte & Teatro',atSports:'Eventi sportivi',atFamily:'Eventi famiglia',atFY:'Consigliati per te',atL:'I tuoi preferiti',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',dir:'→ Indicazioni',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Una nota sull\'archiviazione',gdprB:'Shou salva i tuoi eventi preferiti sul tuo dispositivo così puoi ritrovarli più tardi. Conserviamo anche dati anonimi sugli eventi che visiti per migliorare i consigli — mai collegati al tuo nome né condivisi.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.',resultsFor:(q,n)=>`Risultati per "${q}" · ${n} event${n===1?'o':'i'}`,noMatchesFor:q=>`Nessun risultato per "${q}"`,clearSearchBtn:'Cancella ricerca ✕',askThinking:'Cerco nel catalogo belga…',sectionResultsFor:q=>`Risultati per "${q}"`,showing:'Mostra',going:'Ci vado',goingChip:'CI VADO',goingTo:'Va a',noGoersYet:'Nessuno ha ancora confermato.',share:"Condividi"}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neLSignIn:'Sign in to keep them across all your devices.',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about storage',gdprB:'Shou saves your liked events on your device so you can find them later. We also keep anonymous data about which events you browse to make recommendations more relevant — never tied to your name or shared with anyone else.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,showing:'Showing',going:'Going',goingChip:'GOING',goingTo:'Going to',noGoersYet:"No one's marked Going yet.",share:"Share",save:"Save",saved:"Saved"},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',flive:'En direct',atLive:'🔴 En ce moment',neLive:'Aucun événement en cours pour le moment. Revenez dans un instant.',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atMusic:'Événements musique',atTheatre:'Arts & Théâtre',atSports:'Événements sport',atFamily:'Événements famille',atFY:'Recommandés pour vous',atL:'Vos favoris',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',dir:'→ Itinéraire',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos du stockage',gdprB:'Shou sauvegarde vos événements favoris sur votre appareil pour vous les retrouver plus tard. Nous conservons aussi des données anonymes sur les événements consultés pour vous proposer de meilleures recommandations — jamais liées à votre nom ni partagées.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.',resultsFor:(q,n)=>`Résultats pour "${q}" · ${n} événement${n===1?'':'s'}`,noMatchesFor:q=>`Aucun résultat pour "${q}"`,clearSearchBtn:'Effacer la recherche ✕',askThinking:'Recherche dans le catalogue belge…',sectionResultsFor:q=>`Résultats pour "${q}"`,showing:'Affichage',going:"J'y vais",goingChip:"J'Y VAIS",goingTo:'Va à',noGoersYet:"Personne n'a encore confirmé.",share:"Partager",save:"Sauver",saved:"Sauvé"},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'club nights',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',flive:'Live nu',atLive:'🔴 Nu bezig',neLive:'Geen evenementen op dit moment. Kom zo terug.',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Trending',at:'Alle evenementen',atMusic:'Muziekevenementen',atTheatre:'Theater & Kunst',atSports:'Sportevenementen',atFamily:'Familie-evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',dir:'→ Route',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Even iets over opslag',gdprB:'Shou bewaart je favoriete evenementen op je apparaat zodat je ze later terugvindt. We houden ook anonieme gegevens bij over welke evenementen je bekijkt om betere aanbevelingen te doen — nooit gekoppeld aan je naam of gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.',resultsFor:(q,n)=>`Resultaten voor "${q}" · ${n} evenement${n===1?'':'en'}`,noMatchesFor:q=>`Geen resultaten voor "${q}"`,clearSearchBtn:'Zoekopdracht wissen ✕',askThinking:'Zoeken in de Belgische catalogus…',sectionResultsFor:q=>`Resultaten voor "${q}"`,showing:'Toont',going:'Ik ga',goingChip:'IK GA',goingTo:'Gaat naar',noGoersYet:'Nog niemand heeft zich aangemeld.',share:"Delen",save:"Opslaan",saved:"Opgeslagen"},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Venues',fl:'Filter:',fa:'Alle',fm:'Musik',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',flive:'Live jetzt',atLive:'🔴 Gerade jetzt',neLive:'Aktuell keine Events. Schau gleich wieder vorbei.',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atMusic:'Musik-Events',atTheatre:'Kunst & Theater',atSports:'Sport-Events',atFamily:'Familien-Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',dir:'→ Route',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Kurzer Hinweis zum Speicher',gdprB:'Shou speichert deine favorisierten Events auf deinem Gerät, damit du sie wiederfindest. Wir erfassen außerdem anonyme Daten zu deinen besuchten Events, um Empfehlungen zu verbessern — niemals mit deinem Namen verknüpft oder weitergegeben.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.',resultsFor:(q,n)=>`Ergebnisse für "${q}" · ${n} Event${n===1?'':'s'}`,noMatchesFor:q=>`Keine Ergebnisse für "${q}"`,clearSearchBtn:'Suche zurücksetzen ✕',askThinking:'Belgischer Katalog wird durchsucht…',sectionResultsFor:q=>`Ergebnisse für "${q}"`,showing:'Anzeige',going:'Ich gehe',goingChip:'ICH GEHE',goingTo:'Geht zu',noGoersYet:'Noch niemand hat zugesagt.',share:"Teilen",save:"Merken",saved:"Gemerkt"},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'club nights',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',flive:'En vivo',atLive:'🔴 Ahora mismo',neLive:'No hay eventos en este momento. Vuelve en un rato.',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atMusic:'Eventos de música',atTheatre:'Artes & Teatro',atSports:'Eventos deportivos',atFamily:'Eventos familiares',atFY:'Recomendados para ti',atL:'Tus favoritos',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',dir:'→ Cómo llegar',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Aviso sobre almacenamiento',gdprB:'Shou guarda tus eventos favoritos en tu dispositivo para que puedas encontrarlos después. También guardamos datos anónimos sobre los eventos que ves para mejorar las recomendaciones — nunca vinculados a tu nombre ni compartidos.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.',resultsFor:(q,n)=>`Resultados para "${q}" · ${n} evento${n===1?'':'s'}`,noMatchesFor:q=>`Sin resultados para "${q}"`,clearSearchBtn:'Borrar búsqueda ✕',askThinking:'Buscando en el catálogo belga…',sectionResultsFor:q=>`Resultados para "${q}"`,showing:'Mostrando',going:'Voy',goingChip:'VOY',goingTo:'Va a',noGoersYet:'Nadie ha confirmado todavía.',share:"Compartir",save:"Guardar",saved:"Guardado"},
+  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Concerti, club, festival, teatro e altro — la guida after-dark per Bruxelles, Anversa, Gand e oltre.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'club nights',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',flive:'In diretta',atLive:'🔴 In questo momento',neLive:'Nessun evento in corso. Riprova tra poco.',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atMusic:'Eventi musicali',atTheatre:'Arte & Teatro',atSports:'Eventi sportivi',atFamily:'Eventi famiglia',atFY:'Consigliati per te',atL:'I tuoi preferiti',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',dir:'→ Indicazioni',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Una nota sull\'archiviazione',gdprB:'Shou salva i tuoi eventi preferiti sul tuo dispositivo così puoi ritrovarli più tardi. Conserviamo anche dati anonimi sugli eventi che visiti per migliorare i consigli — mai collegati al tuo nome né condivisi.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.',resultsFor:(q,n)=>`Risultati per "${q}" · ${n} event${n===1?'o':'i'}`,noMatchesFor:q=>`Nessun risultato per "${q}"`,clearSearchBtn:'Cancella ricerca ✕',askThinking:'Cerco nel catalogo belga…',sectionResultsFor:q=>`Risultati per "${q}"`,showing:'Mostra',going:'Ci vado',goingChip:'CI VADO',goingTo:'Va a',noGoersYet:'Nessuno ha ancora confermato.',share:"Condividi",save:"Salva",saved:"Salvato"}
 };
 
 let lang=(['fr','nl','de','es','it'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
@@ -3848,16 +3977,22 @@ function tl(id, btnEl){
 function updateModalLikeButton(id) {
   const modal = document.getElementById('mov');
   if (!modal?.classList.contains('on')) return;
-  const btn = modal.querySelector(`.like-btn[onclick*="${id}"]`);
+  // The button is now an .act-save (the redesigned two-zone action button).
+  // We rebuild its innerHTML rather than updating individual spans because
+  // the .act-bottom (count + chevron) zone appears or disappears when the
+  // count crosses zero — easier to re-render than to add/remove DOM nodes.
+  const btn = modal.querySelector(`.act-save[onclick*="${id}"]`);
   if (!btn) return;
   const isL = lk.has(id);
   const e = all.find(x => x.id === id);
   if (!e) return;
-  btn.classList.toggle('lk', isL);
-  const heart = btn.querySelector('.like-heart');
-  const count = btn.querySelector('.like-count');
-  if (heart) heart.textContent = '♥';
-  if (count) count.textContent = String(e.likes);
+  btn.classList.toggle('on', isL);
+  btn.setAttribute('aria-label', isL ? t('saved') : t('save'));
+  const topZone = `<div class="act-top"><span class="act-icon">${isL ? '♥' : '♡'}</span><span class="act-label">${isL ? t('saved') : t('save')}</span></div>`;
+  const bottomZone = e.likes > 0
+    ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${id}')"><span>${e.likes}</span><span class="act-chev">›</span></div>`
+    : '';
+  btn.innerHTML = topZone + bottomZone;
 }
 
 // Push a single like/unlike to user_likes. No-op when signed out.
@@ -3959,18 +4094,20 @@ function syncGoingToServer(eventId, isNowGoing) {
 function updateModalGoingButton(id) {
   const modal = document.getElementById('mov');
   if (!modal?.classList.contains('on')) return;
-  const btn = modal.querySelector(`.going-btn[onclick*="${id}"]`);
+  // See updateModalLikeButton for the rationale on rebuilding innerHTML
+  // rather than tweaking child spans — the count zone shows/hides at 0.
+  const btn = modal.querySelector(`.act-going[onclick*="${id}"]`);
   if (!btn) return;
   const isG = gn.has(id);
   const e = all.find(x => x.id === id);
   if (!e) return;
-  btn.classList.toggle('gn', isG);
-  const count = btn.querySelector('.going-count');
-  if (count) {
-    const n = e.going_count || 0;
-    count.textContent = n > 0 ? String(n) : '';
-    count.style.display = n > 0 ? '' : 'none';
-  }
+  btn.classList.toggle('on', isG);
+  const n = e.going_count || 0;
+  const topZone = `<div class="act-top"><span class="act-icon">${isG ? '✓' : '○'}</span><span class="act-label">${t('going')}</span></div>`;
+  const bottomZone = n > 0
+    ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openGoing('${id}')"><span>${n}</span><span class="act-chev">›</span></div>`
+    : '';
+  btn.innerHTML = topZone + bottomZone;
 }
 
 // On sign-in (or initial load when signed in), pull the user's going set
@@ -4349,15 +4486,28 @@ ${mSourcesRow(e)}
 <button class="shb share-platform" onclick="cp2('${e.id}')" title="${t('cp')}">🔗</button>
 </div>
 <div class="mact-primary">
-<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
-  <span class="like-heart">♥</span>
-  <span class="like-count${e.likes>0?' clickable':''}" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>
-</button>
-<button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
-  <span class="going-icon">🎟</span>
-  ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
-</button>
-<button class="shb share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">↗</button>
+<div class="mact-secondary">
+  <button class="act-btn act-save${isL?' on':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="${isL ? t('saved') : t('save')}">
+    <div class="act-top">
+      <span class="act-icon">${isL ? '♥' : '♡'}</span>
+      <span class="act-label">${isL ? t('saved') : t('save')}</span>
+    </div>
+    ${e.likes > 0 ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')"><span>${e.likes}</span><span class="act-chev">›</span></div>` : ''}
+  </button>
+  <button class="act-btn act-going${isG?' on':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
+    <div class="act-top">
+      <span class="act-icon">${isG ? '✓' : '○'}</span>
+      <span class="act-label">${t('going')}</span>
+    </div>
+    ${goingN > 0 ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')"><span>${goingN}</span><span class="act-chev">›</span></div>` : ''}
+  </button>
+  <button class="act-btn act-share share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
+    <div class="act-top">
+      <span class="act-icon">↗</span>
+      <span class="act-label">${t('share')}</span>
+    </div>
+  </button>
+</div>
 ${mTicketBtn(e)}
 </div></div>`;
   document.getElementById('mov').classList.add('on');
