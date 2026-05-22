@@ -1384,130 +1384,93 @@ body.ai-active .stats { display: none; }
   .mact-share     { display: none; }   /* row now empty on mobile, drop entirely */
 }
 
-/* ── Modal action redesign ──────────────────────────────────────────────
-   Single-row layout: Save | Going | <share area>, all stacked above a
-   full-width Get Tickets primary CTA. The <share area> is viewport-
-   dependent:
-     - Desktop: 3 small platform-specific buttons (X / FB / Copy) grouped
-       inline. They sit next to Going on the right.
-     - Mobile: a single ↗ Share button that opens the native iOS/Android
-       share sheet. Takes its own slot in the row.
-   The .share-platform / .share-generic display toggles handle the swap.
-   Active states (Save, Going) use color-tinted backgrounds so the
-   on-state is immediately readable on the dark backdrop. */
+/* ── Modal action redesign (Instagram-style flat icons) ────────────────
+   Three vertically-stacked icon+count columns: Save / Going / Share.
+   Flat — no backgrounds or borders, just icons that change color on
+   active. Each .iact wraps an icon button (toggles state) and an
+   optional count button (opens "who liked / who's going" modal).
+   No labels — icons are universal enough that labels would just add
+   noise. Active state shows color change on the glyph only:
+     - Save → magenta heart (♥) when liked
+     - Going → coral check (✓) when going
+     - Share → no toggle state (always neutral)
+   Count buttons have an underline cue so they read as separately
+   tappable. When count is 0, render a small spacer instead to keep
+   icons vertically aligned across all three actions. */
 .mact-secondary {
   display: flex;
-  gap: 8px;
-  align-items: stretch;       /* equal height across all children */
-  margin-bottom: 10px;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 8px 12px 14px;
+  margin-bottom: 4px;
 }
-.mact-secondary > .act-btn {
-  flex: 1;                    /* Save, Going (and mobile Share) expand evenly */
-  min-width: 0;               /* allow shrinking, prevents overflow */
-}
-/* Desktop platform-share group sits at row end, compact (not flex-grown) */
-.act-share-platforms {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.act-share-platforms > .shb {
-  height: auto;               /* match parent flex height (Save/Going) */
-  min-height: 60px;           /* same as .act-btn min-height */
-}
-
-.act-btn {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  padding: 0;
-  color: var(--bone2);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: background .2s, border-color .2s, color .2s;
-  min-height: 60px;
-  overflow: hidden;
-}
-.act-btn:hover {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.2);
-}
-.act-top {
-  padding: 8px 4px 6px;
+.iact {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-  flex: 1;
-}
-.act-icon {
-  font-size: 20px;
-  line-height: 1;
-}
-.act-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-.act-bottom {
-  border-top: 0.5px solid rgba(255,255,255,0.1);
-  padding: 4px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 2px;
-  transition: background .15s;
+  min-width: 60px;            /* generous tap target on mobile */
+}
+.iact-icon {
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
   cursor: pointer;
+  color: var(--bone2);
+  font-family: 'Inter', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .2s, transform .1s;
 }
-.act-bottom:hover {
-  background: rgba(255,255,255,0.05);
-}
-.act-chev {
-  font-size: 14px;
-  opacity: 0.6;
+.iact-icon:hover { color: var(--cyan); }
+.iact-icon:active { transform: scale(0.92); }   /* tactile press feedback */
+.iact-glyph {
+  font-size: 28px;
   line-height: 1;
+  /* Heart/check glyphs have inconsistent vertical alignment in dark fonts —
+     this nudges them visually centered with the others. */
+  display: inline-block;
 }
 
-/* Save = magenta accent when liked */
-.act-save.on {
-  background: rgba(255,46,126,0.12);
-  border-color: rgba(255,46,126,0.5);
-  color: #ff2e7e;
+/* Active states — color the glyph only, no background fill */
+.iact-save.on .iact-glyph  { color: #ff2e7e; }   /* magenta */
+.iact-going.on .iact-glyph { color: #ff9966; }   /* coral */
+
+/* Count: subtle underline signals "tappable for details (see who liked)" */
+.iact-num {
+  background: transparent;
+  border: 0;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: var(--bone2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(245,230,211,0.3);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color .15s, color .15s;
 }
-.act-save.on .act-bottom {
-  border-top-color: rgba(255,46,126,0.3);
+.iact-num:hover {
+  text-decoration-color: rgba(245,230,211,0.8);
+  color: var(--cyan);
 }
-.act-save.on .act-bottom:hover {
-  background: rgba(255,46,126,0.08);
+/* Spacer: empty placeholder so icons stay aligned when count is absent.
+   Same vertical footprint as the .iact-num button. */
+.iact-spacer {
+  display: block;
+  height: 24px;
+  padding: 3px 10px;
 }
 
-/* Going = coral accent when attending */
-.act-going.on {
-  background: rgba(255,153,102,0.12);
-  border-color: rgba(255,153,102,0.5);
-  color: #ff9966;
-}
-.act-going.on .act-bottom {
-  border-top-color: rgba(255,153,102,0.3);
-}
-.act-going.on .act-bottom:hover {
-  background: rgba(255,153,102,0.08);
-}
-
-/* The share-generic class is the viewport-toggle (hidden desktop, shown
-   mobile). For .act-btn variants we need display:flex (column layout) on
-   mobile, overriding the default .share-generic display:inline-flex which
-   would break the layout. */
-.act-btn.share-generic { display: none; }
 @media (max-width: 768px) {
-  .act-btn.share-generic { display: flex; }
+  /* On mobile, ensure tap targets are generous */
+  .iact-icon  { padding: 8px 14px; }
+  .iact-glyph { font-size: 30px; }
+  .iact-num   { padding: 5px 12px; font-size: 13px; }
+  .iact-spacer { height: 28px; }
 }
 
 /* Multi-source picker — shown when an event is listed on 2+ platforms */
@@ -3943,12 +3906,15 @@ function tl(id, btnEl){
   track(id, wasLiked ? 'unlike' : 'like');
   // Optimistic count update on the local event object. events.like_count is
   // maintained server-side (trigger on user_likes), so e.likes from /api/events
-  // ALREADY includes the user's like. Without this local bump, the card
-  // count wouldn't update until next page load. The previous +(isL?1:0)
-  // expression in the template was double-counting because it added 1 on
-  // top of an e.likes that already counted the user.
+  // ALREADY includes the user's like — IF they have a user_likes row.
+  // Anonymous / signed-out users don't have a session, syncLikeToServer
+  // no-ops, no user_likes row is written, and the server count never moves.
+  // Bumping locally in that case creates a misleading "1" on the button that
+  // doesn't match the Liked-by modal (which queries public profiles, so
+  // anonymous users never appear). Gate optimistic update on session, so
+  // signed-out users see honest server counts and the modal stays consistent.
   const e = all.find(x => x.id === id);
-  if (e) {
+  if (e && currentSession) {
     e.likes = Math.max(0, (e.likes || 0) + (wasLiked ? -1 : 1));
   }
   updateLikedCount();
@@ -3979,22 +3945,38 @@ function tl(id, btnEl){
 function updateModalLikeButton(id) {
   const modal = document.getElementById('mov');
   if (!modal?.classList.contains('on')) return;
-  // The button is now an .act-save (the redesigned two-zone action button).
-  // We rebuild its innerHTML rather than updating individual spans because
-  // the .act-bottom (count + chevron) zone appears or disappears when the
-  // count crosses zero — easier to re-render than to add/remove DOM nodes.
-  const btn = modal.querySelector(`.act-save[onclick*="${id}"]`);
-  if (!btn) return;
+  // The action is now an .iact wrapper containing icon button + optional
+  // count button. Find the icon button (which has the onclick) and walk
+  // up to its .iact parent for state changes.
+  const iconBtn = modal.querySelector(`.iact-save .iact-icon[onclick*="${id}"]`);
+  if (!iconBtn) return;
+  const iact = iconBtn.parentElement;
   const isL = lk.has(id);
   const e = all.find(x => x.id === id);
   if (!e) return;
-  btn.classList.toggle('on', isL);
-  btn.setAttribute('aria-label', isL ? t('saved') : t('save'));
-  const topZone = `<div class="act-top"><span class="act-icon">${isL ? '♥' : '♡'}</span><span class="act-label">${isL ? t('saved') : t('save')}</span></div>`;
-  const bottomZone = e.likes > 0
-    ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${id}')"><span>${e.likes}</span><span class="act-chev">›</span></div>`
-    : '';
-  btn.innerHTML = topZone + bottomZone;
+  iact.classList.toggle('on', isL);
+  iconBtn.setAttribute('aria-label', isL ? t('saved') : t('save'));
+  iconBtn.setAttribute('aria-pressed', String(isL));
+  // Swap the heart glyph between outline (not saved) and filled (saved)
+  const glyph = iconBtn.querySelector('.iact-glyph');
+  if (glyph) glyph.textContent = isL ? '♥' : '♡';
+  // Rebuild the count button or spacer based on current count. We replace
+  // the trailing child each time — simpler than diffing and the row only
+  // re-renders on user toggle, never in a hot path.
+  const old = iact.querySelector('.iact-num, .iact-spacer');
+  if (old) old.remove();
+  if (e.likes > 0) {
+    const num = document.createElement('button');
+    num.className = 'iact-num';
+    num.setAttribute('onclick', `event.stopPropagation();event.preventDefault();openLikedBy('${id}')`);
+    num.setAttribute('aria-label', 'See who liked this');
+    num.textContent = String(e.likes);
+    iact.appendChild(num);
+  } else {
+    const spacer = document.createElement('span');
+    spacer.className = 'iact-spacer';
+    iact.appendChild(spacer);
+  }
 }
 
 // Push a single like/unlike to user_likes. No-op when signed out.
@@ -4054,9 +4036,12 @@ function tg(id, btnEl) {
   track(id, wasGoing ? 'not_going' : 'going');
   // Optimistic count bump on the local event object — server is authoritative
   // but for instant UI feedback we adjust the displayed going_count too. On
-  // next page load fetchGoingCounts() will reconcile.
+  // next page load fetchGoingCounts() will reconcile. Gate on session for the
+  // same reason as tl(): anonymous users have no user_going row, so the
+  // server count never increments — bumping locally creates a "1" that
+  // doesn't match the Going-to modal (which queries public profiles only).
   const e = all.find(x => x.id === id);
-  if (e) {
+  if (e && currentSession) {
     e.going_count = Math.max(0, (e.going_count || 0) + (wasGoing ? -1 : 1));
   }
   renderAll();
@@ -4096,20 +4081,32 @@ function syncGoingToServer(eventId, isNowGoing) {
 function updateModalGoingButton(id) {
   const modal = document.getElementById('mov');
   if (!modal?.classList.contains('on')) return;
-  // See updateModalLikeButton for the rationale on rebuilding innerHTML
-  // rather than tweaking child spans — the count zone shows/hides at 0.
-  const btn = modal.querySelector(`.act-going[onclick*="${id}"]`);
-  if (!btn) return;
+  // Same pattern as updateModalLikeButton — see comments there.
+  const iconBtn = modal.querySelector(`.iact-going .iact-icon[onclick*="${id}"]`);
+  if (!iconBtn) return;
+  const iact = iconBtn.parentElement;
   const isG = gn.has(id);
   const e = all.find(x => x.id === id);
   if (!e) return;
-  btn.classList.toggle('on', isG);
+  iact.classList.toggle('on', isG);
+  iconBtn.setAttribute('aria-pressed', String(isG));
+  const glyph = iconBtn.querySelector('.iact-glyph');
+  if (glyph) glyph.textContent = isG ? '✓' : '○';
   const n = e.going_count || 0;
-  const topZone = `<div class="act-top"><span class="act-icon">${isG ? '✓' : '○'}</span><span class="act-label">${t('going')}</span></div>`;
-  const bottomZone = n > 0
-    ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openGoing('${id}')"><span>${n}</span><span class="act-chev">›</span></div>`
-    : '';
-  btn.innerHTML = topZone + bottomZone;
+  const old = iact.querySelector('.iact-num, .iact-spacer');
+  if (old) old.remove();
+  if (n > 0) {
+    const num = document.createElement('button');
+    num.className = 'iact-num';
+    num.setAttribute('onclick', `event.stopPropagation();event.preventDefault();openGoing('${id}')`);
+    num.setAttribute('aria-label', "See who's going");
+    num.textContent = String(n);
+    iact.appendChild(num);
+  } else {
+    const spacer = document.createElement('span');
+    spacer.className = 'iact-spacer';
+    iact.appendChild(spacer);
+  }
 }
 
 // On sign-in (or initial load when signed in), pull the user's going set
@@ -4287,18 +4284,20 @@ function sfb(id){
 }
 function cp2(id){
   const e=all.find(x=>x.id===id);if(!e)return;
-  const u=eventShareUrl(id);   // OG-aware URL routes through /api/share
+  const u=eventShareUrl(id);
   track(id,'share');
-  // Multi-line for pastes into iMessage / WhatsApp / email. The recipient
-  // sees full event context, then the URL on its own line for previewability.
-  const intro = buildShareIntro(e);
-  const text = intro + '\n\n' + u;
-  // Optional chaining handles older browsers; fall back to a hidden textarea
-  // for very old environments where clipboard.writeText isn't available.
+  // Copy ONLY the URL — clean for pasting into a browser address bar, email
+  // subject, or anywhere expecting a plain link. The richer "title · venue ·
+  // date" text is still delivered via the other share paths:
+  //   - X (stw):  composed tweet text via &text= param
+  //   - FB (sfb): pre-filled quote via &quote= param
+  //   - Share sheet (sgen): passed as `text` to navigator.share()
+  // So users picking "Copy" specifically get a clean URL; users picking
+  // "Share" get the contextual text alongside the link.
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(()=>alert('Copied!')).catch(()=>fallbackCopy(text));
+    navigator.clipboard.writeText(u).then(()=>alert('Copied!')).catch(()=>fallbackCopy(u));
   } else {
-    fallbackCopy(text);
+    fallbackCopy(u);
   }
 }
 
@@ -4484,31 +4483,24 @@ function om(id, _opts){
 ${mSourcesRow(e)}
 <div class="mact-primary">
 <div class="mact-secondary">
-  <button class="act-btn act-save${isL?' on':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="${isL ? t('saved') : t('save')}">
-    <div class="act-top">
-      <span class="act-icon">${isL ? '♥' : '♡'}</span>
-      <span class="act-label">${isL ? t('saved') : t('save')}</span>
-    </div>
-    ${e.likes > 0 ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')"><span>${e.likes}</span><span class="act-chev">›</span></div>` : ''}
-  </button>
-  <button class="act-btn act-going${isG?' on':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
-    <div class="act-top">
-      <span class="act-icon">${isG ? '✓' : '○'}</span>
-      <span class="act-label">${t('going')}</span>
-    </div>
-    ${goingN > 0 ? `<div class="act-bottom" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')"><span>${goingN}</span><span class="act-chev">›</span></div>` : ''}
-  </button>
-  <div class="act-share-platforms share-platform">
-    <button class="shb" onclick="event.stopPropagation();stw('${e.id}')" title="${t('xs')}">𝕏</button>
-    <button class="shb" onclick="event.stopPropagation();sfb('${e.id}')" title="${t('fb2')}">f</button>
-    <button class="shb" onclick="event.stopPropagation();cp2('${e.id}')" title="${t('cp')}">🔗</button>
+  <div class="iact iact-save${isL ? ' on' : ''}">
+    <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
+      <span class="iact-glyph">${isL ? '♥' : '♡'}</span>
+    </button>
+    ${e.likes > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" aria-label="See who liked this">${e.likes}</button>` : '<span class="iact-spacer"></span>'}
   </div>
-  <button class="act-btn act-share share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
-    <div class="act-top">
-      <span class="act-icon">↗</span>
-      <span class="act-label">${t('share')}</span>
-    </div>
-  </button>
+  <div class="iact iact-going${isG ? ' on' : ''}">
+    <button class="iact-icon" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" aria-pressed="${isG}">
+      <span class="iact-glyph">${isG ? '✓' : '○'}</span>
+    </button>
+    ${goingN > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" aria-label="See who's going">${goingN}</button>` : '<span class="iact-spacer"></span>'}
+  </div>
+  <div class="iact iact-share">
+    <button class="iact-icon" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
+      <span class="iact-glyph">↗</span>
+    </button>
+    <span class="iact-spacer"></span>
+  </div>
 </div>
 ${mTicketBtn(e)}
 </div></div>`;
