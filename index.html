@@ -1411,6 +1411,16 @@ body.ai-active .stats { display: none; }
   gap: 2px;
   min-width: 60px;            /* generous tap target on mobile */
 }
+/* Viewport split for .iact share buttons. Without this, the .iact base
+   rule `display: flex` overrides the general `.share-generic { display:
+   none }` rule (defined earlier in the file) — leaking the mobile-only
+   share button onto desktop and vice versa. These explicit rules win
+   the cascade by being later in source order. */
+.iact.share-generic { display: none; }                /* hidden on desktop */
+@media (max-width: 768px) {
+  .iact.share-platform { display: none; }             /* hidden on mobile */
+  .iact.share-generic  { display: flex; }             /* shown on mobile */
+}
 .iact-icon {
   background: transparent;
   border: 0;
