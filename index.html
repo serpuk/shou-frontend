@@ -1432,6 +1432,14 @@ body.ai-active .stats { display: none; }
      this nudges them visually centered with the others. */
   display: inline-block;
 }
+/* The 𝕏 and f are typeface letters, not symbols/emoji — they look smaller
+   than ♥/○/↗ at the same font-size due to lower x-height. Bump up + bold
+   so they read as the same optical size. */
+.iact-glyph-text {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
 
 /* Active states — color the glyph only, no background fill */
 .iact-save.on .iact-glyph  { color: #ff2e7e; }   /* magenta */
@@ -4495,7 +4503,30 @@ ${mSourcesRow(e)}
     </button>
     ${goingN > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" aria-label="See who's going">${goingN}</button>` : '<span class="iact-spacer"></span>'}
   </div>
-  <div class="iact iact-share">
+  <!-- Desktop: 3 platform-specific share icons (X / Facebook / Copy).
+       Each is its own .iact column for visual consistency with Save/Going.
+       Hidden on mobile via .share-platform class. -->
+  <div class="iact share-platform">
+    <button class="iact-icon" onclick="event.stopPropagation();stw('${e.id}')" title="${t('xs')}" aria-label="${t('xs')}">
+      <span class="iact-glyph iact-glyph-text">𝕏</span>
+    </button>
+    <span class="iact-spacer"></span>
+  </div>
+  <div class="iact share-platform">
+    <button class="iact-icon" onclick="event.stopPropagation();sfb('${e.id}')" title="${t('fb2')}" aria-label="${t('fb2')}">
+      <span class="iact-glyph iact-glyph-text">f</span>
+    </button>
+    <span class="iact-spacer"></span>
+  </div>
+  <div class="iact share-platform">
+    <button class="iact-icon" onclick="event.stopPropagation();cp2('${e.id}')" title="${t('cp')}" aria-label="${t('cp')}">
+      <span class="iact-glyph">🔗</span>
+    </button>
+    <span class="iact-spacer"></span>
+  </div>
+  <!-- Mobile: single share icon opens iOS/Android native share sheet.
+       Hidden on desktop via .share-generic class. -->
+  <div class="iact share-generic">
     <button class="iact-icon" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
       <span class="iact-glyph">↗</span>
     </button>
