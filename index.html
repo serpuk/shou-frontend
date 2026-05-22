@@ -892,22 +892,31 @@ body.ai-active .stats { display: none; }
 }
 .sb:hover { background: rgba(255,46,126,0.1); border-color: rgba(255,46,126,0.4); color: var(--magenta); }
 .sb.lk { color: var(--magenta); border-color: rgba(255,46,126,0.5); box-shadow: 0 0 10px rgba(255,46,126,0.3); }
-/* Heart-only inner span on .sb — uses -webkit-text-stroke to render the
-   ♥ character as outline (unsaved) or filled (saved). Scoped via this
-   inner span so the other .sb buttons sharing this class (𝕏, f, 🔗)
-   render their text/symbols normally instead of also getting outlined. */
+/* SVG heart inside .sb: outline by default, filled when .sb.lk. Path fill
+   toggles via state class. Stroke uses currentColor so the .sb color rule
+   (bone1 → magenta on .lk) flows through automatically. */
 .sb-heart {
-  color: transparent;
-  -webkit-text-stroke: 1.5px var(--bone1);
-  display: inline-block;
-  transition: color .2s, -webkit-text-stroke-color .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
-.sb:hover .sb-heart { -webkit-text-stroke-color: var(--magenta); }
-.sb.lk .sb-heart {
-  color: var(--magenta);
-  -webkit-text-stroke: 0;
+.sb-heart svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
+.sb-heart svg path { fill: none; transition: fill .2s; }
+.sb.lk .sb-heart svg path { fill: currentColor; }
+/* Generic .sb-svg wrapper for non-heart SVG icons (paper plane share button
+   on mobile). Same sizing as .sb-heart but no fill toggling. */
+.sb-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.sb-svg svg { width: 18px; height: 18px; display: block; }
 .ln {
   /* Count next to the heart on bigCard. Was 11px which is unreadably small
      beside the now-larger .sb button (36px / 18px glyph). 13px keeps the
@@ -929,22 +938,24 @@ body.ai-active .stats { display: none; }
   font-size: 13px; font-weight: 800; letter-spacing: 1px;
 }
 .like-btn .like-heart {
-  font-size: 28px; line-height: 1;
-  display: inline-block;
-  transition: transform 0.2s ease, color 0.2s ease, -webkit-text-stroke-color 0.2s ease;
-  color: transparent;
-  -webkit-text-stroke: 1.5px var(--bone3);
+  /* SVG heart, sized via width/height. Path is outline-only (fill: none)
+     by default; .like-btn.lk toggles fill to currentColor for filled state.
+     Stroke color flows from inherited .like-btn color (bone2 → magenta on hover/.lk). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
 }
-.like-btn:hover .like-heart {
-  -webkit-text-stroke-color: var(--magenta);
+.like-btn .like-heart svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
-/* Liked state: filled magenta, no stroke. Same glyph as unliked — only the
-   fill changes. This keeps the heart visually the SAME SIZE in both states
-   (previously ♡ outlined vs ♥ filled rendered at different glyph widths). */
-.like-btn.lk .like-heart {
-  color: var(--magenta);
-  -webkit-text-stroke: 0;
-}
+.like-btn .like-heart svg path { fill: none; transition: fill .2s; }
+.like-btn:hover .like-heart svg { color: var(--magenta); }
+/* Liked state: filled heart. Same SVG, only fill changes. */
+.like-btn.lk .like-heart svg { color: var(--magenta); }
+.like-btn.lk .like-heart svg path { fill: currentColor; }
 .like-btn .like-count { color: var(--bone3); font-weight: 700; }
 .like-btn:hover {
   background: rgba(255,46,126,0.08); border-color: rgba(255,46,126,0.5);
@@ -972,13 +983,19 @@ body.ai-active .stats { display: none; }
   font-size: 13px; font-weight: 800; letter-spacing: 1px;
 }
 .going-btn .going-icon {
-  font-size: 20px; line-height: 1;
-  display: inline-block;
-  transition: transform 0.2s ease, filter 0.2s ease;
-  filter: grayscale(0.7) opacity(0.7);
+  /* SVG check/circle. Color flows from inherited .going-btn color (bone2 by
+     default, coral when .gn). Template chooses ICON_CHECK or ICON_CIRCLE
+     based on state — both share this sizing and color logic. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
 }
-.going-btn:hover .going-icon { filter: grayscale(0) opacity(1); }
-.going-btn.gn .going-icon { filter: grayscale(0) opacity(1); }
+.going-btn .going-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
 .going-btn .going-count { color: var(--bone3); font-weight: 700; }
 .going-btn:hover {
   background: rgba(255,153,102,0.08); border-color: rgba(255,153,102,0.5);
@@ -1374,8 +1391,14 @@ body.ai-active .stats { display: none; }
   display: flex; flex-direction: column;
   position: sticky; bottom: 0;
   margin-left: -32px; margin-right: -32px;      /* extend beyond .mb padding (28px 32px) */
-  padding: 14px 32px;
-  background: linear-gradient(to top, var(--ink2) 75%, rgba(20,20,24,0));
+  /* Asymmetric padding: more on top (24px) so there's visible breathing
+     room between the icons and any content scrolled up against the bar.
+     Was 14px which had the venue grid butting directly against the icons. */
+  padding: 24px 32px 16px;
+  /* Gradient fade is taller now (was 75% solid → 55% solid). The fade region
+     softens the transition from scrolling content to the solid bar — taller
+     fade = more visual separation. */
+  background: linear-gradient(to top, var(--ink2) 55%, rgba(20,20,24,0));
   backdrop-filter: blur(8px);
   border-top: 1px solid rgba(255,255,255,0.06);
   z-index: 5;
@@ -1506,19 +1529,38 @@ body.ai-active .stats { display: none; }
 .iact-save.on .iact-glyph  { color: #ff2e7e; }   /* magenta */
 .iact-going.on .iact-glyph { color: #ff9966; }   /* coral */
 
-/* Heart glyph: render ♥ as outline (transparent + stroke) when unsaved,
-   filled when saved. We can't rely on swapping ♥/♡ because ♡ (U+2661)
-   doesn't render on iOS Safari — drops to blank, leaving an empty button.
-   This stroke trick uses only ♥ (which renders reliably everywhere) and
-   handles the visual toggle in CSS. Active state overrides the stroke. */
-.iact-glyph-heart {
-  color: transparent;
-  -webkit-text-stroke: 2px var(--bone1);
-  transition: color .2s, -webkit-text-stroke-color .2s;
+/* Heart glyph: inline SVG rendered as outline (stroke only) by default,
+   filled when .iact-save.on. We use SVG instead of the unicode ♥/♡ swap
+   because ♡ (U+2661) doesn't render on iOS Safari, and the -webkit-text-stroke
+   trick is unreliable across browsers/contexts. SVG renders consistently
+   everywhere with no font dependency. */
+.iact-glyph-heart svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin-top: 1px;
+  color: var(--bone1);                    /* stroke color when unsaved */
+  transition: color .2s;
 }
-.iact-save.on .iact-glyph-heart {
-  color: var(--magenta);
-  -webkit-text-stroke: 0;
+.iact-glyph-heart svg path {
+  fill: none;                              /* outline only when unsaved */
+  transition: fill .2s;
+}
+.iact-save.on .iact-glyph-heart svg {
+  color: var(--magenta);                  /* both stroke and fill go magenta */
+}
+.iact-save.on .iact-glyph-heart svg path {
+  fill: currentColor;                      /* fill the heart when saved */
+}
+/* SVG going icon (check or circle) in modal. Sized to match other modal
+   glyphs at 28px. Color flows through via currentColor — .iact-going.on
+   recolors to coral. Path fill stays none for both check and circle —
+   they're outline-only icons by design (check is just a polyline). */
+.iact-glyph-going svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin-top: 1px;
 }
 
 /* Count: subtle underline signals "tappable for details (see who liked)" */
@@ -2572,6 +2614,19 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing();
+
+// SVG icon constants. We use inline SVG instead of unicode characters
+// (♥/♡/✓/○/↗/🎟) because rendering of those characters is inconsistent
+// across browsers and platforms — ♡ doesn't render on iOS Safari, the
+// ticket emoji 🎟 looks different on every OS, etc. SVG renders identically
+// everywhere with no font dependency. Each icon uses currentColor for
+// stroke/fill so CSS state classes (.lk, .gn, .on) can recolor via the
+// `color` property. The heart and going SVGs have separate outline/filled
+// states handled by toggling path fill via CSS.
+const ICON_HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+const ICON_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>';
+const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
 
 // AI search state. aiQ is the active query string (shown in input + banner).
 // aiResultIds is the Set of event IDs returned by /api/search — replaces the
@@ -3936,16 +3991,16 @@ function bigCard(e){
       </div>
       <div class="feat-actions">
         <div class="socs">
-          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}"><span class="sb-heart">♥</span></button>
+          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}"><span class="sb-heart">${ICON_HEART}</span></button>
           ${e.likes > 0 ? `<span class="ln clickable" onclick="event.stopPropagation();openLikedBy('${e.id}')">${e.likes}</span>` : ''}
-          <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
-            <span class="going-icon">🎟</span>
+          <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" title="${t('going')}">
+            <span class="going-icon">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
             ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
           </button>
           <button class="sb share-platform" onclick="event.stopPropagation();stw('${e.id}')">𝕏</button>
           <button class="sb share-platform" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb share-platform" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
-          <button class="sb share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">↗</button>
+          <button class="sb share-generic" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}"><span class="sb-svg">${ICON_SEND}</span></button>
         </div>
         <a class="tb" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
       </div>
@@ -3975,12 +4030,12 @@ function smCard(e){
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
-<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like">
-  <span class="like-heart">♥</span>
+<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like" title="${isL ? t('saved') : t('save')}">
+  <span class="like-heart">${ICON_HEART}</span>
   ${e.likes > 0 ? `<span class="like-count clickable" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${e.likes}</span>` : ''}
 </button>
-<button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}">
-  <span class="going-icon">🎟</span>
+<button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" title="${t('going')}">
+  <span class="going-icon">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
   ${goingN > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${goingN}</span>` : ''}
 </button>
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
@@ -4186,8 +4241,10 @@ function updateModalGoingButton(id) {
   iact.classList.toggle('on', isG);
   iconBtn.setAttribute('aria-pressed', String(isG));
   iconBtn.setAttribute('title', t('going'));
+  // Swap the SVG: check when going, circle when not. innerHTML (not
+  // textContent) — these are SVG elements, not text nodes.
   const glyph = iconBtn.querySelector('.iact-glyph');
-  if (glyph) glyph.textContent = isG ? '✓' : '○';
+  if (glyph) glyph.innerHTML = isG ? ICON_CHECK : ICON_CIRCLE;
   const n = e.going_count || 0;
   const old = iact.querySelector('.iact-num, .iact-num-zero, .iact-spacer');
   if (old) old.remove();
@@ -4581,13 +4638,13 @@ ${mSourcesRow(e)}
 <div class="mact-secondary">
   <div class="iact iact-save${isL ? ' on' : ''}">
     <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
-      <span class="iact-glyph iact-glyph-heart">♥</span>
+      <span class="iact-glyph iact-glyph-heart" aria-hidden="true">${ICON_HEART}</span>
     </button>
     ${e.likes > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" aria-label="See who liked this">${e.likes}</button>` : '<span class="iact-spacer"></span>'}
   </div>
   <div class="iact iact-going${isG ? ' on' : ''}">
     <button class="iact-icon" onclick="event.stopPropagation();tg('${e.id}', this)" title="${t('going')}" aria-label="${t('going')}" aria-pressed="${isG}">
-      <span class="iact-glyph">${isG ? '✓' : '○'}</span>
+      <span class="iact-glyph iact-glyph-going">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
     </button>
     ${goingN > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" aria-label="See who's going">${goingN}</button>` : '<span class="iact-spacer"></span>'}
   </div>
@@ -4616,7 +4673,7 @@ ${mSourcesRow(e)}
        Hidden on desktop via .share-generic class. -->
   <div class="iact share-generic">
     <button class="iact-icon" onclick="event.stopPropagation();sgen('${e.id}')" aria-label="${t('share')}" title="${t('share')}">
-      <span class="iact-glyph iact-glyph-svg" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></span>
+      <span class="iact-glyph iact-glyph-svg" aria-hidden="true">${ICON_SEND}</span>
     </button>
     <span class="iact-spacer"></span>
   </div>
