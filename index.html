@@ -1265,6 +1265,16 @@ body.ai-active .stats { display: none; }
      Re-enabled by removing the class on touchend. */
   transition: none;
 }
+/* #mc is the container the JS writes track HTML into. It needs an explicit
+   width so .mc-track's 300% has something to reference — without this,
+   #mc has auto width (content-defined) and the track collapses or sizes
+   unpredictably. overflow-x: hidden here clips the off-screen cards so
+   they don't leak past the modal edges during drag/animation. */
+#mc {
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
 .mc-card {
   /* Each card is 1/3 of the 300%-wide track = 100% of the modal width.
      flex-basis 33.333% with flex-shrink 0 keeps each card exactly that
