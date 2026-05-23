@@ -1244,20 +1244,37 @@ body.ai-active .stats { display: none; }
   overflow-x: hidden;
 }
 
-/* Swipe transition states for #mc.
-   The container slides out in the swipe direction, then a new content
-   snaps to the opposite side and slides back to center. Cubic-bezier
-   curve gives Instagram-like snap (faster ease near the end) instead
-   of the mechanical linear ease-out. */
-#mc {
-  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
-              opacity   280ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: transform, opacity;
+/* Three-card swipe track. The .mc-track is a horizontal flex row holding
+   prev / current / next cards, each exactly viewport-width. Translation of
+   the track moves between cards; during a finger drag the track follows
+   the finger, then either snaps to the adjacent card (commit) or back to
+   center (cancel). Eliminates the "black void" effect from translating
+   only the current card. */
+.mc-track {
+  display: flex;
+  flex-direction: row;
+  /* Default position: current card centered. Move by -100% to show next,
+     +100% to show previous. JS sets inline transform during drag. */
+  transform: translateX(0);
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
 }
-#mc.swipe-out-left  { transform: translateX(-100%); opacity: 0.4; }
-#mc.swipe-out-right { transform: translateX( 100%); opacity: 0.4; }
-#mc.swipe-in-left   { transform: translateX(-100%); opacity: 0; transition: none; }
-#mc.swipe-in-right  { transform: translateX( 100%); opacity: 0; transition: none; }
+.mc-track.dragging {
+  /* Disable transition during finger drag so movement is 1:1 with input.
+     Re-enabled by removing the class on touchend. */
+  transition: none;
+}
+.mc-card {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+}
+/* Empty placeholder card (when at first/last event) — still takes layout
+   space so the .mc-track translation math stays consistent, just nothing
+   visible inside. */
+.mc-card:empty {
+  background: transparent;
+}
 .mcl {
   /* Absolute relative to .mov (position:fixed inset:0 → viewport-sized).
      Placed BELOW the page nav (which is 70px tall + has its own
@@ -4636,23 +4653,21 @@ function directionsUrl(e) {
 // popstate handler doesn't double-fire on our own pushState calls.
 let urlRoutingSelfDriven = false;
 
-function om(id, _opts){
-  const e=all.find(x=>x.id===id);if(!e)return;
-  // Track engagement signal for popularity scoring. Skip when the modal was
-  // opened by URL restoration (e.g. on page load with ?event=...) — that's
-  // not the same as a user clicking a card.
-  if (!_opts?.fromUrl) {
-    track(id,'view');
-  }
+// Build the inner HTML for a single event card in the modal. Returns image
+// (or placeholder) + body. Pulled out of om() so we can render three of
+// these side-by-side in a horizontal track — the prev card peeks in from
+// the left when the user drags right, the next card peeks from the right
+// when they drag left. No more black void during swipe.
+function buildEventCardHTML(e) {
+  if (!e) return '';
   const cl=segCls(e.seg);
   const isL=lk.has(e.id);
   const isG=gn.has(e.id);
-  const goingN=e.going_count||0;
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
     ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.seg)}','${segEmoji(e.seg)}')">`
     : `<div class="mph ${segThumb(e.seg)}"><span>${segEmoji(e.seg)}</span></div>`;
-  document.getElementById('mc').innerHTML=`${bigTh}
+  return `${bigTh}
 <div class="mb">
 <span class="cpill ${cl}">${e.seg}${e.genre?' · '+e.genre:''}</span>
 <div class="mtitle">${e.name}</div>
@@ -4709,7 +4724,41 @@ ${mSourcesRow(e)}
   </div>
 </div>
 ${mTicketBtn(e)}
-</div></div>`;
+</div>`;
+}
+
+// Render the 3-card track centered on the given event id. Adjacent cards
+// are rendered as full HTML so they're real DOM at swipe time — no
+// just-in-time render lag. Each card sits in its own .mc-card slot inside
+// the .mc-track flex row.
+function renderModalTrack(currentId) {
+  const idx = filtered.findIndex(x => x.id === currentId);
+  if (idx < 0) {
+    // Event isn't in the current filtered list (e.g. opened from a featured
+    // section). Fall back to single-card rendering with no prev/next.
+    const e = all.find(x => x.id === currentId);
+    document.getElementById('mc').innerHTML = `<div class="mc-track"><div class="mc-card mc-card-current">${buildEventCardHTML(e)}</div></div>`;
+    return;
+  }
+  const prev = idx > 0 ? filtered[idx - 1] : null;
+  const curr = filtered[idx];
+  const next = idx < filtered.length - 1 ? filtered[idx + 1] : null;
+  document.getElementById('mc').innerHTML = `<div class="mc-track">
+    <div class="mc-card mc-card-prev">${prev ? buildEventCardHTML(prev) : ''}</div>
+    <div class="mc-card mc-card-current">${buildEventCardHTML(curr)}</div>
+    <div class="mc-card mc-card-next">${next ? buildEventCardHTML(next) : ''}</div>
+  </div>`;
+}
+
+function om(id, _opts){
+  const e=all.find(x=>x.id===id);if(!e)return;
+  // Track engagement signal for popularity scoring. Skip when the modal was
+  // opened by URL restoration (e.g. on page load with ?event=...) — that's
+  // not the same as a user clicking a card.
+  if (!_opts?.fromUrl) {
+    track(id,'view');
+  }
+  renderModalTrack(id);
   document.getElementById('mov').classList.add('on');
   // Update nav arrow visibility based on position in the filtered list.
   // Hide prev when at first event, hide next when at last. Pass id directly
@@ -4860,56 +4909,56 @@ function swipeToOffset(offset) {
   const nextEvent = filtered[nextIdx];
   if (!nextEvent) return;
 
-  const mc = document.getElementById('mc');
-  if (!mc) return;
+  const track = document.querySelector('#mc .mc-track');
+  if (!track) {
+    // Fallback if track isn't rendered (e.g. event not in filtered list).
+    om(nextEvent.id, { fromUrl: true, skipScrollReset: true });
+    return;
+  }
 
-  // Animation direction: swiping LEFT means user wants the NEXT event,
-  // so outgoing slides off to the LEFT and the new event comes in from
-  // the RIGHT. Vice versa for swipe right.
-  const goingForward = offset > 0;
-  const outClass = goingForward ? 'swipe-out-left' : 'swipe-out-right';
-  const inFromClass = goingForward ? 'swipe-in-right' : 'swipe-in-left';
+  // Translate the track. offset > 0 = swipe to NEXT card = move track LEFT.
+  // The next card already exists in the DOM (we rendered it in renderModalTrack),
+  // so this is a pure visual slide — no content swap during the animation.
+  const targetPct = offset > 0 ? -100 : 100;
+  track.classList.remove('dragging');  // ensure transition is active
+  track.style.transform = `translateX(${targetPct}%)`;
 
-  // Clear any leftover animation classes from a previous swipe.
-  mc.classList.remove('swipe-out-left','swipe-out-right','swipe-in-left','swipe-in-right');
-
-  // 1. Slide current content out
-  mc.classList.add(outClass);
-
-  // After the slide-out finishes, swap content and animate in from
-  // opposite side. transitionend is the most reliable signal but we add a
-  // safety timeout in case it doesn't fire (e.g. tab backgrounded).
-  let swapped = false;
-  const doSwap = (ev) => {
-    // transitionend fires for each animated property; only act on transform
+  // After the slide completes, re-render the track centered on the new
+  // event (so its prev/next neighbors are correct for the NEXT swipe)
+  // and reset the transform to 0 — no animation, no flicker, because
+  // the content is now in the center slot.
+  let done = false;
+  const finish = (ev) => {
     if (ev && ev.propertyName && ev.propertyName !== 'transform') return;
-    if (swapped) return;
-    swapped = true;
-    mc.removeEventListener('transitionend', doSwap);
+    if (done) return;
+    done = true;
+    track.removeEventListener('transitionend', finish);
 
     // Update URL via replaceState (don't pollute history with each swipe)
     urlRoutingSelfDriven = true;
     history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.id));
     urlRoutingSelfDriven = false;
+    document.title = `${nextEvent.name} — shou`;
 
-    // Snap the container to the opposite side (no transition — instant)
-    mc.classList.remove(outClass);
-    mc.classList.add(inFromClass);
-
-    // Render new content while content is offscreen
-    om(nextEvent.id, { fromUrl: true, skipScrollReset: true });
-
-    // Next frame: remove the offscreen class. The CSS transition kicks in
-    // and the container slides back to center.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        mc.classList.remove(inFromClass);
-      });
-    });
+    // Re-center the track on the new event. This rebuilds the prev/next
+    // cards so the next swipe in either direction has fresh neighbors.
+    renderModalTrack(nextEvent.id);
+    // Reset scroll on the modal (each new card starts from the top).
+    const modalEl = document.querySelector('#mov .modal');
+    if (modalEl) modalEl.scrollTop = 0;
+    // Update nav arrow visibility based on new position.
+    updateNavArrows(nextEvent.id);
+    // Track engagement for the newly-shown event.
+    track && track.style; // no-op; keep linter happy after innerHTML replace
+    trackView(nextEvent.id);
   };
-  mc.addEventListener('transitionend', doSwap);
-  setTimeout(doSwap, 260);  // safety net if transitionend doesn't fire
+  track.addEventListener('transitionend', finish);
+  setTimeout(finish, 320);  // safety net
 }
+
+// Engagement tracking helper — extracted from om() because swipe doesn't go
+// through om() during the slide, only after.
+function trackView(id) { try { track(id, 'view'); } catch (_) {} }
 
 function initSwipeNav() {
   const mov = document.getElementById('mov');
@@ -4941,15 +4990,25 @@ function initSwipeNav() {
       dragLocked = adx > ady ? 'horizontal' : 'vertical';
     }
     if (dragLocked !== 'horizontal') return;  // let vertical scroll happen
-    // Translate the modal content with the finger. Disable the CSS transition
-    // during drag so movement is 1:1 with input — no easing, no lag.
-    const mc = document.getElementById('mc');
-    if (!mc) return;
-    mc.style.transition = 'none';
-    mc.style.transform = `translateX(${dx}px)`;
-    // Subtle fade as content moves off-screen. Floor at 0.6 so the user
-    // can still see what they're dragging.
-    mc.style.opacity = String(Math.max(0.6, 1 - adx / window.innerWidth));
+    // Translate the track with the finger. Track is currently centered at
+    // 0%; we add the finger delta as a percentage of viewport width so the
+    // math aligns with the snap-to ±100% values used by swipeToOffset.
+    const track = document.querySelector('#mc .mc-track');
+    if (!track) return;
+    const vw = window.innerWidth;
+    // Edge resistance: if dragging toward a missing neighbor (no prev/next),
+    // dampen the movement so the user feels the boundary instead of
+    // pulling content fully off-screen with nothing behind it.
+    const idx = findCurrentEventIndex();
+    const atStart = idx <= 0;
+    const atEnd = idx >= filtered.length - 1;
+    let effectiveDx = dx;
+    if ((dx > 0 && atStart) || (dx < 0 && atEnd)) {
+      effectiveDx = dx * 0.35;  // damp by ~3x
+    }
+    const pct = (effectiveDx / vw) * 100;
+    track.classList.add('dragging');
+    track.style.transform = `translateX(${pct}%)`;
   }, { passive: true });
 
   mov.addEventListener('touchend', (ev) => {
@@ -4960,22 +5019,22 @@ function initSwipeNav() {
     swipeStartTime = 0;
     dragLocked = null;
 
-    const mc = document.getElementById('mc');
-    // Always re-enable CSS transition (was disabled in touchmove during drag).
-    if (mc) mc.style.transition = '';
+    const track = document.querySelector('#mc .mc-track');
+    // Always re-enable CSS transition for snap-back / commit animation.
+    if (track) track.classList.remove('dragging');
 
     // Vertical drag → not a swipe, leave content alone.
     if (wasLocked && !wasHorizontal) return;
 
-    // Too slow → bail and let any inline styles unwind via CSS transition.
+    // Too slow → snap back to center.
     if (elapsed > 600) {
-      if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
+      if (track) track.style.transform = '';
       return;
     }
 
     const touch = ev.changedTouches[0];
     if (!touch) {
-      if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
+      if (track) track.style.transform = '';
       return;
     }
     const dx = touch.clientX - swipeStartX;
@@ -4996,18 +5055,16 @@ function initSwipeNav() {
       shouldCommit = (adx > DISTANCE_THRESHOLD || velocity > VELOCITY_THRESHOLD);
     } else if (!wasLocked) {
       // Movement never crossed the 8px threshold — quick flick before lock.
-      // Fall back to the original distance + axis check so short flicks still
-      // navigate. Keeps single-tap deadband intact (need >60px movement).
       shouldCommit = (adx > 60 && adx > ady * 1.5);
     }
 
-    // Clear inline drag styles. If we commit, swipeToOffset's own class-based
-    // animation takes over from here; if we don't, the cleared transform
-    // animates back to center via the .mc CSS transition (220ms ease-out).
-    if (mc) { mc.style.transform = ''; mc.style.opacity = ''; }
-
     if (shouldCommit) {
+      // Don't clear the inline transform — let swipeToOffset's animation
+      // pick up from current position and slide to the commit target.
       swipeToOffset(dx > 0 ? -1 : 1);
+    } else {
+      // Snap back to center via the track's CSS transition.
+      if (track) track.style.transform = '';
     }
   }, { passive: true });
 
