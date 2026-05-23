@@ -1234,95 +1234,28 @@ body.ai-active .stats { display: none; }
   border: 1px solid rgba(255,153,102,0.25);
   border-radius: var(--radius);
   max-width: 640px; width: 100%; max-height: 90vh;
-  /* IMPORTANT: no vertical scroll on .modal itself. Each .mc-card is its
-     own vertical scroller (see .mc-card CSS below). Without this rule,
-     vertical swipes would scroll BOTH the modal and the active card,
-     creating a weird "swipe scrolls multiple events" experience. */
-  overflow: hidden;
-  /* Set height explicitly so .mc-card { height: 100% } has a base.
-     90vh matches max-height; on shorter content the modal shrinks via
-     #mc's content height, so we use 90vh as the upper bound. */
-  height: 90vh;
-  position: relative;
+  overflow-y: auto; position: relative;
   box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,153,102,0.1);
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  /* Hide horizontal overflow during slide-out animation so content doesn't
+     show outside the modal as it translates. */
+  overflow-x: hidden;
 }
 
-/* Native CSS scroll-snap carousel (Instagram-style). The browser handles
-   all swipe physics natively: finger tracking, momentum, snap-back, edge
-   resistance — all built in. */
+/* Swipe transition states for #mc.
+   The container slides out in the swipe direction, then a new content
+   snaps to the opposite side and slides back to center. ~280ms each leg
+   with a cubic-bezier ease for smoothness. */
 #mc {
-  /* Fills the .modal flex column. flex:1 lets it take all remaining
-     vertical space (the .modal has no other children, so this = 100%). */
-  flex: 1;
-  min-height: 0;  /* allow flex child to shrink below content size */
-  width: 100%;
-  position: relative;
-  /* No overflow rules here — they belong on .mc-track (horizontal) and
-     .mc-card (vertical) so the two scroll axes don't fight. */
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity   280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, opacity;
 }
-.mc-track {
-  /* Horizontal scroller. Native CSS scroll-snap handles all swipe physics:
-     finger tracking, momentum, snap-back, edge resistance. */
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100%;
-  overflow-x: auto;
-  /* IMPORTANT: overflow-y hidden on the track prevents the track itself
-     from scrolling vertically. Vertical scroll happens inside each .mc-card. */
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  /* Pair with .mc-card { touch-action: pan-y } — horizontal pans are
-     handled here, vertical pans by the card. Without this declaration,
-     iOS Safari's axis-lock heuristic favours whichever direction the
-     finger first moves, and since the user's finger starts inside the
-     card (always — it fills the viewport), vertical wins and horizontal
-     swipes are eaten. */
-  touch-action: pan-x;
-  /* Prevent swipe-back gesture in Safari from intercepting carousel swipes. */
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.mc-track::-webkit-scrollbar { display: none; }
-.mc-card {
-  /* Each card is exactly modal-width. flex-shrink:0 prevents the row from
-     squashing cards. height:100% fills the track vertically. */
-  flex: 0 0 100%;
-  min-width: 100%;
-  height: 100%;
-  /* Each card has its OWN vertical scroll for long content. */
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  /* CRITICAL on iOS Safari: tell the browser this element handles ONLY
-     vertical pan. Without this, when the user's finger starts inside a
-     card (which is almost always — the card fills the viewport), iOS
-     locks the gesture to the first detected axis. If they swipe slightly
-     diagonally, the card's vertical scroll wins and the horizontal swipe
-     never reaches .mc-track. With pan-y, the card says "I only do
-     vertical"; horizontal gestures bubble up to .mc-track (pan-x). */
-  touch-action: pan-y;
-  /* The horizontal snap target. "start" means snap with the card's left
-     edge aligned to the track's left edge. */
-  scroll-snap-align: start;
-  /* Prevent the user from skipping past adjacent cards in a single swipe
-     (matches Instagram's one-card-per-swipe behavior). */
-  scroll-snap-stop: always;
-  /* Hide vertical scrollbar — content has its own implicit indicators. */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.mc-card::-webkit-scrollbar { display: none; }
-/* Single-card variant (event not in filtered list, no neighbors). */
-.mc-track-single {
-  overflow-x: hidden;
-  scroll-snap-type: none;
-}
+#mc.swipe-out-left  { transform: translateX(-100%); opacity: 0.4; }
+#mc.swipe-out-right { transform: translateX( 100%); opacity: 0.4; }
+#mc.swipe-in-left   { transform: translateX(-100%); opacity: 0; transition: none; }
+#mc.swipe-in-right  { transform: translateX( 100%); opacity: 0; transition: none; }
 .mcl {
   /* Absolute relative to .mov (position:fixed inset:0 → viewport-sized).
      Placed BELOW the page nav (which is 70px tall + has its own
@@ -4775,98 +4708,6 @@ ${mTicketBtn(e)}
 </div>`;
 }
 
-// Render the 3-card track centered on the given event id. Adjacent cards
-// are rendered as full HTML so they're real DOM at swipe time — no
-// just-in-time render lag. Each card sits in its own .mc-card slot inside
-// the .mc-track flex row.
-function renderModalTrack(currentId) {
-  const idx = filtered.findIndex(x => x.id === currentId);
-  const mc = document.getElementById('mc');
-  if (!mc) return;
-  if (idx < 0) {
-    // Event isn't in the current filtered list (e.g. featured event not
-    // in the main grid). Render a SINGLE card without the carousel.
-    const e = all.find(x => x.id === currentId);
-    mc.innerHTML = `<div class="mc-track mc-track-single"><div class="mc-card mc-card-current" data-event-id="${currentId}">${buildEventCardHTML(e)}</div></div>`;
-    return;
-  }
-  const prev = idx > 0 ? filtered[idx - 1] : null;
-  const curr = filtered[idx];
-  const next = idx < filtered.length - 1 ? filtered[idx + 1] : null;
-  mc.innerHTML = `<div class="mc-track">
-    ${prev ? `<div class="mc-card mc-card-prev" data-event-id="${prev.id}">${buildEventCardHTML(prev)}</div>` : ''}
-    <div class="mc-card mc-card-current" data-event-id="${curr.id}">${buildEventCardHTML(curr)}</div>
-    ${next ? `<div class="mc-card mc-card-next" data-event-id="${next.id}">${buildEventCardHTML(next)}</div>` : ''}
-  </div>`;
-  // Scroll the track so the current card (middle one) is in view. Skip
-  // the smooth scroll on first render — we want it instant. Wait one
-  // frame for layout to complete before measuring.
-  requestAnimationFrame(() => {
-    const track = mc.querySelector('.mc-track');
-    const currentCard = mc.querySelector('.mc-card-current');
-    if (track && currentCard) {
-      track.scrollLeft = currentCard.offsetLeft;
-    }
-  });
-  attachScrollSnapListener();
-}
-
-// Track scrollend events on the .mc-track to detect when the user has
-// swiped to a new card. When they land on prev or next, update URL +
-// re-render the track centered on the new event so they can keep swiping.
-let scrollSnapTimer = null;
-let scrollSnapCurrentId = null;
-function attachScrollSnapListener() {
-  const track = document.querySelector('#mc .mc-track');
-  if (!track || track.classList.contains('mc-track-single')) return;
-  // Use scroll event with debounce since scrollend isn't yet universal.
-  // After scrolling stops for ~150ms, check which card is visible.
-  track.addEventListener('scroll', onSnapScroll, { passive: true });
-}
-
-function onSnapScroll(ev) {
-  const track = ev.currentTarget;
-  if (scrollSnapTimer) clearTimeout(scrollSnapTimer);
-  scrollSnapTimer = setTimeout(() => {
-    handleScrollSnapEnd(track);
-  }, 150);
-}
-
-function handleScrollSnapEnd(track) {
-  // Find which card is currently in view (whose left edge is closest to
-  // track's scrollLeft).
-  const cards = track.querySelectorAll('.mc-card');
-  if (!cards.length) return;
-  const scrollLeft = track.scrollLeft;
-  let nearest = cards[0];
-  let nearestDistance = Math.abs(cards[0].offsetLeft - scrollLeft);
-  cards.forEach(card => {
-    const d = Math.abs(card.offsetLeft - scrollLeft);
-    if (d < nearestDistance) {
-      nearest = card;
-      nearestDistance = d;
-    }
-  });
-  const newId = nearest.getAttribute('data-event-id');
-  if (!newId) return;
-  // If it's the same card we started on, nothing to do.
-  const currentCard = track.querySelector('.mc-card-current');
-  if (!currentCard || currentCard.getAttribute('data-event-id') === newId) return;
-  // User has snapped to a neighbor. Update URL + re-render track
-  // centered on the new event so further swipes have fresh neighbors.
-  const newEvent = filtered.find(e => e.id === newId);
-  if (!newEvent) return;
-  urlRoutingSelfDriven = true;
-  history.replaceState({ event: newId }, '', eventCanonicalUrl(newId));
-  urlRoutingSelfDriven = false;
-  document.title = `${newEvent.name} — shou`;
-  renderModalTrack(newId);
-  updateNavArrows(newId);
-  trackView(newId);
-  // No scroll reset needed — renderModalTrack rebuilt the DOM, so the new
-  // current card starts at scrollTop 0 naturally.
-}
-
 function om(id, _opts){
   const e=all.find(x=>x.id===id);if(!e)return;
   // Track engagement signal for popularity scoring. Skip when the modal was
@@ -4875,20 +4716,11 @@ function om(id, _opts){
   if (!_opts?.fromUrl) {
     track(id,'view');
   }
-  renderModalTrack(id);
+  // Render the event's full card HTML into #mc. Single-card render —
+  // swipe navigation animates this same #mc element in/out, swapping
+  // content during the offscreen phase.
+  document.getElementById('mc').innerHTML = buildEventCardHTML(e);
   document.getElementById('mov').classList.add('on');
-  // After the modal is visible, ensure the current card is in view. The
-  // browser sizes the cards automatically via flex; we just need to scroll
-  // the track to show the right card. (renderModalTrack already does this
-  // but only after rAF, and if #mc was display:none it might have measured
-  // 0 width. This second scroll guarantees correct position.)
-  requestAnimationFrame(() => {
-    const track = document.querySelector('#mc .mc-track');
-    const currentCard = document.querySelector('#mc .mc-card-current');
-    if (track && currentCard) {
-      track.scrollLeft = currentCard.offsetLeft;
-    }
-  });
   // Update nav arrow visibility based on position in the filtered list.
   // Hide prev when at first event, hide next when at last. Pass id directly
   // because URL update happens further down — at this point window.location
@@ -4898,8 +4730,12 @@ function om(id, _opts){
   // body scrollable while the modal is up can cause confusing pull-to-refresh
   // behavior and makes the modal feel less anchored.
   document.body.style.overflow = 'hidden';
-  // No scroll reset needed — renderModalTrack just rebuilt the DOM, so
-  // the new card starts at scrollTop 0 naturally.
+  // Reset modal scroll to top — important during swipe transitions because
+  // the content is offscreen at this moment, so the user doesn't see the jump.
+  if (!_opts?.skipScrollReset) {
+    const modalEl = document.querySelector('#mov .modal');
+    if (modalEl) modalEl.scrollTop = 0;
+  }
 
   // Update the URL — adds a history entry so browser back closes the modal.
   // Skip when we're restoring from URL (don't add a duplicate history entry)
@@ -5028,32 +4864,97 @@ function swipeToOffset(offset) {
   const idx = findCurrentEventIndex();
   if (idx < 0) return;
   const nextIdx = idx + offset;
-  if (nextIdx < 0 || nextIdx >= filtered.length) return;
-  const track = document.querySelector('#mc .mc-track');
-  if (!track) return;
-  // Find the target card by data-event-id and scroll to it. The browser
-  // handles smooth scrolling natively; our scroll listener picks up the
-  // snap-end and updates URL/state.
+  if (nextIdx < 0 || nextIdx >= filtered.length) return;  // at edge
   const nextEvent = filtered[nextIdx];
-  const targetCard = track.querySelector(`.mc-card[data-event-id="${nextEvent.id}"]`);
-  if (!targetCard) {
-    // Target card not in current track DOM (we only render prev/curr/next).
-    // Fall back to full re-open which builds a new track centered on target.
+  if (!nextEvent) return;
+
+  const mc = document.getElementById('mc');
+  if (!mc) return;
+
+  // Animation direction: swiping LEFT means user wants the NEXT event,
+  // so outgoing slides off to the LEFT and the new event comes in from
+  // the RIGHT. Vice versa for swipe right.
+  const goingForward = offset > 0;
+  const outClass = goingForward ? 'swipe-out-left' : 'swipe-out-right';
+  const inFromClass = goingForward ? 'swipe-in-right' : 'swipe-in-left';
+
+  // Clear any leftover animation classes from a previous swipe.
+  mc.classList.remove('swipe-out-left','swipe-out-right','swipe-in-left','swipe-in-right');
+
+  // 1. Slide current content out
+  mc.classList.add(outClass);
+
+  // After the slide-out finishes, swap content and animate in from
+  // opposite side. transitionend is the most reliable signal but we add a
+  // safety timeout in case it doesn't fire (e.g. tab backgrounded).
+  let swapped = false;
+  const doSwap = (ev) => {
+    if (ev && ev.propertyName && ev.propertyName !== 'transform') return;
+    if (swapped) return;
+    swapped = true;
+    mc.removeEventListener('transitionend', doSwap);
+
+    // Update URL via replaceState (don't pollute history with each swipe)
+    urlRoutingSelfDriven = true;
+    history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.id));
+    urlRoutingSelfDriven = false;
+    document.title = `${nextEvent.name} — shou`;
+
+    // Snap the container to the opposite side (no transition — instant)
+    mc.classList.remove(outClass);
+    mc.classList.add(inFromClass);
+
+    // Render new content while offscreen
     om(nextEvent.id, { fromUrl: true, skipScrollReset: true });
-    return;
-  }
-  track.scrollTo({ left: targetCard.offsetLeft, behavior: 'smooth' });
+
+    // Next frame: remove the offscreen class. CSS transition kicks in
+    // and the container slides back to center.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        mc.classList.remove(inFromClass);
+      });
+    });
+  };
+  mc.addEventListener('transitionend', doSwap);
+  setTimeout(doSwap, 320);  // safety net
 }
 
 function trackView(id) { try { track(id, 'view'); } catch (_) {} }
 
+// Swipe state. Reset on each touchstart.
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeStartTime = 0;
+
 function initSwipeNav() {
   const mov = document.getElementById('mov');
   if (!mov) return;
-  // Touch handling is fully delegated to the browser's native CSS
-  // scroll-snap on .mc-track. No JS touch handlers needed — the browser
-  // handles finger tracking, momentum, snap-back, and edge resistance
-  // all natively. This is how Instagram and most modern apps do it.
+
+  mov.addEventListener('touchstart', (ev) => {
+    if (ev.touches.length !== 1) return;
+    swipeStartX = ev.touches[0].clientX;
+    swipeStartY = ev.touches[0].clientY;
+    swipeStartTime = Date.now();
+  }, { passive: true });
+
+  mov.addEventListener('touchend', (ev) => {
+    if (!swipeStartTime) return;
+    const elapsed = Date.now() - swipeStartTime;
+    swipeStartTime = 0;
+    if (elapsed > 600) return;  // too slow — probably not a swipe
+    const touch = ev.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - swipeStartX;
+    const dy = touch.clientY - swipeStartY;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    // Horizontal-dominant + exceed 60px threshold
+    if (adx < 60) return;
+    if (adx < ady * 1.5) return;
+    // dx > 0 = swipe right (finger moved right) = previous event
+    // dx < 0 = swipe left  (finger moved left)  = next event
+    swipeToOffset(dx > 0 ? -1 : 1);
+  }, { passive: true });
 
   // Keyboard navigation — left/right arrow keys navigate between events
   // when the modal is open. Ignored when an input/textarea has focus so
