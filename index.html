@@ -1276,6 +1276,13 @@ body.ai-active .stats { display: none; }
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+  /* Pair with .mc-card { touch-action: pan-y } — horizontal pans are
+     handled here, vertical pans by the card. Without this declaration,
+     iOS Safari's axis-lock heuristic favours whichever direction the
+     finger first moves, and since the user's finger starts inside the
+     card (always — it fills the viewport), vertical wins and horizontal
+     swipes are eaten. */
+  touch-action: pan-x;
   /* Prevent swipe-back gesture in Safari from intercepting carousel swipes. */
   overscroll-behavior-x: contain;
   scrollbar-width: none;
@@ -1288,12 +1295,18 @@ body.ai-active .stats { display: none; }
   flex: 0 0 100%;
   min-width: 100%;
   height: 100%;
-  /* Each card has its OWN vertical scroll for long content. This is what
-     prevents the "scroll shows multiple events" bug: vertical scrolling
-     stays within the current card; horizontal swipes use the track. */
+  /* Each card has its OWN vertical scroll for long content. */
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  /* CRITICAL on iOS Safari: tell the browser this element handles ONLY
+     vertical pan. Without this, when the user's finger starts inside a
+     card (which is almost always — the card fills the viewport), iOS
+     locks the gesture to the first detected axis. If they swipe slightly
+     diagonally, the card's vertical scroll wins and the horizontal swipe
+     never reaches .mc-track. With pan-y, the card says "I only do
+     vertical"; horizontal gestures bubble up to .mc-track (pan-x). */
+  touch-action: pan-y;
   /* The horizontal snap target. "start" means snap with the card's left
      edge aligned to the track's left edge. */
   scroll-snap-align: start;
