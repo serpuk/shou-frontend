@@ -1244,63 +1244,53 @@ body.ai-active .stats { display: none; }
   overflow-x: hidden;
 }
 
-/* Three-card swipe track. The .mc-track is a horizontal flex row holding
-   prev / current / next cards, each exactly modal-width (100%). The track
-   itself is 300% wide and is translated by -100% by default so the MIDDLE
-   card (current event) is the one visible in the modal viewport. To
-   navigate to next, translate to -200%; to previous, 0%. JS adjusts this
-   value during finger drag and on commit. */
+/* Three-card swipe track (Instagram-style carousel).
+   Layout strategy: each .mc-card is exactly the modal's width. The .mc-track
+   is a flex row with no explicit width — flex items at min-width:100%
+   force it to expand to 3× modal width naturally. Translation moves the
+   track to show the current card.
+   At rest, track is translated by -100% (= one card width to the left)
+   so the MIDDLE card (current) is visible in #mc's viewport.
+   To navigate next: translate to -200% (track moves left by 2 cards).
+   To navigate prev: translate to 0% (track returns to start, prev visible).
+   #mc clips with overflow-x:hidden so off-screen cards stay invisible. */
 .mc-track {
   display: flex;
   flex-direction: row;
-  width: 300%;                        /* 3 cards × 100% each */
-  /* Default rest position: middle card visible. Inline transform from JS
-     overrides this for drag/commit; we keep this as the CSS fallback. */
-  transform: translateX(-33.3333%);   /* equivalent to -100% of one card */
+  /* Track width is set by JavaScript at render time (3 × card width in
+     pixels). Explicit pixel widths avoid all the percentage-cascade
+     fragility of nested flex layouts. */
+  transform: translateX(-100%);
   transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform;
 }
 .mc-track.dragging {
-  /* Disable transition during finger drag so movement is 1:1 with input.
-     Re-enabled by removing the class on touchend. */
   transition: none;
 }
-/* #mc is the container the JS writes track HTML into. It needs an explicit
-   width so .mc-track's 300% has something to reference — without this,
-   #mc has auto width (content-defined) and the track collapses or sizes
-   unpredictably. overflow-x: hidden here clips the off-screen cards so
-   they don't leak past the modal edges during drag/animation. */
+.mc-card {
+  /* Width set by JavaScript at render time to exactly match #mc's pixel
+     width. flex-shrink:0 prevents the row from squashing cards when sized
+     this way; flex-grow:0 prevents any expansion beyond the set width. */
+  flex: 0 0 auto;
+}
+/* Empty placeholder card at first/last event — same width, no content. */
+.mc-card:empty {
+  background: transparent;
+  min-height: 1px;  /* prevent flex collapse to zero height */
+}
+/* The #mc container provides the visible window. width:100% fills the
+   .modal, overflow-x:hidden clips off-screen cards. */
 #mc {
   width: 100%;
   overflow-x: hidden;
   position: relative;
 }
-.mc-card {
-  /* Each card is 1/3 of the 300%-wide track = 100% of the modal width.
-     flex-basis 33.333% with flex-shrink 0 keeps each card exactly that
-     size regardless of content. */
-  flex: 0 0 33.3333%;
-  width: 33.3333%;
-  min-width: 33.3333%;
-}
-/* Empty placeholder card (when at first/last event) — still takes layout
-   space so the .mc-track translation math stays consistent, just nothing
-   visible inside. */
-.mc-card:empty {
-  background: transparent;
-}
-/* Single-card variant: used when the modal opens an event that's not in
-   the filtered list (e.g. featured event not in main grid). 100% width,
-   no carousel math. Swiping is a no-op in this state. */
+/* Single-card variant — used when event isn't in filtered list. No
+   translation, no carousel; just one card filling the modal. */
 .mc-track-single {
-  width: 100%;
   transform: translateX(0);
 }
-.mc-card-single {
-  flex: 0 0 100%;
-  width: 100%;
-  min-width: 100%;
-}
+.mc-track-single .mc-card { flex: 0 0 100%; min-width: 100%; }
 .mcl {
   /* Absolute relative to .mov (position:fixed inset:0 → viewport-sized).
      Placed BELOW the page nav (which is 70px tall + has its own
@@ -4759,23 +4749,48 @@ ${mTicketBtn(e)}
 // the .mc-track flex row.
 function renderModalTrack(currentId) {
   const idx = filtered.findIndex(x => x.id === currentId);
+  const mc = document.getElementById('mc');
+  if (!mc) return;
   if (idx < 0) {
-    // Event isn't in the current filtered list (e.g. opened from a featured
-    // section that's not part of the main grid). Render a SINGLE card
-    // without the 3-card carousel structure — swiping is disabled because
-    // there's no neighbor list to navigate.
+    // Event isn't in the current filtered list (e.g. featured event not
+    // in the main grid). Render a SINGLE card without the carousel
+    // structure — swiping is a no-op in this state.
     const e = all.find(x => x.id === currentId);
-    document.getElementById('mc').innerHTML = `<div class="mc-track mc-track-single"><div class="mc-card mc-card-current mc-card-single">${buildEventCardHTML(e)}</div></div>`;
+    mc.innerHTML = `<div class="mc-track mc-track-single"><div class="mc-card mc-card-current">${buildEventCardHTML(e)}</div></div>`;
+    sizeModalTrack();
     return;
   }
   const prev = idx > 0 ? filtered[idx - 1] : null;
   const curr = filtered[idx];
   const next = idx < filtered.length - 1 ? filtered[idx + 1] : null;
-  document.getElementById('mc').innerHTML = `<div class="mc-track">
+  mc.innerHTML = `<div class="mc-track">
     <div class="mc-card mc-card-prev">${prev ? buildEventCardHTML(prev) : ''}</div>
     <div class="mc-card mc-card-current">${buildEventCardHTML(curr)}</div>
     <div class="mc-card mc-card-next">${next ? buildEventCardHTML(next) : ''}</div>
   </div>`;
+  sizeModalTrack();
+}
+
+// Measure #mc's pixel width and apply it explicitly to each .mc-card.
+// Pixel widths are immune to flex-percentage-cascade quirks and guarantee
+// the carousel layout works the same in every browser.
+function sizeModalTrack() {
+  const mc = document.getElementById('mc');
+  if (!mc) return;
+  // Defer to next frame so layout has happened and #mc has a final width.
+  requestAnimationFrame(() => {
+    const w = mc.clientWidth;
+    if (!w) return;  // not yet rendered (modal still hidden, etc)
+    const cards = mc.querySelectorAll('.mc-card');
+    cards.forEach(card => { card.style.width = w + 'px'; });
+    // Also size the track to fit the cards. Setting width here is technically
+    // optional because flex parent fits its content, but being explicit
+    // avoids any flex-vs-inline-block edge cases on iOS Safari.
+    const track = mc.querySelector('.mc-track');
+    if (track) {
+      track.style.width = (w * cards.length) + 'px';
+    }
+  });
 }
 
 function om(id, _opts){
@@ -4788,6 +4803,12 @@ function om(id, _opts){
   }
   renderModalTrack(id);
   document.getElementById('mov').classList.add('on');
+  // Ensure card widths are correct now that modal is visible. renderModalTrack
+  // schedules sizing via requestAnimationFrame, but if the modal was hidden
+  // when it ran, that rAF would have measured a 0-width #mc. This second
+  // call (also rAF-scheduled internally) re-measures after .on has taken
+  // effect, fixing any cards still stuck at 0 width.
+  sizeModalTrack();
   // Update nav arrow visibility based on position in the filtered list.
   // Hide prev when at first event, hide next when at last. Pass id directly
   // because URL update happens further down — at this point window.location
@@ -4944,16 +4965,16 @@ function swipeToOffset(offset) {
     return;
   }
 
-  // Translate the track to show the target card. Track is 300% wide with
-  // cards at positions 0%, 33.3%, 66.6%. Translate values to show each:
-  //   prev    → translateX(0%)
-  //   current → translateX(-33.3333%)   (default)
-  //   next    → translateX(-66.6667%)
+  // Translate the track to show the target card. Track contains 3 cards
+  // each at 100% of modal width; track is naturally 300% wide. Transform
+  // values (percent of track width):
+  //   prev    → translateX(0%)     — track at start, prev card visible
+  //   current → translateX(-100%)  — track shifted by 1 card (DEFAULT REST)
+  //   next    → translateX(-200%)  — track shifted by 2 cards
   // The adjacent card already exists in the DOM (rendered by
-  // renderModalTrack), so this is a pure visual slide — no content swap
-  // mid-animation.
-  const targetPct = offset > 0 ? -66.6667 : 0;
-  track.classList.remove('dragging');  // ensure transition is active
+  // renderModalTrack), so this is a pure visual slide.
+  const targetPct = offset > 0 ? -200 : 0;
+  track.classList.remove('dragging');
   track.style.transform = `translateX(${targetPct}%)`;
 
   // After the slide completes, re-render the track centered on the new
@@ -5025,27 +5046,27 @@ function initSwipeNav() {
       dragLocked = adx > ady ? 'horizontal' : 'vertical';
     }
     if (dragLocked !== 'horizontal') return;  // let vertical scroll happen
-    // Translate the track with the finger. Track is 300% wide so 1 modal
-    // width of finger movement = 33.3333% of track. Base position is
-    // -33.3333% (current card centered); we add the drag delta from that.
+    // Translate the track with the finger. Cards are exactly modal-width,
+    // so a finger drag of one full modal width should translate the track
+    // by exactly 100% (= one card width).
+    // Base position: -100% (current card visible). Drag adds offset.
+    //   dragging RIGHT (dx > 0) reveals prev card: base + positive = closer to 0%
+    //   dragging LEFT  (dx < 0) reveals next card: base + negative = closer to -200%
     const track = document.querySelector('#mc .mc-track');
     if (!track) return;
     const modalEl = document.querySelector('#mov .modal');
     const modalW = modalEl ? modalEl.offsetWidth : window.innerWidth;
-    // Edge resistance: if dragging toward a missing neighbor (no prev/next),
-    // dampen the movement so the user feels the boundary instead of
-    // pulling content fully off-screen with nothing behind it.
+    // Edge resistance: dampen drag toward missing neighbors.
     const idx = findCurrentEventIndex();
     const atStart = idx <= 0;
     const atEnd = idx >= filtered.length - 1;
     let effectiveDx = dx;
     if ((dx > 0 && atStart) || (dx < 0 && atEnd)) {
-      effectiveDx = dx * 0.35;  // damp by ~3x
+      effectiveDx = dx * 0.35;
     }
-    // Drag delta as % of TRACK width (which is 3x modal width).
-    const dragPct = (effectiveDx / modalW) * (100 / 3);
+    const dragPct = (effectiveDx / modalW) * 100;
     track.classList.add('dragging');
-    track.style.transform = `translateX(${-33.3333 + dragPct}%)`;
+    track.style.transform = `translateX(${-100 + dragPct}%)`;
   }, { passive: true });
 
   mov.addEventListener('touchend', (ev) => {
@@ -5104,6 +5125,14 @@ function initSwipeNav() {
       if (track) track.style.transform = '';
     }
   }, { passive: true });
+
+  // Re-size cards on viewport resize / orientation change. The track is
+  // pixel-sized, so it needs to adapt to viewport changes (e.g. landscape
+  // ↔ portrait on mobile, browser window resize on desktop).
+  window.addEventListener('resize', () => {
+    if (!mov.classList.contains('on')) return;
+    sizeModalTrack();
+  });
 
   // Keyboard navigation — left/right arrow keys navigate between events
   // when the modal is open. Ignored when an input/textarea has focus so
