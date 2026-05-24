@@ -1244,7 +1244,18 @@ body.ai-active .stats { display: none; }
   /* Hide horizontal overflow during slide-out animation so content doesn't
      show outside the modal as it translates. */
   overflow-x: hidden;
+  /* Themed, slim scrollbar — only visible when content actually overflows.
+     Replaces the default chunky OS scrollbar with a 6px pink-tinted thumb. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,46,126,0.35) transparent;
 }
+.modal::-webkit-scrollbar { width: 6px; }
+.modal::-webkit-scrollbar-track { background: transparent; }
+.modal::-webkit-scrollbar-thumb {
+  background: rgba(255,46,126,0.35);
+  border-radius: 3px;
+}
+.modal::-webkit-scrollbar-thumb:hover { background: rgba(255,46,126,0.55); }
 
 /* Swipe transition states for #mc.
    The container slides out in the swipe direction, then a new content
@@ -1323,14 +1334,14 @@ body.ai-active .stats { display: none; }
    object-position 30% from top so portrait photos show faces rather than
    getting cropped at the brow. Standard pattern for thumbnails with people. */
 .mth {
-  width: 100%; height: 280px;
+  width: 100%; height: 320px;
   object-fit: cover; object-position: center 30%;
   display: block;
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--ink);
 }
 .mph {
-  width: 100%; height: 280px;
+  width: 100%; height: 320px;
   display: flex; align-items: center; justify-content: center;
   font-size: 90px;
   background: linear-gradient(135deg, var(--ink2), var(--ink3));
@@ -1341,12 +1352,13 @@ body.ai-active .stats { display: none; }
 /* Modal body */
 .mb {
   padding: 28px 32px 32px;
-  /* Bottom padding extended so long description text can scroll clear of the
-     sticky .mact-primary footer (~120-140px tall: secondary icon row + Get
-     Tickets + gradient fade region). Without this, the last few lines of
-     text sit permanently behind the sticky bar gradient — visually fading
-     and unreadable. The padding gives content room to scroll past entirely. */
-  padding-bottom: 140px;
+  /* Bottom padding keeps long description text clear of the sticky .mact-primary
+     footer when scrolled. The bar's solid region is ~70px (24px top padding +
+     icons + button + 16px bottom) plus a transparent gradient fade on top — so
+     100px of buffer ensures the last text line never sits behind the solid bar.
+     140px (the prior value) was overshoot; the extra 40px just made the modal
+     overflow 90vh on laptop-height viewports and forced an unnecessary scrollbar. */
+  padding-bottom: 100px;
   display: flex; flex-direction: column; gap: 14px;
 }
 .mb > .cpill { align-self: flex-start; margin-bottom: 0; }
