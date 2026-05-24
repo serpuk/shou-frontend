@@ -3527,11 +3527,14 @@ async function fetchForYou() {
   }
 }
 function setCity(c){
+  // Detect change early so we can re-execute an active AI query against
+  // the new region. Skip re-execution if the value is identical.
+  const cityChanged = c !== actC;
   // If the city is changing in/out of 'near', any cached AI prefetch
   // results were computed under different location-sending behavior and
   // must be invalidated. Cheapest correct policy: invalidate on any
   // city change, since the city itself is part of the user's spatial intent.
-  if (c !== actC && typeof aiPrefetchCache !== 'undefined') {
+  if (cityChanged && typeof aiPrefetchCache !== 'undefined') {
     aiPrefetchCache.clear();
   }
   actC=c;
@@ -3544,6 +3547,14 @@ function setCity(c){
   if (typeof c === 'string' && c.startsWith('area:')) {
     const areaId = c.slice(5);
     fetchAreaEvents(areaId);  // fire-and-forget; merges into `all` and re-renders
+  }
+  // If an AI search is currently active and the user changed the region,
+  // re-run the query so the backend can re-scope candidates to the new
+  // area. showAI() handles its own re-render including applyF(), so we
+  // return early to avoid a double-render.
+  if (cityChanged && aiQ && aiQ.length > 0) {
+    showAI(aiQ);
+    return;
   }
   applyF();
 }
