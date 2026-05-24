@@ -3348,9 +3348,9 @@ const AI_CITY_ALIASES = {
   'louvain':   'leuven',
 };
 
-// City keyword list used by parseAIQuery (build city criteria) and by
-// queryMentionsGeo (detect whether a query has a geographic anchor).
-// Includes both English canonical names and their French/Dutch variants.
+// City keyword list used by parseAIQuery to build city criteria from
+// natural-language queries. Includes both English canonical names and
+// their French/Dutch variants.
 const AI_CITY_KEYWORDS = [
   'brussels','bruxelles','brussel',
   'antwerp','antwerpen','anvers',
@@ -3361,33 +3361,75 @@ const AI_CITY_KEYWORDS = [
   'ostend','oostende','waregem','verviers',
 ];
 
-// Detect whether an AI search query contains a geographic anchor. Used by
-// applyF to decide whether the currently-selected city pill should still
-// filter the AI results, or whether the AI's geo intent overrides it.
+// City keyword → area id mapping for the AI query geo extractor below.
+// Only includes anchor cities and high-traffic landmarks; smaller cities
+// the user might mention rarely don't need to map (they fall through to
+// the area label match in extractAreaFromQuery, or stay null).
 //
-// Rule (applyF cmEffective):
-//   - Query mentions geo  → bypass pill (AI's geo wins, e.g. "concerts in Brussels")
-//   - Query is geo-silent → apply pill (user's standing geo intent, e.g.
-//     "festivals" while the Antwerp Area pill is set → Antwerp festivals)
+// This is the ONLY client-side region knowledge that's load-bearing for
+// AI search; the rest of the catalog filter relies on e.regionId from
+// the API. Keep this list tight — adding here doesn't change which events
+// load, only which queries can auto-shift the city pill.
+const AI_CITY_TO_AREA = {
+  // Brussels Area
+  'brussels': 'brussels', 'bruxelles': 'brussels', 'brussel': 'brussels',
+  'ixelles': 'brussels',  'elsene': 'brussels',
+  'leuven': 'brussels',   'louvain': 'brussels',
+  // Antwerp Area
+  'antwerp': 'antwerp',   'antwerpen': 'antwerp', 'anvers': 'antwerp',
+  'mechelen': 'antwerp',  'malines': 'antwerp',
+  // Ghent Area
+  'ghent': 'ghent',       'gent': 'ghent',        'gand': 'ghent',
+  'bruges': 'ghent',      'brugge': 'ghent',
+  'kortrijk': 'ghent',    'courtrai': 'ghent',
+  'ostend': 'ghent',      'oostende': 'ghent',
+  'aalst': 'ghent',
+  // Liège Area
+  'liege': 'liege',       'liège': 'liege',       'luik': 'liege',
+  'hasselt': 'liege',     'genk': 'liege',
+  'verviers': 'liege',
+  // Charleroi & Namur Area
+  'charleroi': 'wallonia','namur': 'wallonia',    'namen': 'wallonia',
+  'mons': 'wallonia',     'bergen': 'wallonia',
+  'tournai': 'wallonia',  'doornik': 'wallonia',
+  'waterloo': 'wallonia', 'wavre': 'wallonia',
+  'arlon': 'wallonia',    'bastogne': 'wallonia',
+};
+
+// Detect a geographic anchor in an AI search query and resolve it to a city
+// pill value ('all', 'near', or 'area:<id>'). Returns null when no geo is
+// present.
 //
-// Detection covers: proximity phrases, country/region keywords, area labels,
-// and the AI_CITY_KEYWORDS list (English + FR/NL variants).
-function queryMentionsGeo(query) {
-  if (!query) return false;
+// Used by showAI() to override the pill when the query itself expresses
+// spatial intent — "Brussels concerts" with the Antwerp pill set should
+// shift the pill to Brussels. When the query is geo-silent, returns null
+// and the pill is preserved.
+//
+// Detection order: proximity > country/region > area labels > city keywords.
+function extractAreaFromQuery(query) {
+  if (!query) return null;
   const l = String(query).toLowerCase();
-  // 1. Proximity phrases
-  if (/\b(near\s*me|around\s*me|nearby|close\s*by|près\s*de\s*moi|dichtbij)\b/.test(l)) return true;
-  // 2. Country / broad region
-  if (/\b(belgium|belgique|belgi[eë]|wallonia|wallonie|wallonië|flanders|flandres|vlaanderen)\b/.test(l)) return true;
-  // 3. Anchor area labels ("Brussels Area" etc.)
+  // 1. Proximity → 'near' if geo available, else 'all'
+  if (/\b(near\s*me|around\s*me|nearby|close\s*by|près\s*de\s*moi|dichtbij)\b/.test(l)) {
+    return (userGeo && userGeo.available) ? 'near' : 'all';
+  }
+  // 2. Country / broad region → no specific area, show everything
+  if (/\b(belgium|belgique|belgi[eë]|wallonia|wallonie|wallonië|flanders|flandres|vlaanderen)\b/.test(l)) {
+    return 'all';
+  }
+  // 3. Area labels ("Brussels Area" etc.) — multi-word, low false-positive risk
   for (const area of AREAS) {
-    if (l.includes(area.label.toLowerCase())) return true;
+    if (l.includes(area.label.toLowerCase())) return 'area:' + area.id;
   }
-  // 4. City keywords (English + FR/NL variants)
-  for (const c of AI_CITY_KEYWORDS) {
-    if (l.includes(c)) return true;
+  // 4. Specific city keywords. Sort longest-first so "saint-gilles" wins over
+  //    its substrings. Word-boundary regex avoids "spa" matching "special".
+  const cities = Object.keys(AI_CITY_TO_AREA).sort((a, b) => b.length - a.length);
+  for (const c of cities) {
+    const escaped = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[^a-zà-ÿ])${escaped}(?:[^a-zà-ÿ]|$)`, 'i');
+    if (re.test(l)) return 'area:' + AI_CITY_TO_AREA[c];
   }
-  return false;
+  return null;
 }
 
 // Map Ticketmaster/UiT genre strings to our category system for color coding
@@ -3629,7 +3671,7 @@ function parseAIQuery(q){
   }
 
   // City detection — match against canonical cities we display.
-  // Shares the AI_CITY_KEYWORDS module-level list with queryMentionsGeo.
+  // Shares the AI_CITY_KEYWORDS module-level list.
   for(const c of AI_CITY_KEYWORDS){
     if(l.includes(c)) criteria.cities.push((AI_CITY_ALIASES[c] || c).toLowerCase());
   }
@@ -3759,11 +3801,11 @@ function applyF(){
   // Local parseAIQuery is kept only as an emergency fallback used inside
   // bAsk() when the API call fails entirely.
   //
-  // Whether the AI query mentions geography is computed once here. Used
-  // below to decide if the city pill still filters AI results: silent queries
-  // ("festivals") respect the pill; explicit queries ("Brussels concerts")
-  // override it.
-  const aiHasGeo = aiQ ? queryMentionsGeo(aiQ) : false;
+  // City pill during AI search: the pill's area is sent to /api/search as
+  // body.area, so the backend already scopes results to the user's chosen
+  // region. We therefore bypass the client-side cm filter during AI — the
+  // backend is the source of truth, and re-filtering here would zero-out
+  // any cross-area suggestions the AI legitimately wants to show.
   filtered=all.filter(e=>{
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
@@ -3796,12 +3838,10 @@ function applyF(){
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
-    // City pill behaviour during AI search:
-    //   - Query mentions geo ("Brussels concerts") → bypass pill, AI's geo wins.
-    //   - Query is geo-silent ("festivals") → apply pill as standing intent.
-    //   - No AI search → apply pill normally.
-    // queryMentionsGeo is computed once at the top of applyF (aiHasGeo).
-    const cmEffective = (aiQ && aiHasGeo) ? true : cm;
+    // City pill is bypassed during AI search. Backend already scoped the
+    // results to body.area (see /api/search call below), so re-filtering
+    // here would only hide legitimate cross-area suggestions.
+    const cmEffective = aiQ ? true : cm;
     return sm && cmEffective && am;
   });
 
@@ -5428,11 +5468,27 @@ async function showAI(q) {
     if (allBtn) allBtn.classList.add('on');
   }
 
-  // City pill behaviour during AI search is handled in applyF via
-  // queryMentionsGeo + cmEffective:
-  //   - "Brussels concerts" with Antwerp pill → AI's geo overrides the pill.
-  //   - "festivals" with Antwerp pill        → pill applies, only Antwerp festivals.
-  // No need to pre-shift the pill here; the filter does the right thing.
+  // Geo override: if the query mentions a place ("Brussels concerts",
+  // "techno near me"), shift the city pill to that area before searching.
+  // Silent queries ("festivals") leave the pill alone — the user's standing
+  // selection is honored. The pill's (possibly-overridden) area then flows
+  // through to /api/search as body.area, so the backend filters accordingly.
+  //
+  // applyF bypasses the client-side cm filter while an AI search is active —
+  // backend is the source of truth; re-filtering here would hide legitimate
+  // cross-area suggestions when they're warranted.
+  const queryArea = extractAreaFromQuery(q);
+  if (queryArea && queryArea !== actC) {
+    actC = queryArea;
+    aiPrefetchCache.clear();   // cached prefetches were keyed on the prior area
+    const sel = document.getElementById('csel');
+    if (sel) {
+      const opt = sel.querySelector(`option[value="${actC}"]`);
+      if (opt) sel.value = actC;
+      else sel.value = 'all';  // shouldn't happen, but graceful fallback
+    }
+    updateCityPillLabel();
+  }
 
   pushToSearchHistory(q);
   aiHistory = loadSearchHistory();
@@ -5507,15 +5563,16 @@ async function showAI(q) {
       body.lat = Number(userGeo.latitude);
       body.lng = Number(userGeo.longitude);
     }
-    // Pass the area filter to the backend so the LLM can scope its search.
-    // For 'all' or 'near' we omit the cities list (LLM is free to roam, or
-    // distance-sorts via lat/lng). For 'area:<id>' we send the canonical
-    // city list the area contains so the backend can WHERE-filter the
-    // candidate events before the LLM sees them.
+    // Pass the area filter to the backend so the LLM scopes its search to
+    // the user's selected region. For 'all' or 'near' we omit it (LLM is
+    // free to roam, or distance-sorts via lat/lng). For 'area:<id>' we send
+    // the area id; backend resolves it to venues via region_id (same as
+    // /api/events). The AI can still surface cross-area suggestions when
+    // the query explicitly mentions another place — that decision is made
+    // by the backend prompt, not by the frontend.
     if (typeof actC === 'string' && actC.startsWith('area:')) {
       const areaId = actC.slice(5);
-      const area = AREAS.find(a => a.id === areaId);
-      if (area) body.cities = area.cities;
+      if (AREAS.some(a => a.id === areaId)) body.area = areaId;
     }
     const res = await fetch(API_BASE + '/api/search', {
       method:  'POST',
@@ -5628,8 +5685,7 @@ function aiPrefetch(q) {
   // Mirror showAI's area handling so prefetch and the real call agree.
   if (typeof actC === 'string' && actC.startsWith('area:')) {
     const areaId = actC.slice(5);
-    const area = AREAS.find(a => a.id === areaId);
-    if (area) body.cities = area.cities;
+    if (AREAS.some(a => a.id === areaId)) body.area = areaId;
   }
   fetch(API_BASE + '/api/search', {
     method:  'POST',
