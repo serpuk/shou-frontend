@@ -894,6 +894,7 @@ body.ai-active .stats { display: none; }
   scroll-snap-type: x proximity;  /* gentler than mandatory for big cards */
   scrollbar-width: none;          /* Firefox */
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 .trending-shelf::-webkit-scrollbar { display: none; }  /* Chrome/Safari */
 .trending-shelf > .featured {
@@ -906,6 +907,51 @@ body.ai-active .stats { display: none; }
 }
 @media (min-width: 1400px) {
   .trending-shelf > .featured { flex-basis: 62%; }
+}
+
+/* Shelf wrapper holds the shelf plus left/right arrow buttons. The arrows
+   make horizontal scrollability explicit for desktop / non-touch users who
+   wouldn't otherwise think to swipe. Buttons hide gracefully on touch
+   devices via JS (no hover state to anchor on). */
+.shelf-wrap { position: relative; }
+.shelf-arrow {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(20, 14, 26, 0.85);
+  border: 1px solid rgba(255, 153, 102, 0.3);
+  color: var(--bone);
+  font-size: 22px; line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: opacity .2s ease, transform .2s ease, background .2s ease;
+  opacity: 0.85;
+}
+.shelf-arrow:hover {
+  background: rgba(255, 46, 126, 0.85);
+  border-color: var(--magenta);
+  opacity: 1;
+  transform: translateY(-50%) scale(1.05);
+}
+.shelf-arrow.left  { left: -22px; }
+.shelf-arrow.right { right: -22px; }
+.shelf-arrow[disabled] {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Smaller screens: tuck arrows further inside since edges have less room */
+@media (max-width: 700px) {
+  .shelf-arrow.left  { left: 4px; }
+  .shelf-arrow.right { right: 4px; }
+  .shelf-arrow { width: 38px; height: 38px; font-size: 18px; }
+}
+/* Hide arrows on touch-primary devices — swipe is the native gesture and
+   the buttons would just clutter the layout. */
+@media (hover: none) and (pointer: coarse) {
+  .shelf-arrow { display: none; }
 }
 
 /* Media / poster area */
@@ -3782,6 +3828,40 @@ function populateNearMeOption() {
 }
 function loadMore(){vis+=6;renderAll();}
 
+// Wire up scroll arrows for a horizontal shelf. Called after the shelf
+// HTML is injected. Idempotent — finds the .shelf-wrap inside the given
+// container, attaches click handlers to .shelf-arrow buttons, and updates
+// disabled state on scroll. No-op if no shelf exists in the container.
+function wireShelfArrows(containerEl) {
+  if (!containerEl) return;
+  const wrap = containerEl.querySelector('.shelf-wrap');
+  if (!wrap) return;
+  const shelf = wrap.querySelector('.trending-shelf');
+  const leftBtn  = wrap.querySelector('.shelf-arrow.left');
+  const rightBtn = wrap.querySelector('.shelf-arrow.right');
+  if (!shelf || !leftBtn || !rightBtn) return;
+
+  // Scroll by one card-width's worth on click. Card width depends on the
+  // viewport, so we measure the first card live rather than hardcoding.
+  function step() {
+    const firstCard = shelf.querySelector('.featured');
+    if (!firstCard) return shelf.clientWidth * 0.8;
+    return firstCard.getBoundingClientRect().width + 16;  // + gap
+  }
+  leftBtn.onclick  = () => shelf.scrollBy({ left: -step(), behavior: 'smooth' });
+  rightBtn.onclick = () => shelf.scrollBy({ left:  step(), behavior: 'smooth' });
+
+  function updateDisabled() {
+    const atStart = shelf.scrollLeft <= 2;
+    const atEnd   = shelf.scrollLeft + shelf.clientWidth >= shelf.scrollWidth - 2;
+    leftBtn.toggleAttribute('disabled', atStart);
+    rightBtn.toggleAttribute('disabled', atEnd);
+  }
+  shelf.addEventListener('scroll', updateDisabled, { passive: true });
+  // Initial state — also after layout settles so the measurement is correct
+  requestAnimationFrame(updateDisabled);
+}
+
 // Parse a free-text query into structured filter criteria.
 // Handles: categories (techno/jazz/theatre), cities, time ("this weekend"/"tonight"),
 // keywords as OPTIONAL signals (not required filters).
@@ -4145,15 +4225,6 @@ function renderAll(){
 
   emp.classList.remove('on');
 
-  // Decide whether to group by area. We group when the user is browsing
-  // "All Cities" without an active AI search — the section headers help
-  // them navigate a long list. When they've picked a specific area, 'Near
-  // me', or are running an AI search, grouping would add noise (results
-  // are already scoped) so we render flat.
-  const groupByArea = !aiQ
-                    && (actC === 'all')
-                    && filtered.length > 6;  // not worth grouping tiny lists
-
   if(isFiltering){
     // Filtered mode: one list, no "trending" split, no "For You" shelf.
     // The user has narrowed by category/area/search; shelves would be noise.
@@ -4169,31 +4240,34 @@ function renderAll(){
       countEl.textContent=t('ne2')(filtered.length);
     }
     const toShow=filtered.slice(0, vis + 2);  // +2 since trending is empty
-    document.getElementById('eg').innerHTML = groupByArea
-      ? renderGroupedByArea(toShow)
-      : toShow.map(e=>smCard(e)).join('');
+    document.getElementById('eg').innerHTML = toShow.map(e=>smCard(e)).join('');
   } else {
     // Default mode (no filter, no area pill, no AI search):
-    // Multiple themed shelves stacked vertically (Netflix-style):
-    //   1. 🔥 Trending Now      — top N by popularity (always visible)
-    //   2. ✨ Recommended for you — top N by recommendation score (when qualified)
-    //   3. All Events            — full catalog, sorted by popularity
-    // Shelves are independent; same event can legitimately appear in multiple
-    // shelves AND in the grid below. Overlap is the point — different framings
-    // of the same content for different intents (discovery vs personalization
-    // vs comprehensive browse).
+    //   1. 🔥 Trending Now      — top N by popularity, horizontal SHELF with arrows
+    //   2. ✨ Recommended for you — top N by recommendation score, regular GRID (small cards)
+    //   3. All Events            — full catalog, regular grid
+    // Shelves and grids are independent; same event can legitimately appear in
+    // multiple sections (Netflix-style overlap is the intent).
     const TRENDING_SHELF_SIZE = 8;
     const FORYOU_SHELF_SIZE = 8;
 
-    // Trending shelf — top popular events
+    // Trending shelf — top popular events. Wrapped in .shelf-wrap so the
+    // left/right arrow buttons can be absolutely positioned over the edges.
+    // Arrows are wired up by wireShelfArrows() after injection; they handle
+    // smooth-scroll and disabled-state on scroll position.
     if(trendingHeader) trendingHeader.style.display='';
     const trending = filtered.slice(0, TRENDING_SHELF_SIZE);
-    fw.innerHTML = `<div class="trending-shelf">${trending.map(e=>bigCard(e)).join('')}</div>`;
+    fw.innerHTML = `<div class="shelf-wrap">
+      <button class="shelf-arrow left"  aria-label="Scroll left"  disabled>‹</button>
+      <div class="trending-shelf">${trending.map(e=>bigCard(e)).join('')}</div>
+      <button class="shelf-arrow right" aria-label="Scroll right">›</button>
+    </div>`;
+    wireShelfArrows(fw);
 
-    // For You shelf — visible only when user qualifies. Sorts a copy of
-    // filtered by recommendation score (independent from the popularity sort
-    // applied to filtered itself). Only includes events that actually have
-    // a non-zero score in forYouIds — otherwise it would just mirror trending.
+    // For You — rendered as a regular grid of small cards (NOT a big-card
+    // shelf). Same visual rhythm as the All Events grid below; the only
+    // distinction is the dedicated header and the personalized ranking.
+    // Visible only when user qualifies.
     if (showForYouShelf && forYouSection) {
       const ranked = filtered
         .map(e => ({ e, score: forYouIds.get(e.id) || 0 }))
@@ -4204,7 +4278,7 @@ function renderAll(){
       if (ranked.length > 0) {
         forYouSection.style.display = '';
         document.getElementById('forYouShelf').innerHTML =
-          `<div class="trending-shelf">${ranked.map(e=>bigCard(e)).join('')}</div>`;
+          `<div class="grid">${ranked.map(e=>smCard(e)).join('')}</div>`;
       } else {
         // Edge case: user qualifies but none of the recommended events are
         // currently in `filtered` (e.g. all expired). Hide the section.
@@ -4226,44 +4300,15 @@ function renderAll(){
     // shelves, neither do we. Users who don't scroll the shelves still find
     // these events here in the grid below.
     const rest = filtered.slice(0, vis);
-    document.getElementById('eg').innerHTML = groupByArea
-      ? renderGroupedByArea(rest)
-      : rest.map(e=>smCard(e)).join('');
+    document.getElementById('eg').innerHTML = rest.map(e=>smCard(e)).join('');
   }
 }
 
 // Group a list of events by their area and render section headers between
-// groups. Cards within each area keep their existing sort order (from
-// applyF's sort cascade — popularity/date/distance depending on context).
-//
-// Areas are rendered in the order defined in AREAS (most populous first);
-// 'Other' goes last. Empty areas are skipped.
-function renderGroupedByArea(events) {
-  if (!events.length) return '';
-  // Bucket events by area id
-  const buckets = new Map();
-  for (const e of events) {
-    const a = e.regionId || 'other';
-    if (!buckets.has(a)) buckets.set(a, []);
-    buckets.get(a).push(e);
-  }
-  // Emit in defined order, then 'Other'
-  const order = [...AREAS.map(a => a.id), 'other'];
-  const parts = [];
-  for (const areaId of order) {
-    const items = buckets.get(areaId);
-    if (!items || !items.length) continue;
-    const label = areaLabel(areaId);
-    parts.push(`<div class="area-section">
-      <div class="area-header">
-        <span class="area-name">${label}</span>
-        <span class="area-count">${items.length}</span>
-      </div>
-      <div class="area-grid">${items.map(e => smCard(e)).join('')}</div>
-    </div>`);
-  }
-  return parts.join('');
-}
+// groups. NOTE: This function was removed when the region pill UI was retired.
+// Region scoping moved to AI search internals; the All Events grid renders
+// as a flat list now. Function kept here in case area-grouped rendering is
+// reintroduced later (e.g. as a Netflix-style themed shelf per region).
 function th(e,big){
   const tc=segThumb(e.seg),em=segEmoji(e.seg);
   const h=big?320:165,cls=big?'fph':'cph';
