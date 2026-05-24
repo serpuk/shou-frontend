@@ -3348,6 +3348,48 @@ const AI_CITY_ALIASES = {
   'louvain':   'leuven',
 };
 
+// City keyword list used by parseAIQuery (build city criteria) and by
+// queryMentionsGeo (detect whether a query has a geographic anchor).
+// Includes both English canonical names and their French/Dutch variants.
+const AI_CITY_KEYWORDS = [
+  'brussels','bruxelles','brussel',
+  'antwerp','antwerpen','anvers',
+  'ghent','gent','gand',
+  'liege','liège','luik',
+  'mons','bergen','charleroi','namur','leuven','louvain',
+  'bruges','brugge','hasselt','kortrijk','mechelen',
+  'ostend','oostende','waregem','verviers',
+];
+
+// Detect whether an AI search query contains a geographic anchor. Used by
+// applyF to decide whether the currently-selected city pill should still
+// filter the AI results, or whether the AI's geo intent overrides it.
+//
+// Rule (applyF cmEffective):
+//   - Query mentions geo  → bypass pill (AI's geo wins, e.g. "concerts in Brussels")
+//   - Query is geo-silent → apply pill (user's standing geo intent, e.g.
+//     "festivals" while the Antwerp Area pill is set → Antwerp festivals)
+//
+// Detection covers: proximity phrases, country/region keywords, area labels,
+// and the AI_CITY_KEYWORDS list (English + FR/NL variants).
+function queryMentionsGeo(query) {
+  if (!query) return false;
+  const l = String(query).toLowerCase();
+  // 1. Proximity phrases
+  if (/\b(near\s*me|around\s*me|nearby|close\s*by|près\s*de\s*moi|dichtbij)\b/.test(l)) return true;
+  // 2. Country / broad region
+  if (/\b(belgium|belgique|belgi[eë]|wallonia|wallonie|wallonië|flanders|flandres|vlaanderen)\b/.test(l)) return true;
+  // 3. Anchor area labels ("Brussels Area" etc.)
+  for (const area of AREAS) {
+    if (l.includes(area.label.toLowerCase())) return true;
+  }
+  // 4. City keywords (English + FR/NL variants)
+  for (const c of AI_CITY_KEYWORDS) {
+    if (l.includes(c)) return true;
+  }
+  return false;
+}
+
 // Map Ticketmaster/UiT genre strings to our category system for color coding
 function categorizeByGenre(g){
   if(!g)return'Misc';
@@ -3586,9 +3628,9 @@ function parseAIQuery(q){
     if(kws.some(k=>l.includes(k))) criteria.genres.push(g);
   }
 
-  // City detection — match against canonical cities we display
-  const cityKws=['brussels','bruxelles','brussel','antwerp','antwerpen','anvers','ghent','gent','gand','liege','liège','luik','mons','bergen','charleroi','namur','leuven','louvain','bruges','brugge','hasselt','kortrijk','mechelen','ostend','oostende','waregem','verviers'];
-  for(const c of cityKws){
+  // City detection — match against canonical cities we display.
+  // Shares the AI_CITY_KEYWORDS module-level list with queryMentionsGeo.
+  for(const c of AI_CITY_KEYWORDS){
     if(l.includes(c)) criteria.cities.push((AI_CITY_ALIASES[c] || c).toLowerCase());
   }
 
@@ -3716,6 +3758,12 @@ function applyF(){
   // flight, we don't render the old results (the skeleton UI takes over).
   // Local parseAIQuery is kept only as an emergency fallback used inside
   // bAsk() when the API call fails entirely.
+  //
+  // Whether the AI query mentions geography is computed once here. Used
+  // below to decide if the city pill still filters AI results: silent queries
+  // ("festivals") respect the pill; explicit queries ("Brussels concerts")
+  // override it.
+  const aiHasGeo = aiQ ? queryMentionsGeo(aiQ) : false;
   filtered=all.filter(e=>{
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
@@ -3748,12 +3796,12 @@ function applyF(){
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
-    // City filter is bypassed when an AI search is active — the AI is the
-    // user's spatial intent at that point. This replaces the older
-    // extractGeoFromQuery() approach of pre-shifting the pill: simpler,
-    // and works even when the AI search returns events in regions whose
-    // names didn't literally appear in the query.
-    const cmEffective = aiQ ? true : cm;
+    // City pill behaviour during AI search:
+    //   - Query mentions geo ("Brussels concerts") → bypass pill, AI's geo wins.
+    //   - Query is geo-silent ("festivals") → apply pill as standing intent.
+    //   - No AI search → apply pill normally.
+    // queryMentionsGeo is computed once at the top of applyF (aiHasGeo).
+    const cmEffective = (aiQ && aiHasGeo) ? true : cm;
     return sm && cmEffective && am;
   });
 
@@ -5380,10 +5428,11 @@ async function showAI(q) {
     if (allBtn) allBtn.classList.add('on');
   }
 
-  // When an AI search is active, AI-matched events bypass the city pill in
-  // applyF() — see the cmEffective logic there. So we don't need to do any
-  // geo-extraction on the query and pre-shift the pill; AI search "just
-  // works" regardless of what the user has selected.
+  // City pill behaviour during AI search is handled in applyF via
+  // queryMentionsGeo + cmEffective:
+  //   - "Brussels concerts" with Antwerp pill → AI's geo overrides the pill.
+  //   - "festivals" with Antwerp pill        → pill applies, only Antwerp festivals.
+  // No need to pre-shift the pill here; the filter does the right thing.
 
   pushToSearchHistory(q);
   aiHistory = loadSearchHistory();
