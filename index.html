@@ -3050,7 +3050,28 @@ function setLang(l) {
   });
   closeLangMenu();
   applyI18n();
-  fetchEvts();
+  // Refetch the catalog in the new language, then restore whatever fetch
+  // state was active before. fetchEvts loads the top-500 most-popular events
+  // Belgium-wide — niche AI-search results or area-specific events outside
+  // that top-500 would otherwise vanish from `all` and the grid goes empty
+  // even though aiResultIds / area pill still look active.
+  fetchEvts().then(() => {
+    // Cached AI prefetches are keyed by query but encoded in the old language;
+    // clear them so re-runs hit the backend fresh in the new language.
+    if (typeof aiPrefetchCache !== 'undefined') aiPrefetchCache.clear();
+    // If an AI search is active, re-run it so the backend returns the same
+    // events with translated content. Returns early — showAI handles its
+    // own applyF.
+    if (aiQ && aiQ.length > 0) {
+      showAI(aiQ);
+      return;
+    }
+    // If an area pill is active and not all area events are in the top-500,
+    // trigger the lazy area fetch so area-specific events come back in.
+    if (typeof actC === 'string' && actC.startsWith('area:')) {
+      fetchAreaEvents(actC.slice(5));
+    }
+  });
 }
 
 function toggleLangMenu(ev) {
