@@ -2865,10 +2865,6 @@ function pushToSearchHistory(query) {
 }
 
 // Shape an event coming from /api/search the same way fetchEvts shapes events
-// from /api/events. The backend returns the same fields but skips client-side
-// normalizations (canonicalCity, desc fallback). Without this, AI-merged
-// events render with 'null' descriptions or wrong city labels.
-// Shape an event coming from /api/search the same way fetchEvts shapes events
 // from /api/events. The backend returns the same fields, but some come back
 // as null when the source data lacks them (time, end_date, img, prices).
 // Without normalization, `${e.time}` in templates renders the literal
@@ -2877,8 +2873,12 @@ function pushToSearchHistory(query) {
 function shapeAIEvent(e) {
   return {
     ...e,
-    city:    canonicalCity(e.city),
-    rawCity: e.city || 'Belgium',
+    // API ships canonical city in `e.city` (canonical_city from venues table,
+    // populated by trigger). Falls back to raw rawCity then 'Belgium' if
+    // the source had no city.
+    city:    e.city || e.rawCity || 'Belgium',
+    rawCity: e.rawCity || e.city || 'Belgium',
+    regionId: e.regionId || null,
     venue:   e.venue || 'TBA',
     genre:   e.genre || '',
     time:    e.time || 'TBA',
@@ -3144,8 +3144,13 @@ async function fetchEvts(){
       // Fallback chain: API field → genre-based inference → label-based inference → 'other'
       categorySlug:e.categorySlug||categorizeToSlug(e.genre)||labelToSlug(e.seg)||'other',
       genre:e.genre||'',
-      city:canonicalCity(e.city),   // normalize Antwerpen 1 → Antwerp, Elsene → Brussels, etc.
-      rawCity:e.city||'Belgium',    // keep original for card display if we want
+      // API ships canonical city in `e.city` (canonical_city from venues table,
+      // populated by the venues_normalize_city trigger). rawCity preserves the
+      // original spelling for any display that wants it; regionId drives the
+      // area filter without any client-side mapping.
+      city: e.city || e.rawCity || 'Belgium',
+      rawCity: e.rawCity || e.city || 'Belgium',
+      regionId: e.regionId || null,
       venue:e.venue||'TBA',
       // Venue lat/lng for "Near me" distance sorting. null when missing.
       lat:Number.isFinite(e.lat)?e.lat:null,
@@ -3189,13 +3194,13 @@ async function fetchEvts(){
     // by popularity and a region's events may be invisible to the first paint,
     // and (b) selecting an area now triggers a lazy-fetch via fetchAreaEvents()
     // which pulls that area's full set on demand. 'Other' still gates on
-    // areasInUse since it's a fallback bucket, not a real region.
-    const areasInUse = new Set(all.map(e => cityArea(e.city)));
+    // actual presence since it's a fallback bucket, not a real region.
+    const hasOtherEvents = all.some(e => !e.regionId);
     const sel=document.getElementById('csel');
     const areaOpts = AREAS
       .map(a => '<option value="area:'+a.id+'">'+a.label+'</option>')
       .join('');
-    const otherOpt = areasInUse.has('other')
+    const otherOpt = hasOtherEvents
       ? '<option value="area:other">Other</option>'
       : '';
     sel.innerHTML = '<option value="all">'+t('ca')+'</option>'+areaOpts+otherOpt;
@@ -3215,13 +3220,13 @@ async function fetchEvts(){
     const totals = d.totals || {};
     document.getElementById('sv').textContent =
       totals.venues  ?? [...new Set(all.map(e=>e.venue))].length;
-    // Cities: backend ships the LIST of raw city strings; frontend
-    // canonicalizes (Saint-Josse → Brussels, Antwerpen 1 → Antwerp, etc.)
-    // and counts distinct results. Falls back to deriving from the events
-    // page (already canonicalized at ingest time via shapeEvent).
+    // Cities: backend ships a LIST of raw city strings; we count distinct
+    // ones. Slight overcount possible (e.g. "Brussels" and "Bruxelles" as
+    // separate raw entries from different sources) until the RPC is updated
+    // to dedupe by canonical_city — cosmetic, not blocking.
     if (Array.isArray(totals.cityList)) {
-      const canon = new Set(totals.cityList.map(c => canonicalCity(c)));
-      document.getElementById('sc').textContent = canon.size;
+      const lowered = new Set(totals.cityList.map(c => String(c||'').trim().toLowerCase()));
+      document.getElementById('sc').textContent = lowered.size;
     } else {
       document.getElementById('sc').textContent = cities.length;
     }
@@ -3306,222 +3311,42 @@ async function fetchAreaEvents(areaId) {
   }
 }
 
-// Map raw city strings from various sources (Ticketmaster, Uitdatabank) to a
-// single canonical Belgian city. Handles: language variants (Brussel/Bruxelles/Brussels),
-// municipalities within larger urban areas (Elsene → Brussels, Merksem → Antwerp),
-// and trailing suffixes ("Antwerpen 1", "Forest (Brussels)").
+// REGIONS — minimal client-side shape. The DB (regions + region_cities tables)
+// is the single source of truth for which cities belong to which region. The
+// frontend only needs to know region IDs and human-readable labels for the
+// dropdown and section headers. Filtering uses e.regionId sent by the API,
+// not client-side city lookups. See migration_regions.sql for the DB schema.
 //
-// Brussels & Antwerp district names collapse to the parent city since users
-// think of them that way. Other Belgian towns (Wavre, Tervuren, Werchter,
-// Francorchamps, etc.) map to themselves; the AREAS lookup below routes
-// each to its anchor-city area.
-const CITY_MAP = {
-  // ── Brussels & its 19 communes + Brussels districts ──
-  'brussels':'Brussels', 'brussel':'Brussels', 'bruxelles':'Brussels',
-  'elsene':'Brussels', 'ixelles':'Brussels',
-  'etterbeek':'Brussels', 'schaarbeek':'Brussels', 'schaerbeek':'Brussels',
-  'anderlecht':'Brussels', 'molenbeek':'Brussels',
-  'molenbeek-saint-jean':'Brussels', 'sint-jans-molenbeek':'Brussels',
-  'saint-gilles':'Brussels', 'sint-gillis':'Brussels',
-  'saint-josse':'Brussels', 'saint-josse-ten-noode':'Brussels',
-  'sint-joost-ten-node':'Brussels', 'sint-joost-ten-noode':'Brussels',
-  'uccle':'Brussels', 'ukkel':'Brussels',
-  'forest':'Brussels', 'vorst':'Brussels',
-  'jette':'Brussels', 'koekelberg':'Brussels',
-  'evere':'Brussels', 'ganshoren':'Brussels',
-  'auderghem':'Brussels', 'oudergem':'Brussels',
-  'woluwe-saint-pierre':'Brussels', 'sint-pieters-woluwe':'Brussels',
-  'woluwe-saint-lambert':'Brussels', 'sint-lambrechts-woluwe':'Brussels',
-  'watermael-boitsfort':'Brussels', 'watermaal-bosvoorde':'Brussels',
-  'laeken':'Brussels', 'laken':'Brussels',
-  'berchem-sainte-agathe':'Brussels', 'sint-agatha-berchem':'Brussels',
-  // Brussels districts (parts of City of Brussels)
-  'neder-over-heembeek':'Brussels',
-  'haren':'Brussels',
-
-  // ── Brussels periphery commuter towns (Flemish Brabant) ──
-  'vilvoorde':'Vilvoorde', 'vilvorde':'Vilvoorde',
-  'dilbeek':'Dilbeek',
-  'tervuren':'Tervuren', 'tervueren':'Tervuren',
-  'strombeek-bever':'Strombeek-Bever',  // in Grimbergen, but distinct event venue
-  'meise':'Meise',
-  'werchter':'Werchter',  // festival town near Leuven
-
-  // ── Antwerp & districts ──
-  'antwerp':'Antwerp', 'antwerpen':'Antwerp', 'anvers':'Antwerp',
-  'merksem':'Antwerp', 'berchem':'Antwerp', 'deurne':'Antwerp',
-  'borgerhout':'Antwerp', 'hoboken':'Antwerp', 'ekeren':'Antwerp',
-  'wilrijk':'Antwerp',
-
-  // ── Antwerp province & northern Limburg ──
-  'brasschaat':'Brasschaat',
-  'heist-op-den-berg':'Heist-op-den-Berg',
-  'itegem':'Heist-op-den-Berg',  // village in Heist-op-den-Berg municipality
-  'dessel':'Dessel',  // Graspop area
-  'lommel':'Lommel',
-  'paal':'Beringen',  // village in Beringen, Limburg
-
-  // ── Ghent, Bruges, West/East Flanders, coast ──
-  'ghent':'Ghent', 'gent':'Ghent', 'gand':'Ghent',
-  'bruges':'Bruges', 'brugge':'Bruges',
-  'kortrijk':'Kortrijk', 'courtrai':'Kortrijk',
-  'ostend':'Ostend', 'oostende':'Ostend', 'ostende':'Ostend',
-  'roeselare':'Roeselare', 'roulers':'Roeselare',
-  'waregem':'Waregem',
-  'aalst':'Aalst', 'alost':'Aalst',
-  'sint-niklaas':'Sint-Niklaas', 'saint-nicolas':'Sint-Niklaas',
-  // West Flanders coast
-  'de panne':'De Panne', 'la panne':'De Panne',
-  'middelkerke':'Middelkerke',
-  // West Hainaut wedge with WF ties
-  'comines':'Comines', 'komen':'Comines',
-
-  // ── Leuven & Mechelen ──
-  'leuven':'Leuven', 'louvain':'Leuven',
-  'mechelen':'Mechelen', 'malines':'Mechelen',
-
-  // ── Liège & eastern Wallonia ──
-  'liege':'Liège', 'liège':'Liège', 'luik':'Liège',
-  'verviers':'Verviers',
-  'hasselt':'Hasselt',
-  'genk':'Genk',
-  'francorchamps':'Spa-Francorchamps', 'spa-francorchamps':'Spa-Francorchamps',
-  'spa':'Spa-Francorchamps',  // merge Spa town & circuit into one display name
-  'malmedy':'Malmedy',
-  'seraing':'Seraing',
-  'marchin':'Marchin',  // Huy area
-
-  // ── Charleroi & southern/central Wallonia (Hainaut + Namur + Luxembourg) ──
-  'charleroi':'Charleroi',
-  'namur':'Namur', 'namen':'Namur',
-  'mons':'Mons', 'bergen':'Mons',
-  'jemappes':'Mons', 'cuesmes':'Mons', 'hyon':'Mons', 'ghlin':'Mons',
-  'tournai':'Tournai', 'doornik':'Tournai',
-  'la louviere':'La Louvière', 'la louvière':'La Louvière',
-  // Hainaut towns
-  'hornu':'Hornu',
-  'morlanwelz-mariemont':'Morlanwelz', 'morlanwelz':'Morlanwelz',
-  'quévy-le-grand':'Quévy', 'quevy-le-grand':'Quévy',
-  'courcelles':'Courcelles',
-  'fleurus':'Fleurus',
-  'soignies':'Soignies', 'zinnik':'Soignies',
-  'ath':'Ath', 'aat':'Ath',
-  'lanquesaint':'Ath',  // village in Ath municipality
-  'quaregnon':'Quaregnon',
-  'chièvres':'Chièvres', 'chievres':'Chièvres',
-  'braine-le-comte':'Braine-le-Comte', "'s gravenbrakel":'Braine-le-Comte',
-  // Namur province
-  'mettet':'Mettet',
-  'profondeville':'Profondeville',
-  'bouvignes-sur-meuse':'Dinant',  // hamlet in Dinant
-  'waulsort':'Hastière',  // hamlet in Hastière
-  'andenne':'Andenne',
-  'louette-saint-pierre':'Gedinne',  // village in Gedinne
-  // Walloon Brabant — per your call, into Charleroi & Namur Area
-  'lasne-chapelle-saint-lambert':'Lasne',
-  'wavre':'Wavre', 'waver':'Wavre',
-  'limal':'Wavre',  // section of Wavre
-  'louvain-la-neuve':'Louvain-la-Neuve',
-  'nivelles':'Nivelles', 'nijvel':'Nivelles',
-  'perwez':'Perwez',
-  'orp-jauche':'Orp-Jauche',
-  'bousval':'Genappe',  // section of Genappe
-  'la hulpe':'La Hulpe', 'terhulpen':'La Hulpe',
-  'waterloo':'Waterloo',
-  // Luxembourg province
-  'marche-en-famenne':'Marche-en-Famenne',
-  'bastogne':'Bastogne', 'bastenaken':'Bastogne',
-  'arlon':'Arlon', 'aarlen':'Arlon',
-  'bertrix':'Bertrix',
-};
-
-function canonicalCity(raw){
-  if(!raw) return 'Belgium';
-  // Strip trailing " 1", " 2", "(...)" etc: "Antwerpen 1" → "antwerpen", "Forest (Brussels)" → "forest"
-  const cleaned = raw.toString()
-    .replace(/\s*\([^)]*\)\s*$/,'')     // drop trailing parenthetical
-    .replace(/\s+\d+\s*$/,'')           // drop trailing digit suffix
-    .trim()
-    .toLowerCase();
-  return CITY_MAP[cleaned] || raw;      // fallback to raw if unknown
-}
-
-// Anchor-city AREAS — higher-level grouping above canonical cities. The user
-// picks an area in the city pill ('Brussels area', 'Ghent area', etc.) and
-// we filter to events in any city that belongs to that area, then group
-// results into sections per area.
-//
-// Groupings are practical/commuter-based, not strictly geographic:
-//   - Brussels Area: capital + commuter belt (Leuven, Mechelen, Wavre)
-//   - Antwerp Area: port + immediate hinterland (Turnhout, Lier)
-//   - Ghent Area: East Flanders + West Flanders coast (Bruges, Kortrijk, Ostend)
-//   - Liège Area: eastern Wallonia + Limburg (Hasselt, Genk, Verviers)
-//   - Charleroi/Namur Area: central/southern Wallonia (Mons, La Louvière, Tournai)
-//
-// Cities not in any area (very small or unknown) fall under 'Other'.
-// Order matters for the dropdown and sections — most populous first.
+// Adding a region: insert into regions + region_cities (SQL), then add the id
+// here and in events.js's KNOWN_REGION_IDS. Removing region knowledge from a
+// third place (CITY_MAP, CITY_TO_AREA) is why this cleanup exists.
 const AREAS = [
-  { id: 'brussels', label: 'Brussels Area',
-    cities: [
-      'Brussels', 'Leuven',
-      // Brussels periphery / commuter belt (Flemish Brabant)
-      'Vilvoorde', 'Dilbeek', 'Tervuren', 'Meise', 'Strombeek-Bever',
-      'Werchter',
-    ] },
-  { id: 'antwerp',  label: 'Antwerp Area',
-    cities: [
-      'Antwerp', 'Mechelen', 'Sint-Niklaas',
-      // Antwerp province + northern Limburg
-      'Brasschaat', 'Heist-op-den-Berg', 'Dessel',
-      'Lommel', 'Beringen',
-    ] },
-  { id: 'ghent',    label: 'Ghent Area',
-    cities: [
-      'Ghent', 'Aalst', 'Bruges', 'Kortrijk', 'Ostend',
-      'Roeselare', 'Waregem',
-      // West Flanders coast & wedge
-      'De Panne', 'Middelkerke', 'Comines',
-    ] },
-  { id: 'liege',    label: 'Liège Area',
-    cities: [
-      'Liège', 'Hasselt', 'Genk', 'Verviers',
-      // Liège province
-      'Spa-Francorchamps', 'Malmedy', 'Seraing', 'Marchin',
-    ] },
-  { id: 'wallonia', label: 'Charleroi & Namur Area',
-    cities: [
-      'Charleroi', 'Namur', 'Mons', 'La Louvière', 'Tournai',
-      // Hainaut
-      'Hornu', 'Morlanwelz', 'Quévy', 'Courcelles', 'Fleurus',
-      'Soignies', 'Ath', 'Quaregnon', 'Chièvres', 'Braine-le-Comte',
-      // Namur province
-      'Mettet', 'Profondeville', 'Dinant', 'Hastière', 'Andenne', 'Gedinne',
-      // Walloon Brabant (per user direction)
-      'Lasne', 'Wavre', 'Louvain-la-Neuve', 'Nivelles', 'Perwez',
-      'Orp-Jauche', 'Genappe', 'La Hulpe', 'Waterloo',
-      // Luxembourg province
-      'Marche-en-Famenne', 'Bastogne', 'Arlon', 'Bertrix',
-    ] },
+  { id: 'brussels', label: 'Brussels Area'          },
+  { id: 'antwerp',  label: 'Antwerp Area'           },
+  { id: 'ghent',    label: 'Ghent Area'             },
+  { id: 'liege',    label: 'Liège Area'             },
+  { id: 'wallonia', label: 'Charleroi & Namur Area' },
 ];
-
-// Build a reverse map (city → area id) so filtering and section assignment
-// are O(1) lookups per event. Cities not in any area get 'other'.
-const CITY_TO_AREA = (() => {
-  const m = new Map();
-  for (const area of AREAS) {
-    for (const c of area.cities) m.set(c, area.id);
-  }
-  return m;
-})();
-
-function cityArea(canonicalCityName) {
-  return CITY_TO_AREA.get(canonicalCityName) || 'other';
-}
 
 function areaLabel(areaId) {
   const a = AREAS.find(x => x.id === areaId);
   return a ? a.label : 'Other';
 }
+
+// Tiny alias map for the AI-search query parser (parseAIQuery). Maps
+// French/Dutch city names to their canonical English form so the parser can
+// build city criteria from natural-language queries. Strictly a NLP helper —
+// does NOT drive region filtering (that uses e.regionId from the API).
+const AI_CITY_ALIASES = {
+  'bruxelles': 'brussels',  'brussel':   'brussels',
+  'antwerpen': 'antwerp',   'anvers':    'antwerp',
+  'gent':      'ghent',     'gand':      'ghent',
+  'liège':     'liege',     'luik':      'liege',
+  'bergen':    'mons',
+  'brugge':    'bruges',
+  'oostende':  'ostend',
+  'louvain':   'leuven',
+};
 
 // Map Ticketmaster/UiT genre strings to our category system for color coding
 function categorizeByGenre(g){
@@ -3730,62 +3555,6 @@ function populateNearMeOption() {
   }
 }
 function loadMore(){vis+=6;renderAll();}
-// Detect a geographic mention inside an AI search query and translate it
-// to the corresponding city-pill value ('all', 'near', or 'area:<id>').
-// Returns null when the query has no geo signal.
-//
-// Used by showAI() to override the user's currently-selected area when the
-// query itself expresses geographic intent — e.g. "jazz in Brussels" with
-// the Antwerp Area pill selected should clear the pill, since the user's
-// search intent is now Brussels.
-//
-// Detection covers (in priority order):
-//   1. Proximity phrases  → 'near'    (or 'all' if geolocation unavailable)
-//   2. Country / region   → 'all'
-//   3. Anchor area labels → 'area:<id>'
-//   4. Specific city name → 'area:<id>' of the area that contains it
-//
-// City keys are sorted longest-first so multi-word entries like "saint-gilles"
-// match before their substrings ("gilles"). Word-boundary regex avoids false
-// positives like "spa" matching inside "special".
-function extractGeoFromQuery(query) {
-  if (!query) return null;
-  const l = String(query).toLowerCase();
-
-  // 1. Proximity phrases
-  if (/\b(near\s*me|around\s*me|nearby|close\s*by|près\s*de\s*moi|dichtbij)\b/i.test(l)) {
-    return (userGeo && userGeo.available) ? 'near' : 'all';
-  }
-
-  // 2. Region / country (broad spatial intent — show everywhere)
-  if (/\b(belgium|belgique|belgi[eë]|wallonia|wallonie|wallonië|flanders|flandres|vlaanderen)\b/i.test(l)) {
-    return 'all';
-  }
-
-  // 3. Anchor area labels (substring match — labels are multi-word and
-  //    unlikely to appear inside unrelated words)
-  for (const area of AREAS) {
-    if (l.includes(area.label.toLowerCase())) {
-      return 'area:' + area.id;
-    }
-  }
-
-  // 4. Specific city in CITY_MAP. Sort longest-first so multi-word keys
-  //    like "saint-gilles" win over their substrings ("gilles").
-  const cityKeys = Object.keys(CITY_MAP).sort((a, b) => b.length - a.length);
-  for (const key of cityKeys) {
-    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp('(?:^|[^a-z\\u00C0-\\u017F])' + escaped + '(?:[^a-z\\u00C0-\\u017F]|$)', 'i');
-    if (re.test(l)) {
-      const canonical = CITY_MAP[key];
-      const areaId = cityArea(canonical);
-      // City not in any anchor area → just clear the pill.
-      return areaId === 'other' ? 'all' : 'area:' + areaId;
-    }
-  }
-
-  return null;
-}
 
 // Parse a free-text query into structured filter criteria.
 // Handles: categories (techno/jazz/theatre), cities, time ("this weekend"/"tonight"),
@@ -3820,7 +3589,7 @@ function parseAIQuery(q){
   // City detection — match against canonical cities we display
   const cityKws=['brussels','bruxelles','brussel','antwerp','antwerpen','anvers','ghent','gent','gand','liege','liège','luik','mons','bergen','charleroi','namur','leuven','louvain','bruges','brugge','hasselt','kortrijk','mechelen','ostend','oostende','waregem','verviers'];
   for(const c of cityKws){
-    if(l.includes(c)) criteria.cities.push(canonicalCity(c).toLowerCase());
+    if(l.includes(c)) criteria.cities.push((AI_CITY_ALIASES[c] || c).toLowerCase());
   }
 
   // Timeframe
@@ -3971,7 +3740,7 @@ function applyF(){
       cm = true;
     } else if (typeof actC === 'string' && actC.startsWith('area:')) {
       const areaId = actC.slice(5);
-      cm = cityArea(e.city) === areaId;
+      cm = (e.regionId || 'other') === areaId;
     } else {
       // Backward-compat: a stored actC of an exact city name still works.
       cm = e.city === actC;
@@ -3979,7 +3748,13 @@ function applyF(){
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
-    return sm && cm && am;
+    // City filter is bypassed when an AI search is active — the AI is the
+    // user's spatial intent at that point. This replaces the older
+    // extractGeoFromQuery() approach of pre-shifting the pill: simpler,
+    // and works even when the AI search returns events in regions whose
+    // names didn't literally appear in the query.
+    const cmEffective = aiQ ? true : cm;
+    return sm && cmEffective && am;
   });
 
   // SORT LOGIC
@@ -4212,7 +3987,7 @@ function renderGroupedByArea(events) {
   // Bucket events by area id
   const buckets = new Map();
   for (const e of events) {
-    const a = cityArea(e.city);
+    const a = e.regionId || 'other';
     if (!buckets.has(a)) buckets.set(a, []);
     buckets.get(a).push(e);
   }
@@ -5605,25 +5380,10 @@ async function showAI(q) {
     if (allBtn) allBtn.classList.add('on');
   }
 
-  // If the query itself mentions geography (e.g. "jazz in Brussels", "techno
-  // near me"), the user's search intent overrides whatever area they had
-  // selected in the city pill. Without this, an Antwerp-Area pill would
-  // post-filter Brussels search results to zero. When the query has NO geo
-  // mention, leave actC alone — the pill continues to filter results in
-  // applyF() so "jazz this weekend" with Antwerp Area selected returns
-  // only Antwerp jazz.
-  const geoOverride = extractGeoFromQuery(q);
-  if (geoOverride && geoOverride !== actC) {
-    actC = geoOverride;
-    aiPrefetchCache.clear();   // cached prefetches were keyed on a different area
-    const sel = document.getElementById('csel');
-    if (sel) {
-      const opt = sel.querySelector(`option[value="${actC}"]`);
-      if (opt) sel.value = actC;
-      else sel.value = 'all';  // selected area has no events in the catalog
-    }
-    updateCityPillLabel();
-  }
+  // When an AI search is active, AI-matched events bypass the city pill in
+  // applyF() — see the cmEffective logic there. So we don't need to do any
+  // geo-extraction on the query and pre-shift the pill; AI search "just
+  // works" regardless of what the user has selected.
 
   pushToSearchHistory(q);
   aiHistory = loadSearchHistory();
