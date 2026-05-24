@@ -839,6 +839,15 @@ body.ai-active .stats { display: none; }
 }
 .sc { font-size: 14px; color: var(--bone2); font-weight: 500; letter-spacing: 0.02em; }
 
+/* Section-header emoji prefix — used by the For You shelf header. Sized to
+   visually match the inline 🔥 emoji baked into the trending header's
+   translation (which renders at the .st text size). */
+.sh-emoji {
+  display: inline-block;
+  margin-right: 0.18em;
+  vertical-align: baseline;
+}
+
 /* Highlighted span inside .st for the user's search query — gradient-filled
    text on the brand magenta→coral so the eye lands on the query, not on the
    "Results for" prefix. Italic adds further emphasis on the dynamic part.
@@ -868,6 +877,35 @@ body.ai-active .stats { display: none; }
   border-color: rgba(255,46,126,0.45);
   transform: translateY(-3px);
   box-shadow: 0 18px 55px rgba(0,0,0,0.65), 0 0 40px rgba(255,46,126,0.18);
+}
+
+/* Trending shelf — Netflix-style horizontal scroll. Top N popular events
+   render as featured cards inside this shelf. The peek of the next card
+   on the right edge is the discovery signal that more is available; no
+   auto-advance, no carousel dots. Familiar pattern (Netflix, Spotify,
+   App Store), mobile-native swipe, accessible (just horizontal scroll). */
+.trending-shelf {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: visible;            /* keep .featured:hover lift visible */
+  padding-bottom: 4px;            /* room for the hover translate */
+  margin-bottom: 36px;            /* matches old .featured margin-bottom */
+  scroll-snap-type: x proximity;  /* gentler than mandatory for big cards */
+  scrollbar-width: none;          /* Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+.trending-shelf::-webkit-scrollbar { display: none; }  /* Chrome/Safari */
+.trending-shelf > .featured {
+  flex: 0 0 calc(100% - 48px);    /* mobile: ~32px peek of next card on the right */
+  scroll-snap-align: start;
+  margin-bottom: 0;               /* parent owns vertical spacing now */
+}
+@media (min-width: 900px) {
+  .trending-shelf > .featured { flex-basis: 78%; }
+}
+@media (min-width: 1400px) {
+  .trending-shelf > .featured { flex-basis: 62%; }
 }
 
 /* Media / poster area */
@@ -2395,10 +2433,22 @@ footer p {
     <button class="fb going-tab" data-c="going" onclick="sf('going',this)" data-k="fgoing" title="Events you're going to">○ <span class="going-count" id="gcn"></span></button>
   </div>
 
-  <div class="sh"><h2 class="st" data-k="ft">🔥 Most Popular</h2><span class="sc" id="ec"></span></div>
+  <div class="sh" id="trendingHeader"><h2 class="st" data-k="ft">🔥 Most Popular</h2><span class="sc" id="ec"></span></div>
   <div id="fw"><div class="loading"><div class="spin"></div><p data-k="ld">Loading live events…</p></div></div>
 
-  <div class="sh" style="margin-top:52px;"><h2 class="st" data-k="at">All Events</h2></div>
+  <!-- Personalized "For You" shelf — independent from Trending. Visible only
+       when the user is signed in, has liked ≥5 events, AND has recommendations
+       computed (forYouIds non-empty). Same event can appear in both shelves
+       (Netflix-style overlap is intentional). Hidden by default; applyF flips
+       display on if conditions are met. -->
+  <div class="for-you-section" id="forYouSection" style="display:none">
+    <div class="sh" style="margin-top:48px;">
+      <h2 class="st"><span class="sh-emoji">✨</span> <span data-k="atFY">Recommended for you</span></h2>
+    </div>
+    <div id="forYouShelf"></div>
+  </div>
+
+  <div class="sh" id="allHeader" style="margin-top:52px;"><h2 class="st" data-k="at">All Events</h2></div>
   <!-- Guest nudge banner: visible only to anonymous users on personal filters
        (liked/going) when they have saved items. Dismissable; remembered for 30
        days via localStorage (shou_guest_nudge_dismissed). -->
@@ -3871,17 +3921,6 @@ function matchesAIQuery(e,c){
 
 function applyF(){
   const isNearMe = actC === 'near' && userGeo && userGeo.available;
-  // "Smart default" — when the user clicks All AND is signed in AND has enough
-  // signal, the home feed becomes For You instead of plain Trending. The
-  // recommendations were fetched in advance by maybeFetchForYou() so this is
-  // synchronous: if forYouIds has entries, we use them.
-  const isPersonalizedHome = (
-    actF === 'all' &&
-    !aiQ &&
-    currentSession &&
-    lk.size >= FORYOU_MIN_LIKES &&
-    forYouIds.size > 0
-  );
 
   // When AI search is active, only events in aiResultIds pass the filter.
   // aiResultIds is set by the /api/search response. While a search is in
@@ -3961,8 +4000,6 @@ function applyF(){
       aiRank.set(id, i++);
     }
     secondary = (a, b) => (aiRank.get(a.id) ?? 9999) - (aiRank.get(b.id) ?? 9999);
-  } else if (isPersonalizedHome) {
-    secondary = (a, b) => (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0);
   } else if (isLiveNow || isCategoryOrAI || isLiked || isGoing) {
     // Chronological for any explicit filter or time-sensitive view.
     // Tiebreak by time within same date.
@@ -3972,7 +4009,9 @@ function applyF(){
       return String(a.time || '').localeCompare(String(b.time || ''));
     };
   } else {
-    // Trending home: popularity score, highest first.
+    // Default home (and Personalized home): popularity score, highest first.
+    // The For You shelf ranks the SAME filtered list by recommendation score
+    // independently during render — it doesn't change the base sort here.
     secondary = (a, b) => (b.pop || 0) - (a.pop || 0);
   }
 
@@ -4005,16 +4044,21 @@ function renderAll(){
   const isLiked     = actF === 'liked';
   const isGoing     = actF === 'going';
   const isLive      = actF === 'live';
-  const isPersonalizedHome = (
+  // Show For You shelf only when the user is signed in, has liked enough
+  // events to make recommendations meaningful, AND the get_recommendations
+  // RPC has actually returned data. The shelf is independent from the
+  // Trending shelf — same event can appear in both (Netflix-style overlap).
+  const showForYouShelf = (
     actF === 'all' &&
+    actC === 'all' &&
     !aiQ &&
     currentSession &&
     lk.size >= FORYOU_MIN_LIKES &&
     forYouIds.size > 0
   );
-  const sectionHeaders = document.querySelectorAll('.sh');
-  const trendingHeader = sectionHeaders[0] || null;
-  const allHeader      = sectionHeaders[1] || null;
+  const trendingHeader = document.getElementById('trendingHeader');
+  const forYouSection  = document.getElementById('forYouSection');
+  const allHeader      = document.getElementById('allHeader');
   const allHeaderTitle = allHeader ? allHeader.querySelector('.st') : null;
 
   // Adjust the "All Events" title for the active mode.
@@ -4065,9 +4109,6 @@ function renderAll(){
       // but this header is dynamic (depends on the current query) so we
       // re-render it from applyF() rather than from setLang().
       allHeaderTitle.dataset.k = '';
-    } else if (isPersonalizedHome) {
-      allHeaderTitle.textContent = t('atFY');
-      allHeaderTitle.dataset.k    = 'atFY';
     } else if (isLive) {
       allHeaderTitle.textContent = t('atLive');
       allHeaderTitle.dataset.k    = 'atLive';
@@ -4115,6 +4156,7 @@ function renderAll(){
     fw.innerHTML='';
     document.getElementById('eg').innerHTML='';
     if(trendingHeader) trendingHeader.style.display='none';
+    if(forYouSection) forYouSection.style.display='none';
     if(allHeader) allHeader.style.display='none';
     emp.classList.add('on');
     return;
@@ -4132,9 +4174,11 @@ function renderAll(){
                     && filtered.length > 6;  // not worth grouping tiny lists
 
   if(isFiltering){
-    // Filtered mode: one list, no "trending" split
+    // Filtered mode: one list, no "trending" split, no "For You" shelf.
+    // The user has narrowed by category/area/search; shelves would be noise.
     fw.innerHTML='';
     if(trendingHeader) trendingHeader.style.display='none';
+    if(forYouSection) forYouSection.style.display='none';
     if(allHeader){
       allHeader.style.display='';
       allHeader.style.marginTop='0';  // no gap since trending header is gone
@@ -4148,8 +4192,48 @@ function renderAll(){
       ? renderGroupedByArea(toShow)
       : toShow.map(e=>smCard(e)).join('');
   } else {
-    // Default mode: first 2 are "Trending", rest go in the grid
+    // Default mode (no filter, no area pill, no AI search):
+    // Multiple themed shelves stacked vertically (Netflix-style):
+    //   1. 🔥 Trending Now      — top N by popularity (always visible)
+    //   2. ✨ Recommended for you — top N by recommendation score (when qualified)
+    //   3. All Events            — full catalog, sorted by popularity
+    // Shelves are independent; same event can legitimately appear in multiple
+    // shelves AND in the grid below. Overlap is the point — different framings
+    // of the same content for different intents (discovery vs personalization
+    // vs comprehensive browse).
+    const TRENDING_SHELF_SIZE = 8;
+    const FORYOU_SHELF_SIZE = 8;
+
+    // Trending shelf — top popular events
     if(trendingHeader) trendingHeader.style.display='';
+    const trending = filtered.slice(0, TRENDING_SHELF_SIZE);
+    fw.innerHTML = `<div class="trending-shelf">${trending.map(e=>bigCard(e)).join('')}</div>`;
+
+    // For You shelf — visible only when user qualifies. Sorts a copy of
+    // filtered by recommendation score (independent from the popularity sort
+    // applied to filtered itself). Only includes events that actually have
+    // a non-zero score in forYouIds — otherwise it would just mirror trending.
+    if (showForYouShelf && forYouSection) {
+      const ranked = filtered
+        .map(e => ({ e, score: forYouIds.get(e.id) || 0 }))
+        .filter(x => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, FORYOU_SHELF_SIZE)
+        .map(x => x.e);
+      if (ranked.length > 0) {
+        forYouSection.style.display = '';
+        document.getElementById('forYouShelf').innerHTML =
+          `<div class="trending-shelf">${ranked.map(e=>bigCard(e)).join('')}</div>`;
+      } else {
+        // Edge case: user qualifies but none of the recommended events are
+        // currently in `filtered` (e.g. all expired). Hide the section.
+        forYouSection.style.display = 'none';
+      }
+    } else if (forYouSection) {
+      forYouSection.style.display = 'none';
+    }
+
+    // All Events header
     if(allHeader){
       allHeader.style.display='';
       allHeader.style.marginTop='52px';
@@ -4157,8 +4241,10 @@ function renderAll(){
       const extraCount=allHeader.querySelector('.sc');
       if(extraCount) extraCount.remove();
     }
-    const f2=filtered.slice(0,2), rest=filtered.slice(2,2+vis);
-    fw.innerHTML=f2.map(e=>bigCard(e)).join('');
+    // Grid shows the full catalog from rank 1 — Netflix doesn't dedupe across
+    // shelves, neither do we. Users who don't scroll the shelves still find
+    // these events here in the grid below.
+    const rest = filtered.slice(0, vis);
     document.getElementById('eg').innerHTML = groupByArea
       ? renderGroupedByArea(rest)
       : rest.map(e=>smCard(e)).join('');
