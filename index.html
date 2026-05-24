@@ -2912,6 +2912,13 @@ let aiAbortController = null;    // in-flight /api/search AbortController, or nu
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
 let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
+// AI-detected geo intent from the current query (e.g. "music in Antwerp" → 'antwerp').
+// Decoupled from actC: the user's pill preference is still 'all' or 'near', but
+// the search uses this value for body.area so the backend can scope candidates.
+// Header suffix shows this when set, giving the user feedback about what geo the
+// AI inferred. Reset to null when the search clears or the user types a new query
+// without geo intent.
+let aiSearchArea = null;
 
 // Sync body.ai-active class with AI state. CSS uses this to hide redundant
 // controls (city dropdown) while an AI search is active. Call after any
@@ -3136,9 +3143,24 @@ function eventDistanceBand(e) {
   const lat = e.lat, lng = e.lng;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return 99;
   const d = distanceKm(userGeo.latitude, userGeo.longitude, lat, lng);
-  if (d <= 20) return 0;
-  if (d <= 50) return 1;
-  return 2;
+  // Belgium-scaled bands. The country is small and urban-dense, so the
+  // previous 20km first band meant "anywhere in greater Brussels" — too
+  // wide to be useful for the "near me" intent. Tighter bands let
+  // popularity sort within each tier do more meaningful work for users
+  // in dense areas, while users in sparse areas still see their nearest
+  // options (just in higher bands).
+  //
+  // Band semantics — what each tier means in transport terms:
+  //   0: walking / cycling          (≤3km)
+  //   1: short metro / bus / quick drive  (3-8km)
+  //   2: across-town drive          (8-20km)
+  //   3: regional / next city       (20-50km)
+  //   4: road trip                  (>50km)
+  if (d <=  3) return 0;
+  if (d <=  8) return 1;
+  if (d <= 20) return 2;
+  if (d <= 50) return 3;
+  return 4;
 }
 const t=k=>T[lang][k]||T.en[k]||k;
 
@@ -3170,12 +3192,6 @@ function setLang(l) {
     // own applyF.
     if (aiQ && aiQ.length > 0) {
       showAI(aiQ);
-      return;
-    }
-    // If an area pill is active and not all area events are in the top-500,
-    // trigger the lazy area fetch so area-specific events come back in.
-    if (typeof actC === 'string' && actC.startsWith('area:')) {
-      fetchAreaEvents(actC.slice(5));
     }
   });
 }
@@ -3315,22 +3331,14 @@ async function fetchEvts(){
       });
       if (touched) renderAll();
     })();
-    const cities=[...new Set(all.map(e=>e.city))].filter(c=>c&&c!=='Belgium').sort();
-    // Build area-based dropdown. We show ALL defined areas, not just ones with
-    // events in the initial top-500 catalog, because (a) the catalog is sorted
-    // by popularity and a region's events may be invisible to the first paint,
-    // and (b) selecting an area now triggers a lazy-fetch via fetchAreaEvents()
-    // which pulls that area's full set on demand. 'Other' still gates on
-    // actual presence since it's a fallback bucket, not a real region.
-    const hasOtherEvents = all.some(e => !e.regionId);
+    // The city pill is now a 2-state toggle: "All Cities" / "Near me".
+    // Region picking moved to AI search: when the user types "in Antwerp" or
+    // "music in Brussels", extractAreaFromQuery infers the region and passes
+    // it to /api/search as body.area. Removes the regions-taxonomy debate
+    // from the user-facing UI entirely. Future ingest from new cities works
+    // without any dropdown maintenance.
     const sel=document.getElementById('csel');
-    const areaOpts = AREAS
-      .map(a => '<option value="area:'+a.id+'">'+a.label+'</option>')
-      .join('');
-    const otherOpt = hasOtherEvents
-      ? '<option value="area:other">Other</option>'
-      : '';
-    sel.innerHTML = '<option value="all">'+t('ca')+'</option>'+areaOpts+otherOpt;
+    sel.innerHTML = '<option value="all">'+t('ca')+'</option>';
     // Re-inject "Near me" option (if geo available). fetchEvts is called on every
     // language change, which rebuilds the dropdown; populateNearMeOption is idempotent.
     populateNearMeOption();
@@ -3501,12 +3509,14 @@ const AI_CITY_TO_AREA = {
   // Brussels Area
   'brussels': 'brussels', 'bruxelles': 'brussels', 'brussel': 'brussels',
   'ixelles': 'brussels',  'elsene': 'brussels',
-  // Leuven / Louvain (Flemish Brabant) is NOT in any of our 5 regions.
-  // Broaden the pill to All Cities when mentioned so the backend searches
-  // the full catalog — better than silently scoping to Brussels (which
-  // is wrong both geographically and culturally). When Flemish Brabant
-  // gets enough events to justify its own region, add it to regions/
-  // region_cities tables and update this mapping.
+  // Leuven / Louvain — query-time intent diverges from DB region mapping here.
+  // region_cities filed Leuven under 'brussels' (forward-looking: when events
+  // arrive, they'll join the Brussels broad-browse bucket). But when a user
+  // types "leuven" specifically, we DON'T want to narrow to brussels region —
+  // we want the LLM to search the full catalog so it can find Leuven matches
+  // wherever they live. Broaden the pill to All Cities instead.
+  // Same pattern applies for any sub-regional city: the area pill is a coarse
+  // browse bucket; an explicit city mention in the query is a precise intent.
   'leuven': 'all',        'louvain': 'all',
   // Antwerp Area
   'antwerp': 'antwerp',   'antwerpen': 'antwerp', 'anvers': 'antwerp',
@@ -3660,47 +3670,35 @@ async function fetchForYou() {
   }
 }
 function setCity(c){
-  // Detect change early so we can re-execute an active AI query against
-  // the new region. Skip re-execution if the value is identical.
+  // Pill is now a 2-state toggle: 'all' or 'near'. Region scoping moved
+  // to AI search internals (extractAreaFromQuery + aiSearchArea), so this
+  // handler is much simpler than before.
   const cityChanged = c !== actC;
-  // If the city is changing in/out of 'near', any cached AI prefetch
-  // results were computed under different location-sending behavior and
-  // must be invalidated. Cheapest correct policy: invalidate on any
-  // city change, since the city itself is part of the user's spatial intent.
+  // Toggling in/out of 'near' affects whether body.lat/lng is sent to the
+  // backend (near→ yes; all→ no), which changes the candidate distance
+  // sorting. Invalidate prefetch cache so the next search rebuilds fresh.
   if (cityChanged && typeof aiPrefetchCache !== 'undefined') {
     aiPrefetchCache.clear();
   }
-  actC=c;
-  vis=6;
+  actC = c;
+  vis = 6;
   updateCityPillLabel();
-  // When the user picks an area we haven't fully loaded yet, kick off the
-  // lazy-fetch. The dropdown shows all 5 areas, but the initial top-500
-  // catalog only covers the most-popular regions; smaller regions need an
-  // on-demand pull. No-op if already loaded or in flight.
-  if (typeof c === 'string' && c.startsWith('area:')) {
-    const areaId = c.slice(5);
-    fetchAreaEvents(areaId);  // fire-and-forget; merges into `all` and re-renders
-  }
-  // If an AI search is currently active and the user changed the region,
-  // re-run the query so the backend can re-scope candidates to the new
-  // area. showAI() handles its own re-render including applyF(), so we
-  // return early to avoid a double-render.
+  // If an AI search is currently active and the user toggled near↔all,
+  // re-run the query so the backend gets the updated lat/lng signal.
+  // showAI handles its own re-render including applyF, so return early.
   if (cityChanged && aiQ && aiQ.length > 0) {
     showAI(aiQ);
     return;
   }
   applyF();
 }
-// Resolve the city value (e.g. 'area:brussels', 'all', 'near', or a legacy
-// raw city name) to the label to display in the pill. Strips the leading 📍
-// from 'cNear' translations since the pill already has a pin icon via CSS.
+// Resolve the pill's value ('all' or 'near') to the label to display.
+// Strips the leading 📍 from 'cNear' translations since the pill already
+// has a pin icon via CSS.
 function cityPillLabelFor(value) {
   if (!value || value === 'all') return t('ca');
-  if (value === 'near')         return t('cNear').replace(/^📍\s*/, '');
-  if (typeof value === 'string' && value.startsWith('area:')) {
-    return areaLabel(value.slice(5));
-  }
-  return value;  // legacy: any stored exact-city string still renders
+  if (value === 'near')          return t('cNear').replace(/^📍\s*/, '');
+  return value;  // defensive fallback for any legacy stored value
 }
 function updateCityPillLabel() {
   const el = document.getElementById('cityPillValue');
@@ -3948,34 +3946,12 @@ function applyF(){
       || (actF === 'live' && isEventLive(e))
       || e.categorySlug === actF
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
-    // City filter: 'all' and 'near' both show all cities, but 'near' sorts
-    // by distance. 'area:<id>' filters to events whose city belongs to that
-    // anchor-city area (Brussels Area covers Brussels + Leuven + Mechelen
-    // + Aalst; etc).
-    //
-    // AI search respects the area filter too. showAI() preemptively clears
-    // the pill (sets actC to 'all') whenever the query itself mentions
-    // geography — so queries with explicit geo intent don't collide with a
-    // stale pill selection. Queries without explicit geo respect whatever
-    // area the user has selected.
-    let cm;
-    if (actC === 'all' || actC === 'near') {
-      cm = true;
-    } else if (typeof actC === 'string' && actC.startsWith('area:')) {
-      const areaId = actC.slice(5);
-      cm = (e.regionId || 'other') === areaId;
-    } else {
-      // Backward-compat: a stored actC of an exact city name still works.
-      cm = e.city === actC;
-    }
     // AI match: when a search has produced results, only those IDs pass.
     // No active search → all events pass this stage.
     const am = !aiQ || (aiResultIds && aiResultIds.has(e.id));
-    // City pill is bypassed during AI search. Backend already scoped the
-    // results to body.area (see /api/search call below), so re-filtering
-    // here would only hide legitimate cross-area suggestions.
-    const cmEffective = aiQ ? true : cm;
-    return sm && cmEffective && am;
+    // City filter no longer narrows (pill is binary, both states pass).
+    // Region scoping for AI search happens server-side via body.area.
+    return sm && am;
   });
 
   // SORT LOGIC
@@ -4087,15 +4063,14 @@ function renderAll(){
       // visible in the search bar and the suggestions banner.
       const shown = aiQ.length > 40 ? aiQ.slice(0, 39) + '…' : aiQ;
       const fullText = t('sectionResultsFor')(shown);
-      // Build the geo-scope suffix. When the user has a non-trivial pill
-      // selected, show it inline in the header so they understand what
-      // produced these results — e.g. "Results for 'festivals' · Antwerp Area"
-      // or "Results for 'concerts' · Near you". 'all' adds no suffix (the
-      // default scope is implicit and would just be noise in the header).
+      // Build the geo-scope suffix. When the AI detected a city in the query
+      // (aiSearchArea set) OR the user is in Near-me mode, show that scope
+      // inline in the header so they understand what produced these results —
+      // e.g. "Results for 'concerts' · Antwerp Area" or
+      // "Results for 'music' · Near you".
       let suffix = '';
-      if (typeof actC === 'string' && actC.startsWith('area:')) {
-        const aid = actC.slice(5);
-        const ar = AREAS.find(a => a.id === aid);
+      if (aiSearchArea) {
+        const ar = AREAS.find(a => a.id === aiSearchArea);
         if (ar) suffix = ` · ${ar.label}`;
       } else if (actC === 'near') {
         suffix = ` · ${t('nearMeLabel')}`;
@@ -5498,7 +5473,7 @@ function qChip(id) {
 }
 function clearAI(){
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
-  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; vis=6;
+  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; vis=6;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
   if (aiInput) aiInput.value='';
@@ -5663,25 +5638,22 @@ async function showAI(q) {
   }
 
   // Geo override: if the query mentions a place ("Brussels concerts",
-  // "techno near me"), shift the city pill to that area before searching.
-  // Silent queries ("festivals") leave the pill alone — the user's standing
-  // selection is honored. The pill's (possibly-overridden) area then flows
-  // through to /api/search as body.area, so the backend filters accordingly.
+  // Geo intent extraction: if the query mentions a place (e.g. "music in
+  // Brussels", "concerts in Antwerp"), we detect it and pass to the backend
+  // as body.area so /api/search scopes its candidate pool. The user's pill
+  // preference (all/near) is NOT modified — pill is browse intent, this is
+  // search intent. They're independent. Header suffix shows the detected
+  // area so the user knows what scope produced their results.
   //
   // applyF bypasses the client-side cm filter while an AI search is active —
   // backend is the source of truth; re-filtering here would hide legitimate
   // cross-area suggestions when they're warranted.
   const queryArea = extractAreaFromQuery(q);
-  if (queryArea && queryArea !== actC) {
-    actC = queryArea;
-    aiPrefetchCache.clear();   // cached prefetches were keyed on the prior area
-    const sel = document.getElementById('csel');
-    if (sel) {
-      const opt = sel.querySelector(`option[value="${actC}"]`);
-      if (opt) sel.value = actC;
-      else sel.value = 'all';  // shouldn't happen, but graceful fallback
-    }
-    updateCityPillLabel();
+  if (queryArea && queryArea.startsWith('area:')) {
+    aiSearchArea = queryArea.slice(5);  // e.g. 'antwerp'
+  } else {
+    // 'all', 'near', or null — no specific region to scope to
+    aiSearchArea = null;
   }
 
   pushToSearchHistory(q);
@@ -5759,14 +5731,13 @@ async function showAI(q) {
     }
     // Pass the area filter to the backend so the LLM scopes its search to
     // the user's selected region. For 'all' or 'near' we omit it (LLM is
-    // free to roam, or distance-sorts via lat/lng). For 'area:<id>' we send
-    // the area id; backend resolves it to venues via region_id (same as
-    // /api/events). The AI can still surface cross-area suggestions when
-    // the query explicitly mentions another place — that decision is made
-    // by the backend prompt, not by the frontend.
-    if (typeof actC === 'string' && actC.startsWith('area:')) {
-      const areaId = actC.slice(5);
-      if (AREAS.some(a => a.id === areaId)) body.area = areaId;
+    // Area scoping for backend search: use the AI-detected geo from the
+    // current query (set above by extractAreaFromQuery). The user's pill
+    // is binary (all/near) — region scoping is now an internal AI concern,
+    // not a UI control. When aiSearchArea is null, the backend searches
+    // all of Belgium (broad LLM-ranked results).
+    if (aiSearchArea && AREAS.some(a => a.id === aiSearchArea)) {
+      body.area = aiSearchArea;
     }
     const res = await fetch(API_BASE + '/api/search', {
       method:  'POST',
@@ -5876,9 +5847,12 @@ function aiPrefetch(q) {
     body.lat = Number(userGeo.latitude);
     body.lng = Number(userGeo.longitude);
   }
-  // Mirror showAI's area handling so prefetch and the real call agree.
-  if (typeof actC === 'string' && actC.startsWith('area:')) {
-    const areaId = actC.slice(5);
+  // Area scoping mirrors showAI: extract geo intent from the query itself,
+  // not from the pill. Prefetch agrees with the real call so the cache hit
+  // hands back the correct shape.
+  const prefetchArea = extractAreaFromQuery(q);
+  if (prefetchArea && prefetchArea.startsWith('area:')) {
+    const areaId = prefetchArea.slice(5);
     if (AREAS.some(a => a.id === areaId)) body.area = areaId;
   }
   fetch(API_BASE + '/api/search', {
