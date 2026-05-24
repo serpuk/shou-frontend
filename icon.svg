@@ -1,26 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="shou">
-  <title>shou</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true">
+  <!--
+    shou favicon — classic 4-point sparkle.
+    Replaces the twin-sparkle "Pop" animation which only animated in Firefox.
+    Static design that reads well at 16x16 and matches the pill-icon shape
+    used elsewhere in the UI.
+
+    Path construction: four cusps at top/right/bottom/left, with quadratic
+    curves whose control point sits at the geometric center (16,16). This
+    pinches each side inward, producing the concave-curved-star look.
+  -->
   <defs>
-    <linearGradient id="shouSparkle" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff9b66"/>
-      <stop offset="100%" stop-color="#ff2d7a"/>
+    <linearGradient id="shouSparkleGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF6B7A"/>
+      <stop offset="100%" stop-color="#FF2E7E"/>
     </linearGradient>
-    <style>
-      @keyframes shouPop {
-        0%, 62%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
-        70%           { transform: scale(1.5) rotate(15deg); opacity: 1; }
-        78%           { transform: scale(1) rotate(0deg); opacity: 0.85; }
-      }
-      .shou-sm {
-        transform-origin: 24px 6px;
-        transform-box: view-box;
-        animation: shouPop 3.6s ease-in-out infinite;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .shou-sm { animation: none; opacity: 1; }
-      }
-    </style>
   </defs>
-  <path d="M13 7 Q13 19 25 19 Q13 19 13 31 Q13 19 1 19 Q13 19 13 7 Z" fill="url(#shouSparkle)"/>
-  <path class="shou-sm" d="M24 2 Q24 6 28 6 Q24 6 24 10 Q24 6 20 6 Q24 6 24 2 Z" fill="url(#shouSparkle)"/>
+  <path
+    fill="url(#shouSparkleGradient)"
+    d="M16 2 Q16 16 30 16 Q16 16 16 30 Q16 16 2 16 Q16 16 16 2 Z"
+  />
 </svg>
