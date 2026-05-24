@@ -3501,7 +3501,13 @@ const AI_CITY_TO_AREA = {
   // Brussels Area
   'brussels': 'brussels', 'bruxelles': 'brussels', 'brussel': 'brussels',
   'ixelles': 'brussels',  'elsene': 'brussels',
-  'leuven': 'brussels',   'louvain': 'brussels',
+  // Leuven / Louvain (Flemish Brabant) is NOT in any of our 5 regions.
+  // Broaden the pill to All Cities when mentioned so the backend searches
+  // the full catalog — better than silently scoping to Brussels (which
+  // is wrong both geographically and culturally). When Flemish Brabant
+  // gets enough events to justify its own region, add it to regions/
+  // region_cities tables and update this mapping.
+  'leuven': 'all',        'louvain': 'all',
   // Antwerp Area
   'antwerp': 'antwerp',   'antwerpen': 'antwerp', 'anvers': 'antwerp',
   'mechelen': 'antwerp',  'malines': 'antwerp',
