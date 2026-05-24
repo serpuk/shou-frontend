@@ -837,7 +837,23 @@ body.ai-active .stats { display: none; }
   letter-spacing: -0.025em; line-height: 1.05;
   color: var(--bone);
 }
-.sc { font-size: 12px; color: var(--bone3); font-weight: 600; letter-spacing: 0.05em; }
+.sc { font-size: 14px; color: var(--bone2); font-weight: 500; letter-spacing: 0.02em; }
+
+/* Highlighted span inside .st for the user's search query — gradient-filled
+   text on the brand magenta→coral so the eye lands on the query, not on the
+   "Results for" prefix. Italic adds further emphasis on the dynamic part.
+   The base .st remains the standard serif color; only the .st-q span is
+   gradient-painted. */
+.st-q {
+  background: linear-gradient(120deg, var(--magenta), var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-style: italic;
+  /* Slight padding-right so the descender on quotes doesn't sit flush with
+     adjacent text in case translations append punctuation after the closing quote. */
+  padding-right: 0.05em;
+}
 
 /* ── FEATURED / TRENDING CARD ── */
 .featured {
@@ -974,6 +990,10 @@ body.ai-active .stats { display: none; }
 .emeta { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
 .mr { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--bone2); }
 .mi { font-size: 13px; width: 18px; text-align: center; opacity: .8; }
+/* Venue name on cards — slightly brighter than the city (--bone vs --bone2)
+   so the eye lands on the specific place first; the city follows as context.
+   The middle-dot separator stays in the muted color of the parent .mr. */
+.vn { color: var(--bone); font-weight: 500; }
 .ea {
   display: flex; align-items: center; justify-content: space-between;
   padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05);
@@ -3984,7 +4004,18 @@ function renderAll(){
       // Truncate long queries for layout sanity. The full query is still
       // visible in the search bar and the suggestions banner.
       const shown = aiQ.length > 40 ? aiQ.slice(0, 39) + '…' : aiQ;
-      allHeaderTitle.textContent = t('sectionResultsFor')(shown);
+      const fullText = t('sectionResultsFor')(shown);
+      // Split out the quoted query so we can style it distinctly. All 6
+      // translations follow the pattern <prefix> "<query>" — match the last
+      // quoted segment and wrap it in .st-q for the gradient-text highlight.
+      // Falls back to plain text if the regex misses (defensive against
+      // future translation edits that drop the quotes).
+      const m = fullText.match(/^(.+?)"(.*)"$/);
+      if (m) {
+        allHeaderTitle.innerHTML = `${escapeHtml(m[1])}<span class="st-q">"${escapeHtml(m[2])}"</span>`;
+      } else {
+        allHeaderTitle.textContent = fullText;
+      }
       // Clear i18n key — setLang() looks up keys to translate static strings,
       // but this header is dynamic (depends on the current query) so we
       // re-render it from applyF() rather than from setLang().
@@ -4199,7 +4230,7 @@ function smCard(e){
 <div class="ctitle">${e.name}${langBadge(e)}</div>
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
-<div class="mr"><span class="mi">📍</span>${e.city}</div>
+<div class="mr"><span class="mi">📍</span>${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}</div>
 <div class="mr"><span class="mi">📅</span>${fmtD(e.date)}${timeStr}</div>
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
