@@ -2777,6 +2777,15 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing();
+// Areas whose full event set has been lazy-loaded via /api/events?area=<id>.
+// The initial fetchEvts() pulls top-500 by popularity which omits less-busy
+// regions (Wallonia south, Limburg edges); selecting one of those triggers
+// fetchAreaEvents() to pull that region's events on demand and merge them
+// into `all`. Once loaded, an area never re-fetches in the same session.
+const loadedAreas = new Set();
+// Tracks in-flight area requests so a rapid double-click doesn't fire two
+// simultaneous fetches for the same area.
+const areaFetchInFlight = new Set();
 
 // SVG icon constants. We use inline SVG instead of unicode characters
 // (♥/♡/✓/○/↗/🎟) because rendering of those characters is inconsistent
@@ -3175,16 +3184,17 @@ async function fetchEvts(){
       if (touched) renderAll();
     })();
     const cities=[...new Set(all.map(e=>e.city))].filter(c=>c&&c!=='Belgium').sort();
-    // Build area-based dropdown options. We show only areas with events in
-    // the current catalog (skip empty groups) so users don't tap a region
-    // that returns nothing. The 'all' and 'near' options are always present.
+    // Build area-based dropdown. We show ALL defined areas, not just ones with
+    // events in the initial top-500 catalog, because (a) the catalog is sorted
+    // by popularity and a region's events may be invisible to the first paint,
+    // and (b) selecting an area now triggers a lazy-fetch via fetchAreaEvents()
+    // which pulls that area's full set on demand. 'Other' still gates on
+    // areasInUse since it's a fallback bucket, not a real region.
     const areasInUse = new Set(all.map(e => cityArea(e.city)));
     const sel=document.getElementById('csel');
     const areaOpts = AREAS
-      .filter(a => areasInUse.has(a.id))
       .map(a => '<option value="area:'+a.id+'">'+a.label+'</option>')
       .join('');
-    // 'Other' area shown only if there are events not in any anchor area.
     const otherOpt = areasInUse.has('other')
       ? '<option value="area:other">Other</option>'
       : '';
@@ -3230,6 +3240,69 @@ async function fetchEvts(){
     document.getElementById('err').textContent='Live data unavailable: '+ex.message+'. Showing sample events.';
     document.getElementById('err').classList.add('on');
     all=SAMPLE;applyF();
+  }
+}
+
+// Lazy-load events for a specific area on demand. Called from setCity() when
+// the user picks an area whose events aren't in the initial top-500 (typically
+// Wallonia south — Charleroi, Namur, Mons, Hornu, etc., whose individual events
+// don't rank high enough on global popularity to make the first-paint cut).
+//
+// The fetch is deduplicated via areaFetchInFlight (rapid double-clicks on the
+// same area dropdown selection don't fire two requests) and cached via
+// loadedAreas (an area is only fetched once per session — after that it lives
+// in `all` and the existing client-side filter handles everything).
+//
+// New events are merged into `all` (deduped by id) and the view re-renders.
+async function fetchAreaEvents(areaId) {
+  if (!areaId || areaId === 'other' || loadedAreas.has(areaId)) return;
+  if (areaFetchInFlight.has(areaId)) return;
+  // Confirm the area is a real one we know about — defensive against typos
+  // or stale URLs.
+  if (!AREAS.some(a => a.id === areaId)) return;
+  areaFetchInFlight.add(areaId);
+  try {
+    const p = new URLSearchParams({ lang, area: areaId, limit: 1000 });
+    const r = await fetch(API_BASE + '/api/events?' + p);
+    if (!r.ok) {
+      console.warn('fetchAreaEvents HTTP', r.status, 'for area', areaId);
+      return;
+    }
+    const d = await r.json();
+    const existing = new Set(all.map(e => e.id));
+    // Reuse the existing shape (shapeAIEvent applies all the normalizations
+    // fetchEvts does inline). Skip events we already have so dedup is by id.
+    const newEvents = (d.events || [])
+      .filter(e => !existing.has(e.id))
+      .map(shapeAIEvent);
+    if (newEvents.length === 0) {
+      // Area is empty in the DB — still mark loaded so we don't refetch.
+      loadedAreas.add(areaId);
+      return;
+    }
+    all = all.concat(newEvents);
+    loadedAreas.add(areaId);
+    // Refresh going-counts for the newly-merged events (mirrors fetchEvts).
+    // Fire-and-forget; cards paint immediately with 0, get patched as soon as
+    // the RPC resolves.
+    (async () => {
+      const ids = newEvents.map(e => e.id);
+      const counts = await fetchGoingCounts(ids);
+      if (counts.size === 0) return;
+      let touched = false;
+      for (const e of all) {
+        if (counts.has(e.id)) {
+          const n = counts.get(e.id);
+          if (e.going_count !== n) { e.going_count = n; touched = true; }
+        }
+      }
+      if (touched) renderAll();
+    })();
+    applyF();
+  } catch (err) {
+    console.warn('fetchAreaEvents error:', err);
+  } finally {
+    areaFetchInFlight.delete(areaId);
   }
 }
 
@@ -3555,6 +3628,14 @@ function setCity(c){
   actC=c;
   vis=6;
   updateCityPillLabel();
+  // When the user picks an area we haven't fully loaded yet, kick off the
+  // lazy-fetch. The dropdown shows all 5 areas, but the initial top-500
+  // catalog only covers the most-popular regions; smaller regions need an
+  // on-demand pull. No-op if already loaded or in flight.
+  if (typeof c === 'string' && c.startsWith('area:')) {
+    const areaId = c.slice(5);
+    fetchAreaEvents(areaId);  // fire-and-forget; merges into `all` and re-renders
+  }
   applyF();
 }
 // Resolve the city value (e.g. 'area:brussels', 'all', 'near', or a legacy
