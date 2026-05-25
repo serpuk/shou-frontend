@@ -5601,18 +5601,17 @@ function cancelAISearch() {
 }
 
 // When the user clicks the "see N nearby alternatives" CTA in the banner,
-// promote the LLM's suggestions to the main result set. We also clear the
-// area pill (suggestions are by definition outside it) so the grid renders
-// them correctly. The LLM's reasoning stays — it already explained the
-// situation in its own words.
+// promote the LLM's suggestions to the main result set. The suggestions
+// are by definition out-of-area, so we also clear aiSearchArea — leaving
+// it set would make the header suffix lie about where the events came
+// from (e.g. "Antwerp Area" with Brussels events). The reasoning banner
+// already explains why the events are from a different area in its own
+// words, which is the right place for that nuance.
 function showAISuggested() {
   if (!aiSuggestedIds || aiSuggestedIds.size === 0) return;
   aiResultIds   = new Set(aiSuggestedIds);  // grid now renders the alternatives
   aiSuggestedIds = new Set();               // consumed
-  actC = 'all';                             // matches were out-of-area; broaden to match
-  const sel = document.getElementById('csel');
-  if (sel) sel.value = 'all';
-  updateCityPillLabel();
+  aiSearchArea  = null;                     // suggestions are out-of-area; drop the misleading header suffix
   applyF();
   renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
 }
