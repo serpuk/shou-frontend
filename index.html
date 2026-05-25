@@ -4110,6 +4110,12 @@ function renderAll(){
   // When a filter or search is active, hide the "Trending" section entirely —
   // there's no concept of "trending" once the user has narrowed to a category.
   // Instead, put all filtered events in the main grid.
+  // Filter-state flags — declared here in renderAll (separate scope from
+  // applyF which has its own copies). These drive both the shelf/grid layout
+  // decisions below and the header text swaps later in this function.
+  const isLive      = actF === 'live';
+  const isLiked     = actF === 'liked';
+  const isGoing     = actF === 'going';
   // "Filtering" now means narrow/personal filters (Live now, Liked, Going)
   // or an active AI search. Broad category filters (Music, Theatre, Sports,
   // Family) keep the shelves visible — they're broad browse contexts where
