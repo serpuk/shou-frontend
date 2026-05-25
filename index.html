@@ -1316,6 +1316,16 @@ body.ai-active .stats { display: none; }
   font-weight: 600;
 }
 
+/* Date suffix on the "Going to X · DD MMM" line. Tertiary info — even softer
+   than the linked title — so it reads as supplementary context. The separator
+   "·" sits in the parent line at default opacity (still inherits 0.85 from
+   the lb-going-line wrapper). */
+.lb-status .going-date {
+  color: var(--bone3);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 /* Pulse animation triggered when transitioning to liked state.
    The heart bounces: 1 → 1.4 → 0.9 → 1 over 400ms. Matches Instagram's
    "pop" timing pretty closely. */
@@ -6925,7 +6935,7 @@ async function openLikedBy(eventId) {
   document.body.style.overflow = 'hidden';
 
   try {
-    const { data, error } = await sb.rpc('get_event_likers', { p_event_id: eventId });
+    const { data, error } = await sb.rpc('get_event_likers', { p_event_id: eventId, p_lang: lang });
     if (error) throw new Error(error.message);
     // Late-response guard: another openLikedBy may have replaced this one.
     if (likedByCurrentEventId !== eventId) return;
@@ -6958,6 +6968,12 @@ function lbRowHtml(r) {
     parts.push(`<div class="lb-status">${escapeHtml(status)}</div>`);
   }
   if (hasGoing) {
+    // Format the date in the user's locale (same fmtD used on event cards).
+    // Backend was updated to include `date` in next_going_event, but we keep
+    // a defensive fallback so an older backend doesn't break the row.
+    const dateSuffix = goingEv.date
+      ? ` · <span class="going-date">${escapeHtml(fmtD(goingEv.date))}</span>`
+      : '';
     // Only render as a clickable link if the event is in our local catalog.
     // /api/events caps at 500 most-popular events, so a going-event in the
     // long tail (or one that's been pruned upstream) won't be findable by
@@ -6966,9 +6982,9 @@ function lbRowHtml(r) {
     // Tickets URL pointing at a removed upstream page.
     const inCatalog = all.some(x => x.id === goingEv.id);
     if (inCatalog) {
-      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a></div>`);
+      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a>${dateSuffix}</div>`);
     } else {
-      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <span class="going-title-plain">${escapeHtml(goingEv.title)}</span></div>`);
+      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <span class="going-title-plain">${escapeHtml(goingEv.title)}</span>${dateSuffix}</div>`);
     }
   }
   if (parts.length === 0) {
@@ -7029,7 +7045,7 @@ async function openGoing(eventId) {
   document.body.style.overflow = 'hidden';
 
   try {
-    const { data, error } = await sb.rpc('get_event_goers', { p_event_id: eventId });
+    const { data, error } = await sb.rpc('get_event_goers', { p_event_id: eventId, p_lang: lang });
     if (error) throw new Error(error.message);
     if (goingCurrentEventId !== eventId) return;
     renderGoingList(data || []);
