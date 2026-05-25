@@ -2963,6 +2963,12 @@ let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
 // AI inferred. Reset to null when the search clears or the user types a new query
 // without geo intent.
 let aiSearchArea = null;
+// When true, the event modal is in "solo" mode — opened from a context
+// where only this one event matters (e.g. clicking the "Going to X" link
+// in a Liked-by row). Nav arrows are hidden and swipe is disabled to
+// prevent the user accidentally drifting into the broader catalog. Reset
+// by cm2() / closeModal whenever the modal closes.
+let omSingleEvent = false;
 
 // Sync body.ai-active class with AI state. CSS uses this to hide redundant
 // controls (city dropdown) while an AI search is active. Call after any
@@ -5111,16 +5117,26 @@ function om(id, _opts){
   if (!_opts?.fromUrl) {
     track(id,'view');
   }
+  // Solo mode: this open was triggered from a context where the user is
+  // looking at one specific event in isolation (e.g. the "Going to X" link
+  // in a profile row). Hide nav arrows and disable swipe so the user can't
+  // accidentally drift into the broader filtered catalog from here.
+  omSingleEvent = !!_opts?.singleEvent;
   // Render the event's full card HTML into #mc. Single-card render —
   // swipe navigation animates this same #mc element in/out, swapping
   // content during the offscreen phase.
   document.getElementById('mc').innerHTML = buildEventCardHTML(e);
   document.getElementById('mov').classList.add('on');
-  // Update nav arrow visibility based on position in the filtered list.
-  // Hide prev when at first event, hide next when at last. Pass id directly
-  // because URL update happens further down — at this point window.location
-  // doesn't yet reflect the event we're opening.
-  updateNavArrows(id);
+  // Nav arrows: forcibly hidden in solo mode; otherwise driven by the
+  // event's position in the filtered list.
+  if (omSingleEvent) {
+    const prev = document.querySelector('.mnav-prev');
+    const next = document.querySelector('.mnav-next');
+    if (prev) prev.style.display = 'none';
+    if (next) next.style.display = 'none';
+  } else {
+    updateNavArrows(id);
+  }
   // Lock body scroll while modal is open. On mobile especially, leaving the
   // body scrollable while the modal is up can cause confusing pull-to-refresh
   // behavior and makes the modal feel less anchored.
@@ -5154,6 +5170,9 @@ function cm2(){
   document.getElementById('mov').classList.remove('on');
   // Restore body scroll
   document.body.style.overflow = '';
+  // Clear solo-mode flag — next om() open starts in normal multi-event mode
+  // unless the caller passes singleEvent again.
+  omSingleEvent = false;
   // Restore the URL (drop ?event= param). Only push history if we're not
   // already at the bare URL (e.g. user navigated via back button which
   // already updated the URL).
@@ -5256,6 +5275,10 @@ function updateNavArrows(eventId) {
 }
 
 function swipeToOffset(offset) {
+  // Solo mode: this modal was opened to show a single event in isolation
+  // (e.g. from a profile drilldown). Don't let swipe/arrow keys drift the
+  // user into the broader filtered catalog from here.
+  if (omSingleEvent) return;
   const idx = findCurrentEventIndex();
   if (idx < 0) return;
   const nextIdx = idx + offset;
@@ -6982,7 +7005,7 @@ function lbRowHtml(r) {
     // Tickets URL pointing at a removed upstream page.
     const inCatalog = all.some(x => x.id === goingEv.id);
     if (inCatalog) {
-      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}')">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a>${dateSuffix}</div>`);
+      parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <a class="status-link" onclick="event.stopPropagation();closeGoing();closeLikedBy();om('${goingEv.id}', {singleEvent:true})">${escapeHtml(goingEv.title)}<span class="link-ico">🔗</span></a>${dateSuffix}</div>`);
     } else {
       parts.push(`<div class="lb-status lb-going-line">${t('goingTo')} <span class="going-title-plain">${escapeHtml(goingEv.title)}</span>${dateSuffix}</div>`);
     }
