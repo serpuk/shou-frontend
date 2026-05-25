@@ -5635,6 +5635,7 @@ function qChip(id) {
 function clearAI(){
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
   aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; vis=6;
+  voiceUsedForCurrentQuery = false;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
   if (aiInput) aiInput.value='';
@@ -5882,6 +5883,10 @@ async function showAI(q) {
       lang: lang || 'en',
       likedIds: Array.from(lk),
       userId: currentSession?.user?.id || null,
+      // Telemetry: did voice produce this query, or did the user type it?
+      // Backend stores this in user_searches.input_method for adoption analysis.
+      // Stays 'voice' even if the user edited the transcript before submitting.
+      inputMethod: voiceUsedForCurrentQuery ? 'voice' : 'text',
     };
     // Include user location when the city pill is set to "Near me" — the
     // pill is now the single location control for both browse and AI search.
@@ -6060,6 +6065,12 @@ const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRec
 let voiceRec = null;            // active SpeechRecognition instance, or null
 let voiceRecActive = false;     // are we currently recording?
 let voicePrevPlaceholder = '';  // input's placeholder before recording started
+// Tracks whether voice was used to compose the CURRENT query (for telemetry).
+// Set true when voice recognition produces text. Reset to false when the user
+// clears the query (input emptied) or starts a fresh AI session. Surveys
+// adoption of the voice feature without privacy concerns — we send 'voice'
+// or 'text', never the raw transcription pipeline details.
+let voiceUsedForCurrentQuery = false;
 
 // Map UI language to BCP-47 locale for speech recognition. Belgian variants
 // are listed where they exist (better acoustic models for local accents),
@@ -6123,6 +6134,10 @@ function startVoiceInput() {
         transcript += ev.results[i][0].transcript;
       }
       input.value = transcript.trim();
+      // Mark this query as voice-originated for telemetry. Stays true even if
+      // the user edits the transcript before submitting — they used voice
+      // to get started, which is what we want to measure.
+      voiceUsedForCurrentQuery = true;
       // Surface a live update to the prefetch debounce (same as typing).
       aiInputTyped(input.value);
     };
@@ -6185,6 +6200,9 @@ function aiInputTyped(value) {
   // way to see history is to blur and re-focus, which is unintuitive.
   if (String(value || '').trim() === '') {
     if (aiPrefetchTimer) clearTimeout(aiPrefetchTimer);
+    // Empty input = fresh start; clear voice-usage flag so the next query
+    // starts as 'text' unless voice gets reactivated.
+    voiceUsedForCurrentQuery = false;
     maybeOpenHistory();
     return;
   }
