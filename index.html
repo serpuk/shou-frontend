@@ -759,14 +759,6 @@ body.ai-active .stats { display: none; }
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius); backdrop-filter: blur(12px);
 }
-.flbl {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  color: var(--bone3);
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-.flbl svg { width: 16px; height: 16px; }
 .fb {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2111,8 +2103,13 @@ footer p {
     padding: 7px 12px;
     font-size: 12px;
   }
-  .flbl { width: 22px; height: 22px; margin-right: 2px; }
-  .flbl svg { width: 14px; height: 14px; }
+  /* Chips on mobile: tighter padding + smaller font so all 5 fit cleanly
+     in two rows (2+2+1) on a 390px viewport without overflow. */
+  .chip {
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+  .chips { gap: 6px; }
   .grid { grid-template-columns: 1fr; }
 }
 
@@ -2618,11 +2615,6 @@ footer p {
   </div>
 
   <div class="filters">
-    <span class="flbl" aria-label="Filter" title="Filter">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-      </svg>
-    </span>
     <button class="fb on" data-c="all" onclick="sf('all',this)" data-k="fa">All</button>
     <button class="fb live-tab" data-c="live" onclick="sf('live',this)" data-k="flive" title="Happening now">🔴 <span data-k="flive">Live now</span></button>
     <button class="fb" data-c="music" onclick="sf('music',this)" data-k="fm">Music</button>
