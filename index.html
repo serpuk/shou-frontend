@@ -551,14 +551,11 @@ h1 .bl {
 @media (max-width: 700px) {
   .search-row { flex-direction: column; }
   .search-row .sw { flex: 1 1 auto; }
-  .city-pill-wrap { width: 100%; justify-content: space-between; }
-  /* On mobile, the read-only variant aligns flush-left below the search bar.
-     No need for the full-width stretching since there's no tappable surface. */
-  .city-pill-wrap.city-pill-readonly {
-    width: auto;
-    justify-content: flex-start;
-    margin-top: -8px;  /* sit a hair closer to the search bar above */
-  }
+  /* Hide the read-only pill on mobile. On phones, the user IS mobile —
+     proximity ranking is implicit, "Showing Near me" is low-value clutter,
+     and the visual weight competes with the search bar. Desktop still
+     shows it where the wider layout has room to display ambient status. */
+  .city-pill-wrap.city-pill-readonly { display: none; }
 }
 .si {
   width: 100%; background: var(--ink);
@@ -612,11 +609,24 @@ h1 .bl {
 @media (prefers-reduced-motion: reduce) {
   .smic.recording { animation: none; }
 }
-/* Mobile: tighten spacing — input has less right-padding because button
-   text wraps differently. */
+/* Mobile: tighten the search bar so the placeholder isn't squeezed.
+   - "ASK SHOU ↗" gets less padding (smaller pill)
+   - Input padding-right shrinks accordingly
+   - Mic button moves closer to the button
+   - Mic and button stay clear of each other and of the input text */
 @media (max-width: 700px) {
-  .si { padding-right: 200px; }
-  .smic { right: 130px; }
+  .sbtn {
+    padding: 10px 14px;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+  }
+  .si { padding-right: 150px; padding-left: 50px; font-size: 14px; }
+  .sicon { left: 18px; font-size: 18px; }
+  .smic {
+    right: 96px;
+    width: 36px; height: 36px;
+  }
+  .smic svg { width: 16px; height: 16px; }
 }
 .sbtn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
@@ -3471,7 +3481,19 @@ function applyI18n(){
     es: 'Pregunta a la IA — p.ej. jazz este fin de semana en Gante…',
     it: "Chiedi all'IA — es: jazz a Gand questo weekend…",
   };
-  document.getElementById('ai').placeholder = placeholders[lang] || placeholders.en;
+  // Mobile gets a shorter prompt so it doesn't get truncated by the mic
+  // button and the "ask shou" button to its right. Same intent, just terse.
+  const placeholdersMobile={
+    en: 'Ask shou…',
+    fr: 'Demandez à shou…',
+    nl: 'Vraag shou…',
+    de: 'Frag shou…',
+    es: 'Pregunta a shou…',
+    it: 'Chiedi a shou…',
+  };
+  const useShort = window.matchMedia('(max-width: 700px)').matches;
+  const placeholderSet = useShort ? placeholdersMobile : placeholders;
+  document.getElementById('ai').placeholder = placeholderSet[lang] || placeholderSet.en;
   // Re-render the AI banner so its labels (Results for, Clear search, etc.)
   // pick up the new language. Static labels via data-k were already handled
   // by the loop above, but the AI banner uses dynamic templated strings
@@ -7413,6 +7435,11 @@ document.addEventListener('keydown', e => {
 // ==========================================================================
 
 setLang(lang);
+// Re-render the search bar placeholder when the viewport crosses the
+// mobile/desktop breakpoint (e.g. on device rotation or window resize).
+// setLang() picks the right placeholder based on viewport width, so just
+// re-invoking it is the cheapest way to keep things consistent.
+window.matchMedia('(max-width: 700px)').addEventListener('change', () => setLang(lang));
 maybeShowConsentBanner();
 updateLikedCount();
 updateGoingCount();
