@@ -65,12 +65,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { 
   scroll-behavior: smooth;
-  /* Hard cap: prevent any descendant from forcing horizontal overflow.
-     iOS Safari sometimes allows children to push the viewport width past
-     window.innerWidth, especially with absolutely-positioned elements or
-     long unbreakable content. These rules ensure the page never exceeds
-     the device width regardless of what any deeper element tries. */
-  max-width: 100vw;
+  /* Use 100% not 100vw — iOS Safari includes the scrollbar gutter in vw
+     units, causing elements to render slightly wider than the actual
+     viewport. 100% respects the container width correctly. */
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
 }
 body {
@@ -81,8 +80,10 @@ body {
   color: var(--bone);
   font-family: 'Inter', -apple-system, sans-serif;
   font-size: 15px; line-height: 1.6;
-  min-height: 100vh; overflow-x: hidden;
-  max-width: 100vw;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ── HERO BG ── */
