@@ -550,7 +550,11 @@ h1 .bl {
 
 @media (max-width: 700px) {
   .search-row { flex-direction: column; }
-  .search-row .sw { flex: 1 1 auto; }
+  /* flex-basis: 0 forces .sw to use container width, not intrinsic content
+     width. Without this, the input's padding + positioned mic/button were
+     pushing .sw slightly wider than the viewport, causing the ASK SHOU
+     button to render off-screen. min-width: 0 lets flex actually shrink. */
+  .search-row .sw { flex: 1 1 0; min-width: 0; width: 100%; }
   /* Hide the read-only pill on mobile. On phones, the user IS mobile —
      proximity ranking is implicit, "Showing Near me" is low-value clutter,
      and the visual weight competes with the search bar. Desktop still
