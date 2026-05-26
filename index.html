@@ -636,6 +636,9 @@ h1 .bl {
   cursor: pointer; transition: all .2s;
   box-shadow: 0 0 22px rgba(255,46,126,0.4);
 }
+/* Desktop: text label visible, icon-only span hidden. */
+.sbtn .sbtn-icon { display: none; }
+.sbtn .sbtn-text { display: inline; }
 .sbtn:hover { transform: translateY(-50%) scale(1.04); box-shadow: 0 0 30px rgba(255,46,126,0.6); }
 
 .chips { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -2102,39 +2105,32 @@ footer p {
   }
   .smic svg { width: 15px; height: 15px; }
   .sbtn {
-    /* Mobile: compact circular send button instead of text. The placeholder
-       "Ask shou…" already prompts the user; the button text was redundant
-       and was the main culprit eating horizontal space. 38px circle with the
-       arrow icon centered. Pattern matches Telegram/iMessage/WhatsApp send
-       button. */
+    /* Mobile: compact circular send button. Text span swaps out for the
+       arrow icon. Clean dimensions because the text is in its own element
+       that gets display: none, rather than fighting Safari's intrinsic-text
+       sizing with font-size:0. */
     padding: 0;
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    font-size: 0;        /* hides the "ask shou ↗" text */
-    color: transparent;  /* defensive — also hides text if font-size:0 fails */
-    overflow: hidden;
     letter-spacing: 0;
-  }
-  .sbtn::after {
-    content: '↗';
-    font-size: 18px;
-    font-weight: 700;
-    color: #fff;
+    text-transform: none;
+    /* Center the icon inside the circle. */
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    height: 100%;
-    /* The original text node has letter-spacing applied; make sure the
-       pseudo-element renders cleanly. */
-    letter-spacing: 0;
   }
-  /* With the smaller button, recalculate spacing inside the input:
-     - Button occupies right edge 6px to 44px (38px wide + 6px offset)
-     - Mic sits at right: 54px (10px gap from button left edge)
-     - Mic occupies right edge 54px to 88px (34px wide)
-     - Input text needs 10px buffer from mic, so padding-right = 98px
+  .sbtn .sbtn-text { display: none; }
+  .sbtn .sbtn-icon {
+    display: inline-flex;
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 700;
+  }
+  /* With the smaller 38px button, recalculate spacing inside the input:
+     - Button at right: 6px → occupies right edge 6 to 44 from .sw edge
+     - Mic at right: 54px (10px gap from button) → right edge 54 to 88
+     - Input text needs ~10px buffer from mic → padding-right: 98px
      This recovers ~40px of usable text width vs the previous 138px setting. */
   .si { padding: 14px 98px 14px 46px; font-size: 13px; }
   .smic { right: 54px; }
@@ -2624,7 +2620,7 @@ footer p {
           <line x1="12" y1="19" x2="12" y2="22"/>
         </svg>
       </button>
-      <button class="sbtn" onclick="doAI()" data-k="ab">ask shou ↗</button>
+      <button class="sbtn" onclick="doAI()" type="button" aria-label="Search"><span class="sbtn-text" data-k="ab">ask shou ↗</span><span class="sbtn-icon" aria-hidden="true">↗</span></button>
     </div>
     <div class="city-pill-wrap city-pill-readonly" id="cityPillWrap">
       <div class="city-pill-stack">
