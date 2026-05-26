@@ -609,25 +609,8 @@ h1 .bl {
 @media (prefers-reduced-motion: reduce) {
   .smic.recording { animation: none; }
 }
-/* Mobile: tighten the search bar so the placeholder isn't squeezed.
-   - "ASK SHOU ↗" gets less padding (smaller pill)
-   - Input padding-right shrinks accordingly
-   - Mic button moves closer to the button
-   - Mic and button stay clear of each other and of the input text */
-@media (max-width: 700px) {
-  .sbtn {
-    padding: 10px 14px;
-    font-size: 10px;
-    letter-spacing: 1.2px;
-  }
-  .si { padding-right: 150px; padding-left: 50px; font-size: 14px; }
-  .sicon { left: 18px; font-size: 18px; }
-  .smic {
-    right: 96px;
-    width: 36px; height: 36px;
-  }
-  .smic svg { width: 16px; height: 16px; }
-}
+/* (Mobile-specific sizing for search bar + filters is consolidated in the
+   main mobile media query later in this file, not here.) */
 .sbtn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   background: var(--magenta); color: #fff;
@@ -771,12 +754,19 @@ body.ai-active .stats { display: none; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin-bottom: 30px; padding: 18px 22px;
   background:
-    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 46, 126, 0.05), transparent 70%),
-    rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 46, 126, 0.07), transparent 70%),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius); backdrop-filter: blur(12px);
 }
-.flbl { font-size: 10px; color: var(--bone3); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; margin-right: 6px; }
+.flbl {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  color: var(--bone3);
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.flbl svg { width: 16px; height: 16px; }
 .fb {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2100,10 +2090,29 @@ footer p {
   .hero { padding: 110px 20px 50px; }
   h1 { font-size: 44px; letter-spacing: -1.5px; }
   .sub { font-size: 15px; }
-  .si { padding: 14px 120px 14px 48px; font-size: 13px; }
-  .sbtn { padding: 9px 14px; font-size: 10px; }
-  .main { padding: 0 20px 70px; }
-  .filters { padding: 12px; gap: 6px; }
+  /* Search bar (consolidated): tighter mic, smaller button, shorter
+     placeholder set via JS; padding aligns icon → input text → mic → button */
+  .si { padding: 14px 138px 14px 46px; font-size: 13px; }
+  .sicon { left: 16px; font-size: 18px; }
+  .smic {
+    right: 92px;
+    width: 34px; height: 34px;
+  }
+  .smic svg { width: 15px; height: 15px; }
+  .sbtn { padding: 9px 14px; font-size: 10px; letter-spacing: 1.2px; }
+  .main { padding: 0 16px 70px; }
+  /* Filter row: tighter on mobile so more pills fit per line.
+     Smaller padding, smaller gap, smaller font, smaller pill height. */
+  .filters {
+    padding: 12px;
+    gap: 6px;
+  }
+  .fb {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+  .flbl { width: 22px; height: 22px; margin-right: 2px; }
+  .flbl svg { width: 14px; height: 14px; }
   .grid { grid-template-columns: 1fr; }
 }
 
@@ -2609,7 +2618,11 @@ footer p {
   </div>
 
   <div class="filters">
-    <span class="flbl" data-k="fl">Filter:</span>
+    <span class="flbl" aria-label="Filter" title="Filter">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+      </svg>
+    </span>
     <button class="fb on" data-c="all" onclick="sf('all',this)" data-k="fa">All</button>
     <button class="fb live-tab" data-c="live" onclick="sf('live',this)" data-k="flive" title="Happening now">🔴 <span data-k="flive">Live now</span></button>
     <button class="fb" data-c="music" onclick="sf('music',this)" data-k="fm">Music</button>
