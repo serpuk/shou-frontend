@@ -1318,6 +1318,14 @@ body.ai-active .stats { display: none; }
    so the eye lands on the specific place first; the city follows as context.
    The middle-dot separator stays in the muted color of the parent .mr. */
 .vn { color: var(--bone); font-weight: 500; }
+/* Distance label appended to the venue line when precise geolocation is
+   available. Cyan-tinted to match the geo prompt and convey "proximity";
+   slightly dimmer than the city text to read as secondary info. */
+.cdist {
+  color: var(--cyan);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
 .ea {
   display: flex; align-items: center; justify-content: space-between;
   padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05);
@@ -3664,6 +3672,32 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+// Adaptive distance formatter:
+//   < 1km    → meters rounded to nearest 100m ("800m")
+//   1–10km   → kilometers with one decimal ("1.2km")
+//   ≥ 10km   → kilometers no decimal — false precision at that distance ("12km")
+function formatDistance(km) {
+  if (!Number.isFinite(km) || km < 0) return null;
+  if (km < 1)  return Math.round(km * 10) * 100 + 'm';      // 0.83 → 800m
+  if (km < 10) return km.toFixed(1) + 'km';                  // 1.247 → 1.2km
+  return Math.round(km) + 'km';                              // 12.7 → 13km
+}
+
+// Returns a formatted distance string for an event card, or null if we shouldn't
+// display one. Gated on:
+//   - userGeo has precise coords (NOT IP-based — IP geo is city-level and showing
+//     "2.3km" with that source would imply accuracy we don't have)
+//   - event has venue coords (some events lack lat/lng entirely)
+//   - distance is finite and reasonable (< 200km — otherwise we're showing the
+//     user a Brussels event is 1500km away because their geo is somehow wrong)
+function eventDistanceLabel(e) {
+  if (!userGeo || userGeo.precision !== 'precise') return null;
+  if (!Number.isFinite(e.lat) || !Number.isFinite(e.lng)) return null;
+  const km = distanceKm(userGeo.latitude, userGeo.longitude, e.lat, e.lng);
+  if (!Number.isFinite(km) || km > 200) return null;
+  return formatDistance(km);
+}
+
 // Returns the distance band for an event: 0 = within 20km, 1 = within 50km,
 // 2 = everywhere else, 99 = unknown (event has no venue coords).
 // Used as the primary sort key when "Near me" is the active city filter.
@@ -4879,7 +4913,7 @@ function smCard(e){
 <div class="ctitle">${e.name}${langBadge(e)}</div>
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
-<div class="mr"><span class="mi">📍</span>${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}</div>
+<div class="mr"><span class="mi">📍</span>${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}${(()=>{ const d = eventDistanceLabel(e); return d ? ` · <span class="cdist">${d}</span>` : ''; })()}</div>
 <div class="mr"><span class="mi">📅</span>${fmtD(e.date)}${timeStr}</div>
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
