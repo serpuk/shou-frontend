@@ -6012,8 +6012,20 @@ const AR={
   theatre:`belgium's arts game is strong. <strong style="color:var(--ice)">La Monnaie/De Munt</strong> for opera, <strong style="color:var(--ice)">KVS</strong> and <strong style="color:var(--ice)">Kaaitheater</strong> for contemporary. Hit the <strong style="color:var(--ice)">Arts & Theatre</strong> filter above.`,
   default:`tonight's shou, sorted by what's popping right now. filter by category or city, or ask me something specific — techno, jazz, clubs, anything.`
 };
-function doAI(){const q=document.getElementById('ai').value.trim();if(q)showAI(q);}
-function qAI(q){document.getElementById('ai').value=q;showAI(q);}
+function doAI(){
+  // Release the mic before submitting. iOS Safari keeps the mic warm after
+  // delivering interim results — without an explicit stop, the orange
+  // "recording" indicator persists through the entire results page.
+  if (voiceRecActive) stopVoiceInput();
+  const q=document.getElementById('ai').value.trim();
+  if(q)showAI(q);
+}
+function qAI(q){
+  // Chip taps shouldn't carry a hot mic into results either.
+  if (voiceRecActive) stopVoiceInput();
+  document.getElementById('ai').value=q;
+  showAI(q);
+}
 
 // Per-chip query strings localized to all 6 supported languages. Chips
 // previously sent the English query regardless of UI language, which is
@@ -6565,8 +6577,10 @@ function startVoiceInput() {
       // results as the user speaks; we want the latest combined transcript
       // in the input field for live feedback.
       let transcript = '';
+      let hasFinal = false;
       for (let i = 0; i < ev.results.length; i++) {
         transcript += ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) hasFinal = true;
       }
       input.value = transcript.trim();
       // Mark this query as voice-originated for telemetry. Stays true even if
@@ -6575,6 +6589,13 @@ function startVoiceInput() {
       voiceUsedForCurrentQuery = true;
       // Surface a live update to the prefetch debounce (same as typing).
       aiInputTyped(input.value);
+      // Proactively stop on final result. continuous=false is supposed to
+      // auto-stop, but iOS Safari WebKit can keep the mic warm waiting for
+      // more speech — the orange recording indicator stays on. An explicit
+      // stop() releases the mic immediately after the final transcript.
+      if (hasFinal && voiceRecActive) {
+        try { voiceRec && voiceRec.stop(); } catch (_) {}
+      }
     };
 
     voiceRec.onerror = (ev) => {
