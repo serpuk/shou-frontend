@@ -3278,6 +3278,7 @@ function displayGoing(e) { return e.going_count || 0; }
 // a request is in flight so we can show a skeleton.
 let aiResultIds = null;     // null = no active search; Set = filter is active
 let aiSuggestedIds = new Set();  // out-of-area alternatives the LLM proposed (Option 3 UX)
+let aiResultsAreFallback = false; // true when aiResultIds was populated from promoted suggestedIds — grid shows out-of-area events
 let aiAbortController = null;    // in-flight /api/search AbortController, or null
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
@@ -4693,12 +4694,18 @@ function renderAll(){
       // inline in the header so they understand what produced these results —
       // e.g. "Results for 'concerts' · Antwerp Area" or
       // "Results for 'music' · Near you".
+      // EXCEPT when aiResultsAreFallback is true: the user promoted out-of-area
+      // suggestions, so the events shown explicitly do NOT match the area
+      // filter. Showing "Near you" / "Antwerp Area" in that case would lie.
+      // The reasoning banner already explains the area mismatch in prose.
       let suffix = '';
-      if (aiSearchArea) {
-        const ar = AREAS.find(a => a.id === aiSearchArea);
-        if (ar) suffix = ` · ${ar.label}`;
-      } else if (actC === 'near') {
-        suffix = ` · ${t('nearMeLabel')}`;
+      if (!aiResultsAreFallback) {
+        if (aiSearchArea) {
+          const ar = AREAS.find(a => a.id === aiSearchArea);
+          if (ar) suffix = ` · ${ar.label}`;
+        } else if (actC === 'near') {
+          suffix = ` · ${t('nearMeLabel')}`;
+        }
       }
       // Split out the quoted query so we can style it distinctly. All 6
       // translations follow the pattern <prefix> "<query>" — match the last
@@ -6081,7 +6088,7 @@ function qChip(id) {
 }
 function clearAI(){
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
-  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; vis=6;
+  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; aiResultsAreFallback=false; vis=6;
   voiceUsedForCurrentQuery = false;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
@@ -6116,6 +6123,7 @@ function showAISuggested() {
   aiResultIds   = new Set(aiSuggestedIds);  // grid now renders the alternatives
   aiSuggestedIds = new Set();               // consumed
   aiSearchArea  = null;                     // suggestions are out-of-area; drop the misleading header suffix
+  aiResultsAreFallback = true;              // tells the header these aren't from the user's selected area
   applyF();
   renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
 }
@@ -6274,6 +6282,7 @@ async function showAI(q) {
   if (cached) {
     aiResultIds = new Set(cached.ids);
     aiSuggestedIds = new Set(Array.isArray(cached.suggestedIds) ? cached.suggestedIds : []);
+    aiResultsAreFallback = false;  // fresh search state — no promotion happened yet
     aiReasoning = cached.reasoning;
     aiSearching = false;
     syncAiActiveClass();
@@ -6369,6 +6378,7 @@ async function showAI(q) {
 
     aiResultIds = new Set(Array.isArray(data.matchingIds) ? data.matchingIds : []);
     aiSuggestedIds = new Set(Array.isArray(data.suggestedIds) ? data.suggestedIds : []);
+    aiResultsAreFallback = false;  // fresh response — no promotion has happened yet
     aiReasoning = data.reasoning || '';
     aiSearching = false;
     syncAiActiveClass();
