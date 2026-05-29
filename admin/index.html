@@ -554,34 +554,33 @@ function killChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[i
 const SQL_QUERIES = {
   // ── Catalog ──────────────────────────────────────────────────────────────
   'chart-events-per-day': `-- Events added per day (line chart)
--- The dashboard fetches the raw rows and buckets by day client-side.
--- Equivalent server-side aggregate:
-SELECT date_trunc('day', created_at) AS day, COUNT(*) AS events_added
+-- Backed by RPC: admin_events_per_day(p_since)
+-- Aggregated server-side (returns ~7-30 rows, one per day) to avoid the
+-- PostgREST max_rows=1000 truncation that bit the raw-select pattern.
+SELECT date_trunc('day', created_at)::date AS day, COUNT(*) AS events_added
 FROM events
 WHERE created_at >= '{{since}}'
 GROUP BY day
 ORDER BY day;
 
--- Raw rows as fetched by the dashboard:
-SELECT created_at, status, category_slug
-FROM events
-WHERE created_at >= '{{since}}'
-LIMIT 50000;`,
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_events_per_day'::regproc);`,
 
   'chart-source': `-- Events grouped by ingest source (doughnut)
--- Counts rows in event_sources (an event can have multiple sources after dedupe)
-SELECT source, COUNT(*) AS event_links
-FROM event_sources
-GROUP BY source
-ORDER BY event_links DESC;
-
--- If you want UNIQUE events per source instead of links:
+-- Backed by RPC: admin_source_counts()
+-- Aggregated server-side because PostgREST's default max_rows=1000 would
+-- silently truncate a raw .select() on event_sources, distorting proportions.
 SELECT source, COUNT(DISTINCT event_id) AS unique_events
 FROM event_sources
 GROUP BY source
-ORDER BY unique_events DESC;`,
+ORDER BY unique_events DESC;
+
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_source_counts'::regproc);`,
 
   'tbl-venues': `-- Top venues by upcoming-event count (table)
+-- Backed by RPC: admin_top_venues(p_today, p_limit)
+-- Server-side aggregate avoids the max_rows=1000 trap.
 SELECT v.name AS venue, COUNT(*) AS events
 FROM events e
 JOIN venues v ON e.venue_id = v.id
@@ -589,17 +588,22 @@ WHERE e.status = 'published'
   AND e.start_date >= CURRENT_DATE
 GROUP BY v.name
 ORDER BY events DESC
-LIMIT 12;`,
+LIMIT 12;
+
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_top_venues'::regproc);`,
 
   'chart-category': `-- Events grouped by category (doughnut)
--- Derived client-side from the same rows as 'events-per-day'.
--- Equivalent direct query:
-SELECT category_slug, COUNT(*) AS count
+-- Backed by RPC: admin_events_by_category(p_since)
+-- Returns one row per category_slug — small fixed result set.
+SELECT COALESCE(category_slug, 'unknown') AS category_slug, COUNT(*) AS events
 FROM events
 WHERE created_at >= '{{since}}'
 GROUP BY category_slug
-ORDER BY count DESC
-LIMIT 8;`,
+ORDER BY events DESC;
+
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_events_by_category'::regproc);`,
 
   'tbl-quality': `-- Catalog quality signals (6 separate COUNT queries in the dashboard).
 -- Combined into a single UNION ALL for inspection:
@@ -623,10 +627,10 @@ SELECT 'Stale (last_seen > 7d)', COUNT(*) FROM events
     AND last_seen_at < NOW() - INTERVAL '7 days';`,
 
   'tbl-other-candidates': `-- Subcategory strings still landing in 'other'.
+-- Backed by RPC: admin_other_candidates(p_today, p_limit)
 -- Each row is a candidate for a new alias rule.
 -- Joined with event_sources because subcategory_aliases is keyed on
--- (source, subcategory) — same subcategory can mean different things
--- from different sources. Excludes pairs that already have a rule.
+-- (source, subcategory). Excludes pairs that already have a rule.
 SELECT es.source, e.subcategory, COUNT(*) AS events
 FROM events e
 JOIN event_sources es ON es.event_id = e.id
@@ -644,22 +648,23 @@ LIMIT 15;
 -- To add an alias rule from any row above:
 --   INSERT INTO subcategory_aliases (source, subcategory, category_slug, notes)
 --   VALUES ('<source>', '<subcategory>', '<target_slug>', '<why>');
---   -- next ingest cycle picks it up, no deploy needed.`,
+--   -- next ingest cycle picks it up, no deploy needed.
+
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_other_candidates'::regproc);`,
 
   // ── Translation pipeline ─────────────────────────────────────────────────
   'chart-trans-per-day': `-- Translations completed per day, stacked by target language
--- Bucketed client-side; equivalent server-side aggregate:
-SELECT date_trunc('day', translated_at) AS day, language, COUNT(*) AS count
+-- Backed by RPC: admin_translations_per_day(p_since)
+-- Server-side aggregate (returns ~days × languages rows).
+SELECT date_trunc('day', translated_at)::date AS day, language, COUNT(*) AS translations
 FROM event_translations
 WHERE translated_at >= '{{since}}'
 GROUP BY day, language
 ORDER BY day, language;
 
--- Raw rows as fetched by the dashboard:
-SELECT translated_at, language
-FROM event_translations
-WHERE translated_at >= '{{since}}'
-LIMIT 50000;`,
+-- Exact RPC definition:
+SELECT pg_get_functiondef('admin_translations_per_day'::regproc);`,
 
   'bars-coverage': `-- % of live events with a translation, per language (bar list)
 -- Dashboard runs 6 parallel COUNT queries. Combined view:
@@ -973,10 +978,21 @@ async function loadCatalog() {
   const days = rangeDays();
   const sinceISO = rangeStartISO();
 
-  const res = await safeQuery('catalog events', () => sb.from('events').select('created_at, status, category_slug').gte('created_at', sinceISO).limit(50000));
-  const rows = res.data || [];
-  document.getElementById('meta-events-chart').textContent = `${fmt(rows.length)} events`;
-  const byDay = bucket(rows, 'created_at', days);
+  // Aggregations now come from RPCs (server-side GROUP BY) — the previous
+  // raw `select().limit(50000)` was silently truncated by PostgREST to 1000
+  // rows, producing wildly wrong proportions on the line chart and category
+  // doughnut. See migration_admin_dashboard_rpcs.sql.
+  const [perDayRes, byCatRes] = await Promise.all([
+    safeQuery('events per day', () => sb.rpc('admin_events_per_day', { p_since: sinceISO })),
+    safeQuery('events by category', () => sb.rpc('admin_events_by_category', { p_since: sinceISO })),
+  ]);
+
+  // Day buckets: build a {day -> count} map from the RPC then read in
+  // calendar-day order so missing days render as zero.
+  const dayMap = Object.fromEntries((perDayRes.data || []).map(r => [r.day, Number(r.events_added) || 0]));
+  const byDay = days.map(d => dayMap[d] || 0);
+  const totalEvents = byDay.reduce((a, b) => a + b, 0);
+  document.getElementById('meta-events-chart').textContent = `${fmt(totalEvents)} events`;
   killChart('chart-events-per-day');
   charts['chart-events-per-day'] = new Chart(document.getElementById('chart-events-per-day'), {
     type: 'line',
@@ -984,10 +1000,13 @@ async function loadCatalog() {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } }, interaction: { mode: 'index', intersect: false } }
   });
 
-  const srcRes = await safeQuery('event sources', () => sb.from('event_sources').select('source, event_id').limit(50000));
-  const srcCounts = {};
-  for (const r of (srcRes.data || [])) srcCounts[r.source] = (srcCounts[r.source] || 0) + 1;
-  const srcEntries = Object.entries(srcCounts).sort((a, b) => b[1] - a[1]);
+  const srcRes = await safeQuery('event sources', () => sb.rpc('admin_source_counts'));
+  // The RPC returns aggregated rows: [{source, unique_events}, ...]
+  // We previously fetched raw event_sources rows and counted client-side, but
+  // PostgREST's default max_rows=1000 silently truncated the result, making
+  // the chart wildly inaccurate. The RPC aggregates server-side so the result
+  // is exact regardless of underlying table size.
+  const srcEntries = (srcRes.data || []).map(r => [r.source, Number(r.unique_events) || 0]);
   document.getElementById('meta-source').textContent = `${srcEntries.length} sources`;
   killChart('chart-source');
   charts['chart-source'] = new Chart(document.getElementById('chart-source'), {
@@ -998,9 +1017,10 @@ async function loadCatalog() {
 
   await loadTopVenues();
 
-  const catCounts = {};
-  for (const r of rows) { const c = r.category_slug || 'unknown'; catCounts[c] = (catCounts[c] || 0) + 1; }
-  const catEntries = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  // Category doughnut from the RPC. Top 8 by count.
+  const catEntries = (byCatRes.data || [])
+    .map(r => [r.category_slug || 'unknown', Number(r.events) || 0])
+    .slice(0, 8);
   killChart('chart-category');
   charts['chart-category'] = new Chart(document.getElementById('chart-category'), {
     type: 'doughnut',
@@ -1014,15 +1034,8 @@ async function loadCatalog() {
 
 async function loadTopVenues() {
   const today = new Date().toISOString().slice(0, 10);
-  const [evRes, vnRes] = await Promise.all([
-    safeQuery('events:venue', () => sb.from('events').select('venue_id').eq('status', 'published').gte('start_date', today).limit(50000)),
-    safeQuery('venues', () => sb.from('venues').select('id, name')),
-  ]);
-  const venueById = {};
-  for (const v of (vnRes.data || [])) venueById[v.id] = v.name || 'unknown';
-  const counts = {};
-  for (const r of (evRes.data || [])) { const n = venueById[r.venue_id] || 'unknown'; counts[n] = (counts[n] || 0) + 1; }
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const res = await safeQuery('top venues', () => sb.rpc('admin_top_venues', { p_today: today, p_limit: 12 }));
+  const top = (res.data || []).map(r => [r.venue_name || 'unknown', Number(r.events) || 0]);
   const el = document.getElementById('tbl-venues');
   if (!top.length) { el.innerHTML = '<div class="empty">no data</div>'; return; }
   el.innerHTML = `<table><thead><tr><th>Venue</th><th class="num">Events</th></tr></thead><tbody>${top.map(([v,c]) => `<tr><td>${escapeHtml(v)}</td><td class="num">${fmt(c)}</td></tr>`).join('')}</tbody></table>`;
@@ -1049,68 +1062,21 @@ async function loadCatalogQuality() {
   </tbody></table>`;
 }
 
-// "Other" candidates: subcategory strings that are still landing in
-// category_slug='other' AND don't yet have an entry in subcategory_aliases.
-// Each row is a candidate for a new alias INSERT.
+// "Other" candidates: subcategory strings still landing in
+// category_slug='other' AND not yet aliased in subcategory_aliases. Each
+// row is a candidate for a new alias INSERT.
 //
 // Grouped by (source, subcategory) because the subcategory_aliases table is
-// keyed on that pair — the same subcategory string can mean different things
-// from different sources, so the source is essential for deciding which
-// category to map it to.
+// keyed on that pair — same subcategory string can mean different things
+// from different sources.
 async function loadOtherCandidates() {
   const today = new Date().toISOString().slice(0, 10);
-  const [evRes, srcRes, aliasRes] = await Promise.all([
-    safeQuery('other:events', () => sb.from('events')
-      .select('id, subcategory')
-      .eq('category_slug', 'other')
-      .not('subcategory', 'is', null)
-      .eq('status', 'published')
-      .gte('start_date', today)
-      .limit(50000)),
-    safeQuery('other:sources', () => sb.from('event_sources')
-      .select('source, event_id')
-      .limit(50000)),
-    safeQuery('other:aliases', () => sb.from('subcategory_aliases')
-      .select('source, subcategory')),
-  ]);
-  const events = evRes.data || [];
-  const sources = srcRes.data || [];
-  const aliases = aliasRes.data || [];
-
-  // event_id -> list of sources (an event can have multiple sources after dedupe)
-  const sourcesByEvent = {};
-  for (const r of sources) {
-    if (!sourcesByEvent[r.event_id]) sourcesByEvent[r.event_id] = [];
-    sourcesByEvent[r.event_id].push(r.source);
-  }
-
-  // Set of "source:subcategory" pairs that already have an alias rule —
-  // skip these so the panel only shows actionable candidates.
-  const aliased = new Set();
-  for (const a of aliases) aliased.add(`${a.source}:${a.subcategory}`);
-
-  // Aggregate (source, subcategory) -> count, excluding aliased pairs.
-  // If an event has multiple sources, it contributes to each source's bucket
-  // (so the same event can show up under both ticketmaster and uitdatabank
-  // if it was deduped — that's accurate, since either source could justify
-  // adding the alias rule).
-  const counts = {};
-  for (const ev of events) {
-    const srcs = sourcesByEvent[ev.id] || ['unknown'];
-    for (const src of srcs) {
-      const key = `${src}:${ev.subcategory}`;
-      if (aliased.has(key)) continue;
-      counts[key] = (counts[key] || 0) + 1;
-    }
-  }
-
-  const rows = Object.entries(counts)
-    .map(([key, count]) => {
-      const colon = key.indexOf(':');
-      return { source: key.slice(0, colon), subcategory: key.slice(colon + 1), count };
-    })
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 15);
+  const res = await safeQuery('other candidates', () => sb.rpc('admin_other_candidates', { p_today: today, p_limit: 15 }));
+  const rows = (res.data || []).map(r => ({
+    source: r.source || 'unknown',
+    subcategory: r.subcategory || '',
+    count: Number(r.events) || 0,
+  }));
 
   const el = document.getElementById('tbl-other-candidates');
   if (!rows.length) {
@@ -1132,9 +1098,21 @@ async function loadTranslations() {
   const days = rangeDays();
   const sinceISO = rangeStartISO();
 
-  const res = await safeQuery('translations', () => sb.from('event_translations').select('translated_at, language').gte('translated_at', sinceISO).limit(50000));
-  const byLangByDay = bucketByGroup(res.data || [], 'translated_at', 'language', days);
-  const langs = Object.keys(byLangByDay).sort();
+  // Server-side aggregation via RPC. The previous raw .select() was capped
+  // at 1000 rows by PostgREST, undercounting translation activity.
+  const res = await safeQuery('translations per day', () => sb.rpc('admin_translations_per_day', { p_since: sinceISO }));
+  // RPC rows: [{day, language, translations}, ...]
+  // Build {language: {day: count}} then flatten to {language: [counts per day]}
+  // following the dayLabels order so missing buckets become zero.
+  const grouped = {};
+  for (const r of (res.data || [])) {
+    const lang = r.language;
+    if (!grouped[lang]) grouped[lang] = Object.fromEntries(days.map(d => [d, 0]));
+    if (r.day in grouped[lang]) grouped[lang][r.day] = Number(r.translations) || 0;
+  }
+  const langs = Object.keys(grouped).sort();
+  const byLangByDay = {};
+  for (const l of langs) byLangByDay[l] = days.map(d => grouped[l][d]);
   const palette = ['#1a73e8','#0d9488','#ea8600','#9334e6','#d01884','#f9ab00','#00897b','#5f6368'];
   killChart('chart-trans-per-day');
   charts['chart-trans-per-day'] = new Chart(document.getElementById('chart-trans-per-day'), {
