@@ -3059,6 +3059,62 @@ footer p {
 // ──────────────────────────────────────────────────────────────────
 const API_BASE = 'https://shou-backend.vercel.app';
 
+// ──────────────────────────────────────────────────────────────────
+// CATEGORY METADATA
+// ──────────────────────────────────────────────────────────────────
+// Fetched once at load from /api/categories. Single source of truth shared
+// with the backend (backed by api/_shared/categories.js). Used by the
+// fallback chain in fetchEvts / shapeAIEvent when the API doesn't supply
+// seg / categorySlug directly. Adding a new category to the backend
+// automatically becomes available to the frontend without code changes.
+//
+// Shape: { music: { en: "Music", fr: "Musique", ... }, cinema: {...}, ... }
+// Stays null until fetched — helpers below handle that defensively.
+let categoriesMeta = null;
+
+async function fetchCategories() {
+  try {
+    const r = await fetch(API_BASE + '/api/categories');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !Array.isArray(d.categories)) return;
+    // Flatten to a map of { slug -> { en, fr, ... } } for O(1) lookups.
+    const map = {};
+    for (const c of d.categories) {
+      if (c && c.slug && c.labels) map[c.slug] = c.labels;
+    }
+    categoriesMeta = map;
+  } catch (err) {
+    // Non-fatal — hardcoded fallbacks below cover the gap if this never
+    // resolves. Logged but not surfaced.
+    console.warn('fetchCategories failed:', err.message);
+  }
+}
+
+// Look up a localized category label by slug. Returns null if the metadata
+// hasn't loaded yet, or if the slug is unknown — callers chain to other
+// fallbacks in that case.
+function categoryLabelFromMeta(slug, langCode) {
+  if (!categoriesMeta || !slug) return null;
+  const row = categoriesMeta[slug];
+  if (!row) return null;
+  return row[langCode] || row.en || null;
+}
+
+// Reverse lookup: given a localized label, find the matching slug. Used in
+// the rare case where the API returns seg but not categorySlug. Returns
+// null when no match — callers fall back to hardcoded patterns.
+function slugFromCategoryLabel(label) {
+  if (!categoriesMeta || !label) return null;
+  const target = label.toLowerCase();
+  for (const [slug, row] of Object.entries(categoriesMeta)) {
+    for (const code in row) {
+      if (row[code] && row[code].toLowerCase() === target) return slug;
+    }
+  }
+  return null;
+}
+
 // --------------------------------------------------------------------------
 // SUPABASE CLIENT
 // --------------------------------------------------------------------------
@@ -3949,10 +4005,18 @@ async function fetchEvts(){
     all=(d.events||[]).map((e,i)=>({
       id:e.id,
       name:e.name||e.title||'Untitled',
-      seg:e.seg||categorizeByGenre(e.genre)||'Misc',
+      // Fallback chain for the localized category label shown in the pill:
+      //   1. e.seg from API (the normal path — always populated by events.js)
+      //   2. categoriesMeta lookup using the slug (handles edge case where
+      //      API sent slug but no seg, and gracefully covers ALL categories
+      //      including ones the hardcoded categorizeByGenre below doesn't know)
+      //   3. categorizeByGenre on the genre text (legacy hardcoded heuristic,
+      //      ONLY recognizes music/theatre/sports/family — outdated)
+      //   4. 'Misc' as absolute last resort
+      seg:e.seg||categoryLabelFromMeta(e.categorySlug,lang)||categorizeByGenre(e.genre)||'Misc',
       // Language-neutral category slug — use THIS for filtering, not seg (which changes per language)
-      // Fallback chain: API field → genre-based inference → label-based inference → 'other'
-      categorySlug:e.categorySlug||categorizeToSlug(e.genre)||labelToSlug(e.seg)||'other',
+      // Fallback chain: API field → genre-based inference → label→slug via metadata → hardcoded label patterns → 'other'
+      categorySlug:e.categorySlug||categorizeToSlug(e.genre)||slugFromCategoryLabel(e.seg)||labelToSlug(e.seg)||'other',
       genre:e.genre||'',
       // API ships canonical city in `e.city` (canonical_city from venues table,
       // populated by the venues_normalize_city trigger). rawCity preserves the
@@ -7923,6 +7987,12 @@ window.matchMedia('(max-width: 700px)').addEventListener('change', () => setLang
 maybeShowConsentBanner();
 updateLikedCount();
 updateGoingCount();
+// Kick off categories fetch in parallel with events. Categories endpoint
+// is small and edge-cached, so this typically lands before the events
+// fetch and is available by the time we render. If it lands later (or
+// fails), the fallback chain still resolves correctly via hardcoded
+// patterns — page never blocks on this.
+fetchCategories();
 fetchEvts();
 // Feature-detect Web Speech API support and reveal the mic button on
 // browsers that support it (Chrome/Edge/Safari yes; Firefox no). Hidden
