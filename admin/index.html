@@ -703,20 +703,31 @@ END;
 SELECT pg_get_functiondef('admin_translation_jobs_counts'::regproc);`,
 
   'cache-summary': `-- Translation cache stats (summary + top reused pairs)
+-- Backed by RPCs:
+--   admin_translation_cache_stats()         — summary numbers
+--   admin_translation_cache_top(p_limit)    — top N reused pairs
+-- Both are SECURITY DEFINER because translation_cache has RLS that hides
+-- rows from anon — the dashboard would otherwise see "0 cached strings"
+-- even when the table holds 47k+ entries.
+
 -- Summary:
 SELECT
   COUNT(*) AS cached_strings,
-  SUM(hit_count) AS total_hits,
+  COALESCE(SUM(hit_count), 0) AS total_hits,
   CASE WHEN COUNT(*) = 0 THEN 0
-       ELSE ROUND(SUM(hit_count)::numeric / COUNT(*), 2)
+       ELSE ROUND(COALESCE(SUM(hit_count), 0)::numeric / COUNT(*), 2)
   END AS avg_reuse
 FROM translation_cache;
 
 -- Top 8 pairs by reuse:
 SELECT source_lang, target_lang, hit_count, last_used_at
 FROM translation_cache
-ORDER BY hit_count DESC
-LIMIT 8;`,
+ORDER BY hit_count DESC, last_used_at DESC NULLS LAST
+LIMIT 8;
+
+-- Exact RPC definitions:
+SELECT pg_get_functiondef('admin_translation_cache_stats'::regproc);
+SELECT pg_get_functiondef('admin_translation_cache_top'::regproc);`,
 
   // ── Ingestion pipeline ───────────────────────────────────────────────────
   'tbl-runs': `-- Recent ingestion runs (last 20)
@@ -1151,20 +1162,24 @@ async function loadTransJobs() {
 }
 
 async function loadCacheStats() {
-  const [hits, recent] = await Promise.all([
-    safeQuery('cache:hits', () => sb.from('translation_cache').select('hit_count').limit(50000)),
-    safeQuery('cache:top', () => sb.from('translation_cache').select('source_lang, target_lang, hit_count, last_used_at').order('hit_count', { ascending: false }).limit(8)),
+  // translation_cache has restrictive RLS — direct anon SELECT returns 0
+  // rows even though the table holds tens of thousands. The RPCs below
+  // are SECURITY DEFINER so they bypass RLS for aggregate read access.
+  const [statsRes, topRes] = await Promise.all([
+    safeQuery('cache:stats', () => sb.rpc('admin_translation_cache_stats')),
+    safeQuery('cache:top',   () => sb.rpc('admin_translation_cache_top', { p_limit: 8 })),
   ]);
-  const totalRows = hits.data?.length || 0;
-  const totalHits = (hits.data || []).reduce((a, b) => a + (b.hit_count || 0), 0);
-  const reuse = totalRows ? totalHits / totalRows : 0;
+  const stats = (statsRes.data || [])[0] || { cached_strings: 0, total_hits: 0, avg_reuse: 0 };
+  const totalRows  = Number(stats.cached_strings) || 0;
+  const totalHits  = Number(stats.total_hits)     || 0;
+  const reuse      = Number(stats.avg_reuse)      || 0;
   document.getElementById('cache-summary').innerHTML = `
     <div style="display:flex;gap:24px;padding:8px 0 16px;border-bottom:1px solid var(--border);margin-bottom:12px;">
       <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Cached strings</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;">${fmt(totalRows)}</div></div>
       <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Total hits</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;">${fmt(totalHits)}</div></div>
       <div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Avg reuse</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;color:var(--green);">${reuse.toFixed(2)}×</div></div>
     </div>
-    <table><thead><tr><th>Pair</th><th class="num">Hits</th><th class="num">Used</th></tr></thead><tbody>${(recent.data || []).map(r => `<tr><td>${r.source_lang} → ${r.target_lang}</td><td class="num">${fmt(r.hit_count)}</td><td class="num muted">${ago(r.last_used_at)}</td></tr>`).join('')}</tbody></table>`;
+    <table><thead><tr><th>Pair</th><th class="num">Hits</th><th class="num">Used</th></tr></thead><tbody>${(topRes.data || []).map(r => `<tr><td>${r.source_lang} → ${r.target_lang}</td><td class="num">${fmt(r.hit_count)}</td><td class="num muted">${ago(r.last_used_at)}</td></tr>`).join('')}</tbody></table>`;
 }
 
 async function loadIngestion() {
