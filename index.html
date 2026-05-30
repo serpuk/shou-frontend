@@ -3298,11 +3298,20 @@ const T={
 // localStorage covers all 7 supported langs incl. 'en' so an explicit pick of
 // 'en' on a fr-BE browser still sticks. For signed-in users, fetchProfile()
 // may later override this with their cross-device preferred_language.
+// Single source of truth for supported UI/content languages on the frontend.
+// Mirrors api/_shared/categories.js SUPPORTED_LANGS on the backend — keep the
+// two in sync when adding a language. 'en' is included as an explicit, valid
+// choice (not just a fallback) so a deliberate pick of English on a non-English
+// browser sticks. _navLang is matched against the non-'en' subset because 'en'
+// is the fallback anyway, so a navigator default of 'en' and "no match" lead
+// to the same place.
+const SUPPORTED_LANGS = ['en','fr','nl','de','es','it','uk'];
+
 const _savedLang = (() => { try { return localStorage.getItem('shou.lang'); } catch { return null; } })();
 const _navLang   = navigator.language?.slice(0,2);
-let lang = ['en','fr','nl','de','es','it','uk'].includes(_savedLang)
+let lang = SUPPORTED_LANGS.includes(_savedLang)
   ? _savedLang
-  : (['fr','nl','de','es','it','uk'].includes(_navLang) ? _navLang : 'en');
+  : (SUPPORTED_LANGS.includes(_navLang) && _navLang !== 'en' ? _navLang : 'en');
 
 // --------------------------------------------------------------------------
 // LIKES, CONSENT, AND ANONYMOUS SESSION ID
@@ -7417,8 +7426,27 @@ async function fetchProfile() {
     // value we just read so it's a no-op update — no infinite loop.
     if (currentProfile.preferred_language
         && currentProfile.preferred_language !== lang
-        && ['en','fr','nl','de','es','it','uk'].includes(currentProfile.preferred_language)) {
+        && SUPPORTED_LANGS.includes(currentProfile.preferred_language)) {
       setLang(currentProfile.preferred_language);
+    } else if (!currentProfile.preferred_language
+               && SUPPORTED_LANGS.includes(lang)) {
+      // Guest-choice promotion: the account has never expressed a language
+      // preference (NULL on the freshly-created or older profile row), but
+      // this device has a resolved `lang` — either an explicit pick the user
+      // made while browsing as a guest, or a navigator.language match. Write
+      // it up to the profile so it becomes the cross-device default. We only
+      // do this when preferred_language is NULL; a non-null value is a
+      // deliberate setting and must win (handled by the branch above), so we
+      // never clobber it with whatever this device happened to resolve to.
+      // Fire-and-forget — UI already shows `lang`, so don't block on the round
+      // trip. Mirror into currentProfile so the in-memory copy stays accurate.
+      sb.from('profiles')
+        .update({ preferred_language: lang })
+        .eq('id', currentSession.user.id)
+        .then(({ error }) => {
+          if (error) console.warn('preferred_language promotion failed:', error.message);
+          else currentProfile.preferred_language = lang;
+        });
     }
   } catch (err) {
     console.warn('fetchProfile exception:', err);
