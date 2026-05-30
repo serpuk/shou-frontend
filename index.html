@@ -3240,7 +3240,16 @@ const T={
   uk:{ey:'наживо ввечері · бельгія · просто зараз',h1a:'які',h1b:'шоу',h1c:'у Бельгії',h1d:'сьогодні?',sub:'Концерти, клуби, фестивалі, театр та інше — нічний путівник по Брюсселю, Антверпену, Генту та далі.',ab:'запитати ↗',c1:'техно сьогодні',c2:'концерти наживо',c3:'клубні ночі',c4:'фестивалі',c5:'безкоштовний вхід',aih:'пропозиції шоу',s1:'Подій',s2:'Міст',s3:'Джерел',s4:'Локацій',fl:'Фільтр:',fa:'Усі',fm:'Музика',fci:'Кіно',fth:'Мистецтво і театр',fsp:'Спорт',ffa:'Сім\'я',ffy:'Для тебе',fliked:'Уподобані',fgoing:'Іду',flive:'Зараз',atLive:'🔴 Триває зараз',neLive:'Подій зараз немає. Зайди трохи пізніше.',ca:'Усі міста',cNear:'📍 Поруч',ft:'🔥 У тренді',at:'Усі події',atMusic:'Музичні події',atCinema:'Кіно',atTheatre:'Мистецтво і театр',atSports:'Спортивні події',atFamily:'Сімейні події',atFY:'Рекомендовано для тебе',atL:'Твої уподобані події',atG:'Ти йдеш на',ne:'Подій не знайдено.',neFY:'Постав ♥ кільком подіям, щоб отримати персональні рекомендації.',neFYSub:'Що більше подобається, то кращі будуть рекомендації.',neL:'Натисни ♥ на події, щоб зберегти їх тут.',neG:'Натисни ○ на події, щоб позначити, що йдеш.',neLSignIn:'Увійди, щоб зберегти їх на всіх своїх пристроях.',nudgeGuestT:'Ти переглядаєш як гість',nudgeGuestB:'Увійди, щоб зберігати події на всіх пристроях',lm:'Завантажити ще',ld:'Завантаження шоу…',tk:'Купити квитки',vi:'Оригінал',xs:'Поділитися в X',fb2:'Поділитися у Facebook',cp:'Копіювати посилання',ne2:n=>`знайдено ${n} ${n===1?'подію':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,see:'Див. сайт',dir:'→ Маршрут',find:'Знайти квитки',search:'Шукати онлайн',descFallback:(n,v)=>`${n} у ${v}. Не пропусти цю захоплюючу подію!`,gdprT:'Коротка примітка про те, що ми зберігаємо',gdprB:'Шоу зберігає твої уподобані події, пошуки та події, які ти відкриваєш — щоб робити рекомендації релевантними і покращувати каталог. Анонімно, якщо ти не увійшов(-ла) в акаунт. Ми також використовуємо твоє приблизне місцезнаходження (за IP), щоб показувати події поруч. Ніколи не продаємо й не передаємо.',gdprY:'Зрозуміло',gdprN:'Дізнатися більше',signIn:'Увійти',signOut:'Вийти',siT:'Увійти в шоу',siS:'Ми надішлемо magic-посилання на email. Без пароля — клікни на посилання і ти всередині.',siP:'ти@приклад.com',siB:'Надіслати посилання',siSending:'Надсилання…',siCT:'Перевір пошту',siCB:'Ми надіслали посилання для входу на',siCH:'Відкрий посилання на цьому пристрої, щоб увійти. Посилання дійсне 1 годину.',siErrInvalidEmail:'Введи дійсну email-адресу.',siErrFailed:'Не вдалося надіслати посилання. Спробуй ще раз.',resultsFor:(q,n)=>`Результати для "${q}" · ${n} ${n===1?'подія':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,noMatchesFor:q=>`Немає результатів для "${q}"`,clearSearchBtn:'Очистити пошук ✕',askThinking:'Шукаю в каталозі Бельгії…',sectionResultsFor:q=>`Результати для "${q}"`,liveLabel:'НАЖИВО',nearMeLabel:'Поруч з тобою',showing:'Показую',going:'Іду',goingChip:'ЙДУ',goingTo:'Йде на',noGoersYet:'Поки ніхто не позначив, що йде.',share:"Поділитися",save:"Зберегти",saved:"Збережено",signInToGo:"Увійди, щоб відстежувати події, на які ти йдеш",voiceListening:"Слухаю…",geoPromptTitle:"Знайди події ближче до тебе",geoPromptBody:"Дозволь доступ до місцезнаходження, щоб ми могли показати, що справді поруч — не лише в твоєму IP-регіоні.",geoPromptAccept:"Використати моє місцезнаходження",geoPromptDismiss:"Не зараз"}
 };
 
-let lang=(['fr','nl','de','es','it','uk'].includes(navigator.language?.slice(0,2)))?navigator.language.slice(0,2):'en';
+// Initial language resolution: localStorage (explicit user choice from previous
+// session) > navigator.language (heuristic on first visit) > 'en' (fallback).
+// localStorage covers all 7 supported langs incl. 'en' so an explicit pick of
+// 'en' on a fr-BE browser still sticks. For signed-in users, fetchProfile()
+// may later override this with their cross-device preferred_language.
+const _savedLang = (() => { try { return localStorage.getItem('shou.lang'); } catch { return null; } })();
+const _navLang   = navigator.language?.slice(0,2);
+let lang = ['en','fr','nl','de','es','it','uk'].includes(_savedLang)
+  ? _savedLang
+  : (['fr','nl','de','es','it','uk'].includes(_navLang) ? _navLang : 'en');
 
 // --------------------------------------------------------------------------
 // LIKES, CONSENT, AND ANONYMOUS SESSION ID
@@ -3878,6 +3887,23 @@ const t=k=>T[lang][k]||T.en[k]||k;
 // --------------------------------------------------------------------------
 function setLang(l) {
   lang = l;
+  // Persist for next page load. Two layers:
+  //   (A) localStorage — instant, works for guests and signed-in users alike,
+  //       survives refresh on this device. Wrapped in try/catch because some
+  //       private-browsing modes throw on setItem.
+  //   (B) profile.preferred_language — if signed in, sync across devices in
+  //       the background. Fire-and-forget: don't block UI on Supabase round
+  //       trips. If this fails, (A) still covers the same-device case.
+  try { localStorage.setItem('shou.lang', l); } catch {}
+  if (currentSession?.user?.id) {
+    sb.from('profiles')
+      .update({ preferred_language: l })
+      .eq('id', currentSession.user.id)
+      .then(({ error }) => {
+        if (error) console.warn('setLang profile sync failed:', error.message);
+        else if (currentProfile) currentProfile.preferred_language = l;
+      });
+  }
   // If voice recording is active, stop it. The recognizer is bound to the
   // previous locale and continuing would produce mismatched transcripts.
   // User can re-trigger after switch in the new language.
@@ -7314,7 +7340,7 @@ async function fetchProfile() {
   try {
     const { data, error } = await sb
       .from('profiles')
-      .select('id, display_name, avatar_url, status_text, status_updated_at, is_public, onboarded_at')
+      .select('id, display_name, avatar_url, status_text, status_updated_at, is_public, onboarded_at, preferred_language')
       .eq('id', currentSession.user.id)
       .maybeSingle();
     if (error) {
@@ -7323,6 +7349,17 @@ async function fetchProfile() {
       return;
     }
     currentProfile = data || { id: currentSession.user.id };
+    // Cross-device language sync: if the user has a preferred_language saved
+    // on their profile and it differs from the current local lang (e.g., they
+    // signed in on a new device where navigator.language picked something
+    // else), apply it. setLang re-renders + refetches the catalog in the new
+    // language. The setLang call writes back to profile, but it's the same
+    // value we just read so it's a no-op update — no infinite loop.
+    if (currentProfile.preferred_language
+        && currentProfile.preferred_language !== lang
+        && ['en','fr','nl','de','es','it','uk'].includes(currentProfile.preferred_language)) {
+      setLang(currentProfile.preferred_language);
+    }
   } catch (err) {
     console.warn('fetchProfile exception:', err);
     currentProfile = null;
