@@ -2557,6 +2557,42 @@ footer p {
   font-size: 11px; color: var(--bone3); line-height: 1.4;
 }
 
+/* Language picker — pill grid that wraps to 2 rows on narrow screens.
+   Wider screens fit all 7 options in a single row. Active state mirrors
+   .pe-priv-opt for visual consistency across the modal's pill controls. */
+.pe-lang-grid {
+  display: grid; gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (min-width: 500px) {
+  .pe-lang-grid { grid-template-columns: repeat(7, 1fr); }
+}
+.pe-lang-opt {
+  padding: 8px 6px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: var(--bone);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all .15s;
+}
+.pe-lang-opt:hover {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.25);
+}
+.pe-lang-opt.on {
+  border-color: var(--cyan);
+  background: rgba(255,153,102,0.08);
+  color: var(--cyan);
+}
+
 .pe-actions { display: flex; gap: 10px; margin-top: 10px; }
 .pe-actions .pv-btn { flex: 1; }
 
@@ -2979,6 +3015,24 @@ footer p {
         <label class="pe-label" for="peStatus">Status</label>
         <textarea class="pe-textarea" id="peStatus" maxlength="100" placeholder="What you're up to (optional)" oninput="updateStatusCharCount()"></textarea>
         <div class="pe-charcount" id="peCharCount">0 / 100</div>
+      </div>
+
+      <!-- Language picker. Mirrors the header dropdown — each button calls
+           setLang() which is the single source of truth for language changes
+           (writes localStorage + syncs to profile.preferred_language for
+           signed-in users). Active state is kept in sync by setLang itself,
+           so changes from either entry point reflect in both places. -->
+      <div class="pe-field">
+        <div class="pe-label">Language</div>
+        <div class="pe-lang-grid" id="peLangGrid">
+          <button type="button" class="pe-lang-opt" data-l="en" onclick="setLang('en')">English</button>
+          <button type="button" class="pe-lang-opt" data-l="fr" onclick="setLang('fr')">Français</button>
+          <button type="button" class="pe-lang-opt" data-l="nl" onclick="setLang('nl')">Nederlands</button>
+          <button type="button" class="pe-lang-opt" data-l="de" onclick="setLang('de')">Deutsch</button>
+          <button type="button" class="pe-lang-opt" data-l="es" onclick="setLang('es')">Español</button>
+          <button type="button" class="pe-lang-opt" data-l="it" onclick="setLang('it')">Italiano</button>
+          <button type="button" class="pe-lang-opt" data-l="uk" onclick="setLang('uk')">Українська</button>
+        </div>
       </div>
 
       <div class="pe-field">
@@ -3914,6 +3968,13 @@ function setLang(l) {
   // Mark the active item in the menu.
   document.querySelectorAll('.lm-item').forEach(b => {
     b.classList.toggle('active', b.dataset.l === l);
+  });
+  // Mirror the active state on the profile modal's language pills so the
+  // selection stays in sync regardless of which entry point was used.
+  // Different class ('on' vs 'active') because the modal pill follows the
+  // .pe-priv-opt convention; the header menu has its own .lm-item style.
+  document.querySelectorAll('.pe-lang-opt').forEach(b => {
+    b.classList.toggle('on', b.dataset.l === l);
   });
   closeLangMenu();
   applyI18n();
@@ -7497,6 +7558,13 @@ function openProfileEdit() {
   document.getElementById('peErr')?.classList.remove('on');
   document.getElementById('peSaveBtn').disabled = false;
   document.getElementById('peSaveBtn').textContent = 'Save';
+  // Highlight the currently-active language pill. setLang() also syncs this
+  // class on switch, but on first-open since page load no setLang has run
+  // and we need to reflect the initial `lang` resolved from localStorage /
+  // profile / navigator.
+  document.querySelectorAll('.pe-lang-opt').forEach(b => {
+    b.classList.toggle('on', b.dataset.l === lang);
+  });
   showProfileEdit();
 }
 
