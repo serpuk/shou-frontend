@@ -2557,15 +2557,14 @@ footer p {
   font-size: 11px; color: var(--bone3); line-height: 1.4;
 }
 
-/* Language picker — pill grid that wraps to 2 rows on narrow screens.
-   Wider screens fit all 7 options in a single row. Active state mirrors
-   .pe-priv-opt for visual consistency across the modal's pill controls. */
+/* Language picker — pill grid. Fixed 4 columns regardless of viewport:
+   the profile modal caps near 600px wide, so 7 columns would squeeze pills
+   to ~72px each and truncate names like 'Nederlands' and 'Українська'.
+   4-col + wrap gives ~130px per pill — enough for every native name on
+   one line — and only adds ~36px vertical height for the second row. */
 .pe-lang-grid {
   display: grid; gap: 6px;
   grid-template-columns: repeat(4, 1fr);
-}
-@media (min-width: 500px) {
-  .pe-lang-grid { grid-template-columns: repeat(7, 1fr); }
 }
 .pe-lang-opt {
   padding: 8px 6px;
