@@ -4177,13 +4177,25 @@ async function fetchEvts(){
     const totals = d.totals || {};
     document.getElementById('sv').textContent =
       totals.venues  ?? [...new Set(all.map(e=>e.venue))].length;
-    // Cities: backend ships a LIST of raw city strings; we count distinct
-    // ones. Slight overcount possible (e.g. "Brussels" and "Bruxelles" as
-    // separate raw entries from different sources) until the RPC is updated
-    // to dedupe by canonical_city — cosmetic, not blocking.
+    // Cities: backend ships a LIST of raw city strings. We fold them to a
+    // realistic municipality count two ways:
+    //   1. Submunicipalities are stored as "Deelgemeente (Parent)" — e.g.
+    //      "Heverlee (Leuven)", "Berchem (Antwerpen)". These aren't separate
+    //      cities, so we collapse them to the parent in the "(...)".
+    //   2. Spelling/case/bilingual variants ("Antwerpen"/"Antwerp"/"ANTWERPEN",
+    //      "Gent"/"Ghent") are deduped by lowercasing + trimming.
+    // This stops the stat from overcounting (Belgium has 565 municipalities;
+    // raw strings inflate well past that with deelgemeenten + spellings).
     if (Array.isArray(totals.cityList)) {
-      const lowered = new Set(totals.cityList.map(c => String(c||'').trim().toLowerCase()));
-      document.getElementById('sc').textContent = lowered.size;
+      const parentOf = (raw) => {
+        const s = String(raw || '').trim();
+        const m = s.match(/\(([^)]+)\)\s*$/);   // trailing "(Parent)"
+        return (m ? m[1] : s).trim().toLowerCase();
+      };
+      const munis = new Set(
+        totals.cityList.map(parentOf).filter(Boolean)
+      );
+      document.getElementById('sc').textContent = munis.size;
     } else {
       document.getElementById('sc').textContent = cities.length;
     }
