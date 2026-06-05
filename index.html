@@ -2565,6 +2565,29 @@ footer p {
   background: rgba(255,153,102,0.04);
 }
 .pe-textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+/* The feedback message box wants more room than the profile status field. */
+#fbMessage { min-height: 140px; }
+
+/* Floating feedback button — fixed bottom-right, signed-in users only.
+   Hidden by default; .on is added at runtime when a session exists. Sits below
+   modals (z 300) but above page content. Raised above the transient GDPR
+   banner so they don't overlap on first visit. */
+.fab-feedback {
+  position: fixed; right: 20px; bottom: 20px; z-index: 250;
+  display: none; align-items: center; justify-content: center;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--magenta), var(--coral));
+  color: #fff; border: none; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset;
+  font-size: 22px; line-height: 1;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.fab-feedback.on { display: inline-flex; }
+.fab-feedback:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+.fab-feedback:active { transform: translateY(0) scale(0.98); }
+@media (max-width: 600px) {
+  .fab-feedback { width: 46px; height: 46px; right: 14px; bottom: 76px; font-size: 19px; }
+}
 .pe-charcount { font-size: 11px; color: var(--bone3); text-align: right; margin-top: 4px; }
 .pe-charcount.warn { color: var(--magenta); }
 
@@ -3097,6 +3120,11 @@ footer p {
     </div>
   </div>
 </div>
+
+<!-- Floating feedback button: signed-in users, every screen. Visibility
+     toggled by syncFeedbackFab() on auth state change. Reports from wherever
+     the user is, so captured context reflects the actual screen. -->
+<button class="fab-feedback" id="fabFeedback" onclick="openFeedback()" aria-label="Send feedback" title="Send feedback">💬</button>
 
 <!-- Feedback modal: signed-in users send a bug report / idea / other. Reuses
      the profile-sheet styling. Submits to /api/feedback with the auth token. -->
@@ -7403,6 +7431,10 @@ async function signOut() {
 function renderAuthSurface() {
   const box = document.getElementById('authbox');
   if (!box) return;
+
+  // Floating feedback button is for signed-in users only.
+  const fab = document.getElementById('fabFeedback');
+  if (fab) fab.classList.toggle('on', !!currentSession);
 
   // Smart-default For You: when a signed-in user has enough likes, fetch
   // recommendations in the background. The home feed automatically uses them
