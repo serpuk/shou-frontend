@@ -3014,6 +3014,7 @@ footer p {
       </div>
       <div class="pv-actions">
         <button class="pv-btn primary" onclick="openProfileEdit()">Edit profile</button>
+        <button class="pv-btn" onclick="openFeedback()">Send feedback</button>
         <button class="pv-btn danger" onclick="signOut()">Sign out</button>
       </div>
     </div>
@@ -3097,8 +3098,38 @@ footer p {
   </div>
 </div>
 
-<!-- Liked-by modal: shows public profiles that liked an event. Opened
-     by clicking the like-count on any event card (small or featured). -->
+<!-- Feedback modal: signed-in users send a bug report / idea / other. Reuses
+     the profile-sheet styling. Submits to /api/feedback with the auth token. -->
+<div class="profile-mov" id="feedbackMov" onclick="closeFeedbackIfBackdrop(event)">
+  <div class="profile-sheet">
+    <button class="mcl" onclick="closeFeedback()" aria-label="Close">✕</button>
+    <div class="pe-form" style="display:block;">
+      <div class="pv-name" style="margin-bottom:4px;">Send feedback</div>
+      <div class="pv-email" id="fbIntro" style="margin-bottom:16px;">Found a bug or have an idea? We read everything.</div>
+
+      <div class="pe-field">
+        <div class="pe-label">Type</div>
+        <div class="pe-lang-grid" id="fbTypeGrid">
+          <button type="button" class="pe-lang-opt on" data-t="idea" onclick="setFeedbackType('idea')">💡 Idea</button>
+          <button type="button" class="pe-lang-opt" data-t="bug" onclick="setFeedbackType('bug')">🐞 Bug</button>
+          <button type="button" class="pe-lang-opt" data-t="other" onclick="setFeedbackType('other')">💬 Other</button>
+        </div>
+      </div>
+
+      <div class="pe-field">
+        <label class="pe-label" for="fbMessage">Message</label>
+        <textarea class="pe-textarea" id="fbMessage" maxlength="4000" placeholder="Tell us what's on your mind…"></textarea>
+      </div>
+
+      <p class="pe-err" id="fbErr"></p>
+
+      <div class="pe-actions">
+        <button class="pv-btn" onclick="closeFeedback()">Cancel</button>
+        <button class="pv-btn primary" id="fbSendBtn" onclick="submitFeedback()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="liked-by-mov" id="likedByMov" onclick="closeLikedByIfBackdrop(event)">
   <div class="liked-by-sheet">
     <div class="lb-head">
@@ -7547,6 +7578,100 @@ function closeProfileSheet() {
 
 function closeProfileSheetIfBackdrop(ev) {
   if (ev.target.id === 'profileMov') closeProfileSheet();
+}
+
+// ── Feedback modal ─────────────────────────────────────────────────────────
+let feedbackType = 'idea';   // 'idea' | 'bug' | 'other'
+
+function openFeedback() {
+  // Signed-in only (the button lives in the profile sheet, but guard anyway).
+  if (!currentSession) { openSignInModal?.(); return; }
+  closeProfileSheet();
+  feedbackType = 'idea';
+  setFeedbackType('idea');
+  const msg = document.getElementById('fbMessage'); if (msg) msg.value = '';
+  const err = document.getElementById('fbErr');     if (err) err.textContent = '';
+  const btn = document.getElementById('fbSendBtn'); if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+  document.getElementById('feedbackMov')?.classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFeedback() {
+  document.getElementById('feedbackMov')?.classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+function closeFeedbackIfBackdrop(ev) {
+  if (ev.target.id === 'feedbackMov') closeFeedback();
+}
+
+function setFeedbackType(t) {
+  feedbackType = t;
+  document.querySelectorAll('#fbTypeGrid .pe-lang-opt').forEach(function (b) {
+    b.classList.toggle('on', b.getAttribute('data-t') === t);
+  });
+}
+
+async function submitFeedback() {
+  const err = document.getElementById('fbErr');
+  const btn = document.getElementById('fbSendBtn');
+  const message = (document.getElementById('fbMessage')?.value || '').trim();
+
+  if (err) err.textContent = '';
+  if (!message) { if (err) err.textContent = 'Please enter a message.'; return; }
+  if (!currentSession) { if (err) err.textContent = 'Please sign in to send feedback.'; return; }
+
+  // Capture app + device context automatically — far more useful than asking.
+  // Client-only signals (screen, viewport, timezone, etc.) are gathered here;
+  // the backend separately parses the user-agent header for browser/OS/device.
+  // All app-state sources are verified to exist: the URL encodes the open event
+  // (?event=<id>), `lang` is the UI language, #ai is the search box.
+  let context = {};
+  try {
+    const nav = window.navigator || {};
+    context = {
+      // App state
+      url:           window.location.href,
+      path:          window.location.pathname + window.location.search,
+      lang:          (typeof lang !== 'undefined' ? lang : null),
+      search_query:  (document.getElementById('ai')?.value || '').trim() || null,
+      search_active: !!(typeof aiResultIds !== 'undefined' && aiResultIds),
+      // Device / display (client-only — server can't see these)
+      viewport_w:    window.innerWidth,
+      viewport_h:    window.innerHeight,
+      screen_w:      (window.screen && window.screen.width)  || null,
+      screen_h:      (window.screen && window.screen.height) || null,
+      dpr:           window.devicePixelRatio || null,
+      touch:         (('ontouchstart' in window) || (nav.maxTouchPoints > 0)) || false,
+      browser_lang:  nav.language || null,
+      timezone:      (Intl?.DateTimeFormat?.().resolvedOptions?.().timeZone) || null,
+      online:        (typeof nav.onLine === 'boolean' ? nav.onLine : null),
+    };
+  } catch (e) { /* context is best-effort; never block submit */ }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    const r = await fetch(API_BASE + '/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + currentSession.access_token,
+      },
+      body: JSON.stringify({ type: feedbackType, message: message, context: context }),
+    });
+    if (r.ok) {
+      if (btn) btn.textContent = 'Thanks! ✓';
+      setTimeout(closeFeedback, 900);
+    } else {
+      let m = 'Could not send. Please try again.';
+      try { const j = await r.json(); if (j && j.error) m = j.error; } catch (e) {}
+      if (err) err.textContent = m;
+      if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+    }
+  } catch (e) {
+    if (err) err.textContent = 'Network error. Please try again.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+  }
 }
 
 function showProfileView() {
