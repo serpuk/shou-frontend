@@ -3,6 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Error monitoring (Sentry). Loaded early so it catches errors during app
+     init. Errors-only config (no tracing/replay) to stay within the free tier;
+     beforeSend drops common noise so a bad day can't exhaust the 5K/mo quota.
+     PII disabled for GDPR; data region is EU (DSN host = ingest.de.sentry.io). -->
+<script src="https://browser.sentry-cdn.com/10.56.0/bundle.min.js" crossorigin="anonymous"></script>
+<script>
+  if (window.Sentry) {
+    Sentry.init({
+      dsn: 'https://195b9463001ed35446e709b687a47c73@o4511513450905601.ingest.de.sentry.io/4511513482297424',
+      environment: 'production',
+      sendDefaultPii: false,
+      tracesSampleRate: 0,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
+      beforeSend: function (event, hint) {
+        // Drop noise that wastes quota and isn't actionable: browser-extension
+        // errors, and the generic ResizeObserver loop warning.
+        var msg = (hint && hint.originalException && hint.originalException.message) || '';
+        if (typeof msg === 'string' && msg.indexOf('ResizeObserver loop') !== -1) return null;
+        var frames = (((event.exception || {}).values || [])[0] || {}).stacktrace;
+        if (frames && frames.frames && frames.frames.some(function (f) {
+          return /extensions?\//i.test(f.filename || '') || /^chrome-extension:|^moz-extension:/.test(f.filename || '');
+        })) return null;
+        return event;
+      },
+    });
+  }
+</script>
 <title>shou — belgium after dark</title>
 <meta name="description" content="Your city, after dark. Discover concerts, festivals, clubs, theatre & live events across Belgium — curated for the night crowd.">
 <meta property="og:title" content="shou — belgium after dark">
