@@ -6030,7 +6030,7 @@ function cm2(){
   // Reset the swipe track to center and clear neighbor previews so a reopen
   // starts clean (no leftover transform or stale neighbor content).
   const t = document.getElementById('mcTrack');
-  if (t) { t.classList.remove('mc-track-drag','mc-track-anim'); t.style.transform=''; }
+  if (t) { t.classList.remove('mc-track-drag','mc-track-anim'); t.style.transform=''; t.style.transitionDuration=''; }
   const pp = document.getElementById('mcPrev'); if (pp) pp.innerHTML='';
   const np = document.getElementById('mcNext'); if (np) np.innerHTML='';
   // Restore body scroll
@@ -6343,7 +6343,23 @@ function initSwipeNav() {
 
     if (!t) return;
     t.classList.remove('mc-track-drag');
-    t.classList.add('mc-track-anim');   // enable the 280ms settle transition
+    t.classList.add('mc-track-anim');   // base CSS transition (overridden below)
+
+    // Velocity-dependent settle: match the iPhone Photos feel where a fast
+    // flick snaps quickly and a slow drag eases in gently. We already captured
+    // swipeVelX (px/ms) on release. Map higher speed → shorter duration.
+    //   ~slow drag (≈0 px/ms)  → SETTLE_MAX (gentle)
+    //   ~fast flick (≥2 px/ms) → SETTLE_MIN (snappy)
+    // Clamped so it never feels sluggish or instant. Tune these two numbers
+    // to taste after testing on a real device.
+    const SETTLE_MIN = 170;   // ms — hard flick
+    const SETTLE_MAX = 340;   // ms — slow drag
+    const speed = Math.abs(swipeVelX);                 // px/ms at release
+    const settleMs = Math.round(
+      SETTLE_MAX - Math.min(speed / 2, 1) * (SETTLE_MAX - SETTLE_MIN)
+    );
+    // Inline duration overrides the class's fixed 280ms for this one settle.
+    t.style.transitionDuration = settleMs + 'ms';
 
     if (commit) {
       swipeBusy = true;
@@ -6369,23 +6385,25 @@ function initSwipeNav() {
         // Reset track to center without animating the reset.
         t.classList.remove('mc-track-anim');
         t.style.transform = '';
+        t.style.transitionDuration = '';   // clear velocity override
         clearNeighbors();
         updateNavArrows(target.id);
         // Allow paint of the reset state before re-enabling gestures.
         requestAnimationFrame(() => { swipeBusy = false; });
       };
       t.addEventListener('transitionend', promote);
-      setTimeout(promote, 340);  // safety net if transitionend doesn't fire
+      setTimeout(promote, settleMs + 60);  // safety net (settle + margin)
     } else {
       // Snap back to center; clear neighbors after the settle finishes.
       t.style.transform = '';
       const done = () => {
         t.removeEventListener('transitionend', done);
         t.classList.remove('mc-track-anim');
+        t.style.transitionDuration = '';   // clear velocity override
         clearNeighbors();
       };
       t.addEventListener('transitionend', done);
-      setTimeout(done, 320);
+      setTimeout(done, settleMs + 60);
     }
   }, { passive: true });
 
