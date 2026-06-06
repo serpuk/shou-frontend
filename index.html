@@ -6658,7 +6658,15 @@ function cancelAISearch() {
 // words, which is the right place for that nuance.
 function showAISuggested() {
   if (!aiSuggestedIds || aiSuggestedIds.size === 0) return;
-  aiResultIds   = new Set(aiSuggestedIds);  // grid now renders the alternatives
+  // Merge the suggestions INTO the current result set rather than replacing it.
+  // When there were real in-area matches (e.g. the 1 Ixelles party), replacing
+  // would discard them — the user clicked "see more nearby", not "drop my
+  // result". Appending keeps the match and adds the alternatives below it.
+  if (aiResultIds && aiResultIds.size > 0) {
+    for (const id of aiSuggestedIds) aiResultIds.add(id);
+  } else {
+    aiResultIds = new Set(aiSuggestedIds);
+  }
   aiSuggestedIds = new Set();               // consumed
   aiSearchArea  = null;                     // suggestions are out-of-area; drop the misleading header suffix
   aiResultsAreFallback = true;              // tells the header these aren't from the user's selected area
@@ -6755,7 +6763,13 @@ function renderAIBanner({ searching, refining, query, reasoning, count, fastCoun
   // out-of-area suggestions. Clicking it promotes those suggestions to the
   // main result set and broadens the area filter to 'all'.
   const suggestionsCount = aiSuggestedIds ? aiSuggestedIds.size : 0;
-  const showSuggestionsCTA = count === 0 && suggestionsCount > 0;
+  // Show the "See N nearby alternatives" CTA whenever the LLM returned
+  // out-of-area suggestions — not only in the zero-match case. Previously this
+  // required count===0, so a search with a few in-area matches PLUS suggestions
+  // (e.g. "party in Ixelles" → 1 match + 6 Brussels alternatives) returned and
+  // promised the suggestions in the reasoning but gave the user no way to see
+  // them. Surfacing the button keeps the UI consistent with the reasoning text.
+  const showSuggestionsCTA = suggestionsCount > 0;
   const suggestionsBtnLabel = (SUGGESTION_BTN_LABEL[lang] || SUGGESTION_BTN_LABEL.en)(suggestionsCount);
   const suggestionsBtn = showSuggestionsCTA
     ? `<button onclick="showAISuggested()" style="background:var(--magenta);border:none;color:#fff;padding:8px 18px;border-radius:20px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-left:8px;transition:all .2s;box-shadow:0 0 14px rgba(255,46,126,0.35);" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">${suggestionsBtnLabel}</button>`
