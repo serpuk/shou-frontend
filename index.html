@@ -1829,6 +1829,13 @@ body.ai-active .stats { display: none; }
               opacity   280ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform, opacity;
 }
+/* While the finger is down and dragging, we track 1:1 with no transition so
+   the card follows the thumb exactly (native-app feel). The inline transform
+   set by JS during touchmove takes over; on release we remove this class so
+   the transition above animates the snap-back or hands off to swipeToOffset. */
+#mc.mc-dragging {
+  transition: none;
+}
 #mc.swipe-out-left  { transform: translateX(-100%); opacity: 0.4; }
 #mc.swipe-out-right { transform: translateX( 100%); opacity: 0.4; }
 #mc.swipe-in-left   { transform: translateX(-100%); opacity: 0; transition: none; }
@@ -6159,40 +6166,150 @@ function swipeToOffset(offset) {
 
 function trackView(id) { try { track(id, 'view'); } catch (_) {} }
 
+// ──────────────────────────────────────────────────────────────────────
 // Swipe state. Reset on each touchstart.
+//
+// Upgraded from detect-on-release to LIVE finger tracking (native-app feel,
+// like Instagram/App Store): during touchmove the card follows the thumb 1:1;
+// on release we commit (hand off to swipeToOffset) or snap back, deciding by
+// BOTH distance and velocity so a fast flick advances even on a short drag.
+// Edges (first/last event) get rubber-band resistance instead of sliding into
+// empty space.
+// ──────────────────────────────────────────────────────────────────────
 let swipeStartX = 0;
 let swipeStartY = 0;
 let swipeStartTime = 0;
+let swipeLastX = 0;
+let swipeLastT = 0;
+let swipeVelX = 0;          // px/ms, smoothed
+let swipeDragging = false;  // true once we've locked into a horizontal drag
+let swipeDecided = false;   // true once we've decided drag-vs-scroll for this gesture
 
 function initSwipeNav() {
   const mov = document.getElementById('mov');
   if (!mov) return;
 
+  // Is horizontal swipe navigation allowed right now? (mirrors swipeToOffset guards)
+  function swipeEnabled() {
+    if (omSingleEvent) return false;
+    return findCurrentEventIndex() >= 0;
+  }
+
+  // Rubber-band: when dragging past an edge (no prev/next event), the card
+  // resists with diminishing movement so it feels "stuck" rather than free.
+  function applyResistance(dx) {
+    const idx = findCurrentEventIndex();
+    const atStart = idx <= 0;
+    const atEnd   = idx >= filtered.length - 1;
+    // dx > 0 = dragging right = wants PREVIOUS; dx < 0 = wants NEXT.
+    if ((dx > 0 && atStart) || (dx < 0 && atEnd)) {
+      return dx * 0.32;  // heavy resistance at the dead edge
+    }
+    return dx;
+  }
+
   mov.addEventListener('touchstart', (ev) => {
     if (ev.touches.length !== 1) return;
-    swipeStartX = ev.touches[0].clientX;
+    swipeStartX = swipeLastX = ev.touches[0].clientX;
     swipeStartY = ev.touches[0].clientY;
-    swipeStartTime = Date.now();
+    swipeStartTime = swipeLastT = Date.now();
+    swipeVelX = 0;
+    swipeDragging = false;
+    swipeDecided = false;
   }, { passive: true });
 
-  mov.addEventListener('touchend', (ev) => {
-    if (!swipeStartTime) return;
-    const elapsed = Date.now() - swipeStartTime;
-    swipeStartTime = 0;
-    if (elapsed > 600) return;  // too slow — probably not a swipe
-    const touch = ev.changedTouches[0];
-    if (!touch) return;
+  mov.addEventListener('touchmove', (ev) => {
+    if (!swipeStartTime || ev.touches.length !== 1) return;
+    const touch = ev.touches[0];
     const dx = touch.clientX - swipeStartX;
     const dy = touch.clientY - swipeStartY;
+
+    // Decide once per gesture whether this is a horizontal drag or a vertical
+    // scroll. Until decided, do nothing (let the modal scroll naturally).
+    if (!swipeDecided) {
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if (adx < 10 && ady < 10) return;          // too small to tell yet
+      swipeDecided = true;
+      // Horizontal-dominant AND swipe is enabled → take over as a drag.
+      swipeDragging = (adx > ady * 1.2) && swipeEnabled();
+      if (swipeDragging) {
+        const mc = document.getElementById('mc');
+        if (mc) {
+          mc.classList.remove('swipe-out-left','swipe-out-right','swipe-in-left','swipe-in-right');
+          mc.classList.add('mc-dragging');
+        }
+      }
+    }
+    if (!swipeDragging) return;
+
+    // We own this gesture now — prevent the modal from vertical-scrolling
+    // under our horizontal drag.
+    if (ev.cancelable) ev.preventDefault();
+
+    // Smoothed velocity (px/ms) for flick detection on release.
+    const now = Date.now();
+    const dt = now - swipeLastT;
+    if (dt > 0) {
+      const instV = (touch.clientX - swipeLastX) / dt;
+      swipeVelX = swipeVelX * 0.7 + instV * 0.3;  // low-pass
+      swipeLastX = touch.clientX;
+      swipeLastT = now;
+    }
+
+    const mc = document.getElementById('mc');
+    if (!mc) return;
+    const eff = applyResistance(dx);
+    // Slight opacity falloff with distance for depth (max ~0.5 fade at 50% width).
+    const frac = Math.min(Math.abs(eff) / (window.innerWidth || 400), 0.5);
+    mc.style.transform = `translateX(${eff}px)`;
+    mc.style.opacity = String(1 - frac * 0.5);
+  }, { passive: false });  // non-passive: we may preventDefault during a horizontal drag
+
+  mov.addEventListener('touchend', (ev) => {
+    const wasDragging = swipeDragging;
+    const startedAt = swipeStartTime;
+    swipeStartTime = 0;
+    swipeDragging = false;
+    swipeDecided = false;
+
+    const mc = document.getElementById('mc');
+    if (!wasDragging) {
+      // Not a horizontal drag (vertical scroll, tap, or swipe disabled). Make
+      // sure no stray inline transform lingers.
+      if (mc) { mc.classList.remove('mc-dragging'); mc.style.transform=''; mc.style.opacity=''; }
+      return;
+    }
+
+    const touch = ev.changedTouches[0];
+    const dx = touch ? touch.clientX - swipeStartX : 0;
     const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-    // Horizontal-dominant + exceed 60px threshold
-    if (adx < 60) return;
-    if (adx < ady * 1.5) return;
-    // dx > 0 = swipe right (finger moved right) = previous event
-    // dx < 0 = swipe left  (finger moved left)  = next event
-    swipeToOffset(dx > 0 ? -1 : 1);
+    const width = window.innerWidth || 400;
+
+    // Commit if dragged past ~28% of screen width, OR a fast flick
+    // (velocity past 0.5 px/ms) in a consistent direction past a small floor.
+    const distanceCommit = adx > width * 0.28;
+    const velocityCommit = Math.abs(swipeVelX) > 0.5 && adx > 40 &&
+                           (Math.sign(swipeVelX) === Math.sign(dx));
+    const commit = distanceCommit || velocityCommit;
+
+    // Direction guard at edges: don't commit into empty space.
+    const idx = findCurrentEventIndex();
+    const wantsPrev = dx > 0;
+    const blockedByEdge = (wantsPrev && idx <= 0) || (!wantsPrev && idx >= filtered.length - 1);
+
+    if (mc) mc.classList.remove('mc-dragging');
+
+    if (commit && !blockedByEdge) {
+      // Clear inline drag transform; let swipeToOffset's class-based animation
+      // take over from the current dragged position (it sets its own transform).
+      if (mc) { mc.style.transform=''; mc.style.opacity=''; }
+      swipeToOffset(wantsPrev ? -1 : 1);
+    } else {
+      // Snap back to center with the transition (mc-dragging removed → transition active).
+      if (mc) { mc.style.transform=''; mc.style.opacity=''; }
+    }
   }, { passive: true });
+
 
   // Keyboard navigation — left/right arrow keys navigate between events
   // when the modal is open. Ignored when an input/textarea has focus so
