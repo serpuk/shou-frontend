@@ -1820,10 +1820,42 @@ body.ai-active .stats { display: none; }
 }
 .modal::-webkit-scrollbar-thumb:hover { background: rgba(255,46,126,0.55); }
 
-/* Swipe transition states for #mc.
-   The container slides out in the swipe direction, then a new content
-   snaps to the opposite side and slides back to center. ~280ms each leg
-   with a cubic-bezier ease for smoothness. */
+/* ── OPTION B: adjacent-card swipe track ──
+   To eliminate the "void" where one event slides out before the next slides
+   in, we render a 3-pane horizontal track inside .modal: [prev][center][next].
+   #mc remains the live center pane (all existing om()/URL/arrow logic untouched
+   — it still writes to #mc). The neighbor panes are populated lazily at drag
+   start with buildEventCardHTML() and sit just off each edge. During a drag we
+   translate the TRACK, so the neighbor's edge tracks the thumb edge-to-edge —
+   no empty gap. On commit the track animates fully to the neighbor, then we
+   promote it to center via the existing swap and reset the track.
+
+   The track is laid out as 3 panes each 100% wide, the row offset by -100%
+   so the center pane (#mc) is the one visible by default. */
+.mc-track {
+  display: flex;
+  width: 300%;
+  transform: translateX(-33.3333%);  /* center pane visible */
+  will-change: transform;
+}
+.mc-track.mc-track-anim {
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mc-track.mc-track-drag { transition: none; }   /* 1:1 finger tracking */
+.mc-pane {
+  flex: 0 0 33.3333%;
+  width: 33.3333%;
+  min-width: 0;
+}
+/* Neighbor preview panes scroll independently if tall, like the center. */
+.mc-pane-prev, .mc-pane-next {
+  overflow-y: auto;
+  max-height: 90vh;
+  -webkit-overflow-scrolling: touch;
+}
+/* When neighbors aren't populated (solo mode, or before first drag), keep them
+   empty and the track simply shows the center pane as before. */
+
 #mc {
   transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
               opacity   280ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2979,7 +3011,7 @@ footer p {
   <button class="mcl" onclick="cm2()" aria-label="Close">✕</button>
   <button class="mnav mnav-prev" onclick="swipeToOffset(-1)" aria-label="Previous event">‹</button>
   <button class="mnav mnav-next" onclick="swipeToOffset(1)" aria-label="Next event">›</button>
-  <div class="modal"><div id="mc"></div></div>
+  <div class="modal"><div class="mc-track" id="mcTrack"><div class="mc-pane mc-pane-prev" id="mcPrev"></div><div class="mc-pane" id="mc"></div><div class="mc-pane mc-pane-next" id="mcNext"></div></div></div>
 </div>
 
 <!-- Sign-in modal: email + magic link. Two states (form / "check your email"). -->
@@ -5995,6 +6027,12 @@ function cm(e){if(e.target===document.getElementById('mov'))cm2();}
 
 function cm2(){
   document.getElementById('mov').classList.remove('on');
+  // Reset the swipe track to center and clear neighbor previews so a reopen
+  // starts clean (no leftover transform or stale neighbor content).
+  const t = document.getElementById('mcTrack');
+  if (t) { t.classList.remove('mc-track-drag','mc-track-anim'); t.style.transform=''; }
+  const pp = document.getElementById('mcPrev'); if (pp) pp.innerHTML='';
+  const np = document.getElementById('mcNext'); if (np) np.innerHTML='';
   // Restore body scroll
   document.body.style.overflow = '';
   // Clear solo-mode flag — next om() open starts in normal multi-event mode
@@ -6182,34 +6220,63 @@ let swipeStartTime = 0;
 let swipeLastX = 0;
 let swipeLastT = 0;
 let swipeVelX = 0;          // px/ms, smoothed
-let swipeDragging = false;  // true once we've locked into a horizontal drag
-let swipeDecided = false;   // true once we've decided drag-vs-scroll for this gesture
+let swipeDragging = false;  // locked into a horizontal drag
+let swipeDecided = false;   // decided drag-vs-scroll for this gesture
+let swipePrevEv = null;     // neighbor event objects captured at drag start
+let swipeNextEv = null;
+let swipeBusy = false;      // a commit animation is in flight; ignore new gestures
+
+// Populate the neighbor preview panes from the filtered list around the
+// current event. Called at drag start so the void never appears.
+function populateNeighbors() {
+  const idx = findCurrentEventIndex();
+  const prevPane = document.getElementById('mcPrev');
+  const nextPane = document.getElementById('mcNext');
+  if (!prevPane || !nextPane) return;
+  swipePrevEv = (idx > 0) ? filtered[idx - 1] : null;
+  swipeNextEv = (idx >= 0 && idx < filtered.length - 1) ? filtered[idx + 1] : null;
+  prevPane.innerHTML = swipePrevEv ? buildEventCardHTML(swipePrevEv) : '';
+  nextPane.innerHTML = swipeNextEv ? buildEventCardHTML(swipeNextEv) : '';
+  prevPane.scrollTop = 0;
+  nextPane.scrollTop = 0;
+}
+function clearNeighbors() {
+  const prevPane = document.getElementById('mcPrev');
+  const nextPane = document.getElementById('mcNext');
+  if (prevPane) prevPane.innerHTML = '';
+  if (nextPane) nextPane.innerHTML = '';
+  swipePrevEv = swipeNextEv = null;
+}
 
 function initSwipeNav() {
   const mov = document.getElementById('mov');
   if (!mov) return;
 
-  // Is horizontal swipe navigation allowed right now? (mirrors swipeToOffset guards)
   function swipeEnabled() {
     if (omSingleEvent) return false;
     return findCurrentEventIndex() >= 0;
   }
 
-  // Rubber-band: when dragging past an edge (no prev/next event), the card
-  // resists with diminishing movement so it feels "stuck" rather than free.
+  // Rubber-band resistance when dragging toward an edge with no neighbor.
   function applyResistance(dx) {
-    const idx = findCurrentEventIndex();
-    const atStart = idx <= 0;
-    const atEnd   = idx >= filtered.length - 1;
-    // dx > 0 = dragging right = wants PREVIOUS; dx < 0 = wants NEXT.
-    if ((dx > 0 && atStart) || (dx < 0 && atEnd)) {
-      return dx * 0.32;  // heavy resistance at the dead edge
-    }
+    const atStart = !swipePrevEv;
+    const atEnd   = !swipeNextEv;
+    if ((dx > 0 && atStart) || (dx < 0 && atEnd)) return dx * 0.32;
     return dx;
   }
 
+  function track() { return document.getElementById('mcTrack'); }
+
+  // Set the track's translateX. Base is -33.3333% (center pane visible);
+  // dragPx shifts it by a pixel delta following the thumb.
+  function setTrack(dragPx) {
+    const t = track();
+    if (!t) return;
+    t.style.transform = `translateX(calc(-33.3333% + ${dragPx}px))`;
+  }
+
   mov.addEventListener('touchstart', (ev) => {
-    if (ev.touches.length !== 1) return;
+    if (swipeBusy || ev.touches.length !== 1) return;
     swipeStartX = swipeLastX = ev.touches[0].clientX;
     swipeStartY = ev.touches[0].clientY;
     swipeStartTime = swipeLastT = Date.now();
@@ -6219,64 +6286,46 @@ function initSwipeNav() {
   }, { passive: true });
 
   mov.addEventListener('touchmove', (ev) => {
-    if (!swipeStartTime || ev.touches.length !== 1) return;
+    if (swipeBusy || !swipeStartTime || ev.touches.length !== 1) return;
     const touch = ev.touches[0];
     const dx = touch.clientX - swipeStartX;
     const dy = touch.clientY - swipeStartY;
 
-    // Decide once per gesture whether this is a horizontal drag or a vertical
-    // scroll. Until decided, do nothing (let the modal scroll naturally).
     if (!swipeDecided) {
       const adx = Math.abs(dx), ady = Math.abs(dy);
-      if (adx < 10 && ady < 10) return;          // too small to tell yet
+      if (adx < 10 && ady < 10) return;
       swipeDecided = true;
-      // Horizontal-dominant AND swipe is enabled → take over as a drag.
       swipeDragging = (adx > ady * 1.2) && swipeEnabled();
       if (swipeDragging) {
-        const mc = document.getElementById('mc');
-        if (mc) {
-          mc.classList.remove('swipe-out-left','swipe-out-right','swipe-in-left','swipe-in-right');
-          mc.classList.add('mc-dragging');
-        }
+        populateNeighbors();           // fill neighbor panes → no void
+        const t = track();
+        if (t) { t.classList.remove('mc-track-anim'); t.classList.add('mc-track-drag'); }
       }
     }
     if (!swipeDragging) return;
-
-    // We own this gesture now — prevent the modal from vertical-scrolling
-    // under our horizontal drag.
     if (ev.cancelable) ev.preventDefault();
 
-    // Smoothed velocity (px/ms) for flick detection on release.
     const now = Date.now();
     const dt = now - swipeLastT;
     if (dt > 0) {
       const instV = (touch.clientX - swipeLastX) / dt;
-      swipeVelX = swipeVelX * 0.7 + instV * 0.3;  // low-pass
+      swipeVelX = swipeVelX * 0.7 + instV * 0.3;
       swipeLastX = touch.clientX;
       swipeLastT = now;
     }
-
-    const mc = document.getElementById('mc');
-    if (!mc) return;
-    const eff = applyResistance(dx);
-    // Slight opacity falloff with distance for depth (max ~0.5 fade at 50% width).
-    const frac = Math.min(Math.abs(eff) / (window.innerWidth || 400), 0.5);
-    mc.style.transform = `translateX(${eff}px)`;
-    mc.style.opacity = String(1 - frac * 0.5);
-  }, { passive: false });  // non-passive: we may preventDefault during a horizontal drag
+    setTrack(applyResistance(dx));     // move the whole track; neighbor edge follows thumb
+  }, { passive: false });
 
   mov.addEventListener('touchend', (ev) => {
+    if (swipeBusy) return;
     const wasDragging = swipeDragging;
-    const startedAt = swipeStartTime;
     swipeStartTime = 0;
     swipeDragging = false;
     swipeDecided = false;
 
-    const mc = document.getElementById('mc');
+    const t = track();
     if (!wasDragging) {
-      // Not a horizontal drag (vertical scroll, tap, or swipe disabled). Make
-      // sure no stray inline transform lingers.
-      if (mc) { mc.classList.remove('mc-dragging'); mc.style.transform=''; mc.style.opacity=''; }
+      if (t) { t.classList.remove('mc-track-drag','mc-track-anim'); t.style.transform=''; }
       return;
     }
 
@@ -6285,30 +6334,61 @@ function initSwipeNav() {
     const adx = Math.abs(dx);
     const width = window.innerWidth || 400;
 
-    // Commit if dragged past ~28% of screen width, OR a fast flick
-    // (velocity past 0.5 px/ms) in a consistent direction past a small floor.
     const distanceCommit = adx > width * 0.28;
     const velocityCommit = Math.abs(swipeVelX) > 0.5 && adx > 40 &&
                            (Math.sign(swipeVelX) === Math.sign(dx));
-    const commit = distanceCommit || velocityCommit;
-
-    // Direction guard at edges: don't commit into empty space.
-    const idx = findCurrentEventIndex();
     const wantsPrev = dx > 0;
-    const blockedByEdge = (wantsPrev && idx <= 0) || (!wantsPrev && idx >= filtered.length - 1);
+    const hasNeighbor = wantsPrev ? !!swipePrevEv : !!swipeNextEv;
+    const commit = (distanceCommit || velocityCommit) && hasNeighbor;
 
-    if (mc) mc.classList.remove('mc-dragging');
+    if (!t) return;
+    t.classList.remove('mc-track-drag');
+    t.classList.add('mc-track-anim');   // enable the 280ms settle transition
 
-    if (commit && !blockedByEdge) {
-      // Clear inline drag transform; let swipeToOffset's class-based animation
-      // take over from the current dragged position (it sets its own transform).
-      if (mc) { mc.style.transform=''; mc.style.opacity=''; }
-      swipeToOffset(wantsPrev ? -1 : 1);
+    if (commit) {
+      swipeBusy = true;
+      const target = wantsPrev ? swipePrevEv : swipeNextEv;
+      // Animate the track fully to the chosen neighbor: prev → slide right to
+      // 0%, next → slide left to -66.6666%. The neighbor pane glides into view
+      // edge-to-edge with the outgoing center — no void.
+      t.style.transform = wantsPrev ? 'translateX(0%)' : 'translateX(-66.6667%)';
+
+      let promoted = false;
+      const promote = () => {
+        if (promoted) return;
+        promoted = true;
+        t.removeEventListener('transitionend', promote);
+        // Promote the neighbor to the real center: render into #mc, update
+        // URL/title/arrows via the existing single-event open path, then reset
+        // the track to center instantly (no animation) with neighbors cleared.
+        urlRoutingSelfDriven = true;
+        history.replaceState({ event: target.id }, '', eventCanonicalUrl(target.id));
+        urlRoutingSelfDriven = false;
+        document.title = `${target.name} — shou`;
+        om(target.id, { fromUrl: true, skipScrollReset: false });
+        // Reset track to center without animating the reset.
+        t.classList.remove('mc-track-anim');
+        t.style.transform = '';
+        clearNeighbors();
+        updateNavArrows(target.id);
+        // Allow paint of the reset state before re-enabling gestures.
+        requestAnimationFrame(() => { swipeBusy = false; });
+      };
+      t.addEventListener('transitionend', promote);
+      setTimeout(promote, 340);  // safety net if transitionend doesn't fire
     } else {
-      // Snap back to center with the transition (mc-dragging removed → transition active).
-      if (mc) { mc.style.transform=''; mc.style.opacity=''; }
+      // Snap back to center; clear neighbors after the settle finishes.
+      t.style.transform = '';
+      const done = () => {
+        t.removeEventListener('transitionend', done);
+        t.classList.remove('mc-track-anim');
+        clearNeighbors();
+      };
+      t.addEventListener('transitionend', done);
+      setTimeout(done, 320);
     }
   }, { passive: true });
+
 
 
   // Keyboard navigation — left/right arrow keys navigate between events
