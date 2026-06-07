@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy · shou</title>
+<meta name="description" content="How shou (ABSS Analytics) collects, uses, and protects your personal data, in accordance with the GDPR.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c0910;
+    --ink-2:#15101b;
+    --panel:rgba(255,255,255,0.03);
+    --panel-bd:rgba(255,255,255,0.08);
+    --text:#ece7f0;
+    --text-soft:#b3a9bf;
+    --text-dim:#8a8094;
+    --pink:#ff3d8b;
+    --orange:#ff9b3d;
+    --cyan:#46e0d2;
+    --grad:linear-gradient(100deg,var(--pink),var(--orange));
+    --maxw:760px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    font-weight:300;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* Atmospheric background — soft gradient glows, not flat black */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(900px 600px at 12% -5%, rgba(255,61,139,0.14), transparent 60%),
+      radial-gradient(800px 600px at 100% 8%, rgba(255,155,61,0.10), transparent 55%),
+      radial-gradient(700px 700px at 50% 110%, rgba(70,224,210,0.06), transparent 60%);
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ── Header ───────────────────────────────────────────── */
+  header{padding:64px 0 40px}
+  .brand{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:-0.01em;
+    background:var(--grad);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    display:inline-block;
+    text-decoration:none;
+  }
+  .back{
+    display:inline-flex;align-items:center;gap:7px;
+    color:var(--text-dim);text-decoration:none;font-size:14px;
+    margin-bottom:28px;transition:color .2s;
+  }
+  .back:hover{color:var(--text)}
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(34px,6vw,52px);
+    line-height:1.05;
+    letter-spacing:-0.02em;
+    margin:18px 0 10px;
+  }
+  .updated{
+    color:var(--text-dim);font-size:14px;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .updated::before{
+    content:'';width:6px;height:6px;border-radius:50%;
+    background:var(--grad);display:inline-block;
+  }
+  .lede{
+    color:var(--text-soft);font-size:17px;line-height:1.65;
+    margin-top:26px;padding-top:26px;
+    border-top:1px solid var(--panel-bd);
+    font-weight:300;
+  }
+
+  /* ── Sections ─────────────────────────────────────────── */
+  main{padding-bottom:40px}
+  section{
+    padding:30px 0;
+    border-top:1px solid var(--panel-bd);
+  }
+  h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:24px;
+    letter-spacing:-0.01em;
+    margin-bottom:16px;
+    color:var(--text);
+    display:flex;align-items:baseline;gap:12px;
+  }
+  h2 .num{
+    font-family:'Inter',sans-serif;
+    font-weight:600;font-size:13px;
+    color:var(--pink);
+    background:rgba(255,61,139,0.12);
+    border:1px solid rgba(255,61,139,0.25);
+    border-radius:7px;
+    padding:3px 9px;
+    line-height:1;
+    flex:none;
+    transform:translateY(-2px);
+  }
+  h3{
+    font-family:'Inter',sans-serif;
+    font-weight:600;font-size:16px;
+    color:var(--text);
+    margin:22px 0 10px;
+  }
+  p{margin-bottom:14px;color:var(--text-soft)}
+  strong{color:var(--text);font-weight:600}
+  a{color:var(--orange);text-decoration:none;border-bottom:1px solid rgba(255,155,61,0.35);transition:border-color .2s}
+  a:hover{border-color:var(--orange)}
+
+  ul{list-style:none;margin:0 0 14px;padding:0}
+  ul li{
+    position:relative;padding-left:22px;margin-bottom:12px;
+    color:var(--text-soft);
+  }
+  ul li::before{
+    content:'';position:absolute;left:2px;top:11px;
+    width:7px;height:7px;border-radius:2px;
+    background:var(--grad);
+  }
+
+  /* Controller / contact card */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-bd);
+    border-radius:16px;
+    padding:22px 24px;
+    margin:4px 0 6px;
+  }
+  .card ul li::before{background:var(--cyan);border-radius:50%}
+
+  /* ── Legal basis table ────────────────────────────────── */
+  .table-scroll{overflow-x:auto;margin:6px 0 4px;border-radius:14px;border:1px solid var(--panel-bd)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:520px}
+  thead th{
+    text-align:left;font-weight:600;color:var(--text);
+    background:rgba(255,255,255,0.04);
+    padding:13px 16px;font-size:13px;
+    letter-spacing:0.02em;text-transform:uppercase;
+  }
+  tbody td{
+    padding:13px 16px;color:var(--text-soft);
+    border-top:1px solid var(--panel-bd);
+    vertical-align:top;
+  }
+  tbody tr td:last-child{color:var(--text-dim);white-space:nowrap}
+  @media(max-width:600px){
+    tbody tr td:last-child{white-space:normal}
+  }
+
+  /* Callout for consent withdrawal note */
+  .note{
+    background:rgba(70,224,210,0.06);
+    border:1px solid rgba(70,224,210,0.18);
+    border-left:3px solid var(--cyan);
+    border-radius:10px;
+    padding:14px 18px;
+    margin:14px 0 4px;
+    font-size:14.5px;
+    color:var(--text-soft);
+  }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  footer{
+    border-top:1px solid var(--panel-bd);
+    padding:36px 0 70px;
+    color:var(--text-dim);font-size:14px;
+  }
+  footer .brand-sm{
+    font-family:'Fraunces',serif;font-weight:600;font-size:17px;color:var(--text);
+  }
+  footer p{color:var(--text-dim);margin-bottom:6px}
+
+  /* Entrance animation — single orchestrated reveal */
+  header,section,footer{
+    opacity:0;transform:translateY(14px);
+    animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  header{animation-delay:.02s}
+  section:nth-of-type(1){animation-delay:.08s}
+  section:nth-of-type(2){animation-delay:.12s}
+  section:nth-of-type(3){animation-delay:.16s}
+  section:nth-of-type(n+4){animation-delay:.20s}
+  footer{animation-delay:.24s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){
+    header,section,footer{animation:none;opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <a class="back" href="/">← Back to shou</a>
+    <div><a class="brand" href="/">shou</a></div>
+    <h1>Privacy Policy</h1>
+    <span class="updated">Last updated: 6 June 2026</span>
+    <p class="lede">
+      This Privacy Policy explains how <strong>ABSS Analytics</strong> ("shou", "we", "us")
+      collects, uses, and protects your personal data when you use <strong>shou.be</strong>
+      (the "Service"). We are committed to handling your data transparently and in accordance
+      with the EU General Data Protection Regulation (GDPR).
+    </p>
+  </header>
+
+  <main>
+
+    <section>
+      <h2><span class="num">1</span> Who We Are (Data Controller)</h2>
+      <p>The data controller responsible for your personal data is:</p>
+      <div class="card">
+        <ul>
+          <li><strong>ABSS Analytics</strong></li>
+          <li>Ch. de Louvain 1220, Brussels, 1200, Belgium</li>
+          <li>Company registration number: <strong>BE0804852055</strong></li>
+          <li>Contact for privacy matters: <a href="mailto:privacy@shou.be">privacy@shou.be</a></li>
+        </ul>
+      </div>
+      <p>If you have any questions about this policy or how we handle your data, contact us at the email above.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">2</span> What Data We Collect</h2>
+      <p>We aim to collect as little as possible. What we collect depends on whether you browse as a guest or sign in.</p>
+
+      <h3>2.1 Everyone (including guests; no account required)</h3>
+      <ul>
+        <li><strong>Approximate location (from your IP address):</strong> We use your IP address to estimate your general area (for example, city or region) so that we can show events near you. We do <strong>not</strong> collect precise GPS location unless you explicitly grant it (see Section 2.3).</li>
+        <li><strong>Usage signals:</strong> The events you tap, like, search for, and mark as "going", used to make recommendations more relevant and to improve our event catalog. For guests, these are stored anonymously and associated with your browser rather than your identity.</li>
+        <li><strong>Technical data:</strong> Basic information needed to operate and secure the Service, such as your IP address, browser type and version, operating system, device type, language preference, and timezone. Some of this is captured automatically; some is captured only if you send feedback (see Section 2.4).</li>
+        <li><strong>Local storage on your device:</strong> We store your language preference and, if you sign in, your session, so that the Service remembers your settings between visits. This is stored in your browser rather than on our servers, except where noted.</li>
+      </ul>
+
+      <h3>2.2 If you create an account or sign in</h3>
+      <ul>
+        <li><strong>Email address:</strong> Used to sign you in via a magic link (a one-time sign-in link). We do not use passwords.</li>
+        <li><strong>Saved activity:</strong> Your liked events, events you are going to, and your preferred language, synced to your account so that they are available across your devices.</li>
+        <li><strong>Account identifier:</strong> A unique ID assigned to your account.</li>
+      </ul>
+
+      <h3>2.3 Precise location (only with your permission)</h3>
+      <p>If you tap "Use my location", your browser will ask permission to share precise location. We use this only to surface nearby events and do not store your precise coordinates beyond what's needed to serve that request. You can revoke this permission at any time in your browser settings.</p>
+
+      <h3>2.4 If you send feedback</h3>
+      <p>When you submit feedback through the app, we collect the message you write and, to help us reproduce and fix issues, some automatically captured context: the page/URL you were on, your language, your current search (if any), screen and viewport size, device type, browser language, timezone, and connection status. We do <strong>not</strong> ask for or attach your email to feedback unless you include it yourself in the message.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">3</span> Why We Use Your Data and Our Legal Basis</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>What we do</th><th>Why</th><th>Legal basis (GDPR Art. 6)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Show events near you (IP-based location)</td><td>Core function of the Service</td><td>Legitimate interests / performance of service</td></tr>
+            <tr><td>Recommendations based on your likes, searches, and taps</td><td>To make the Service useful and relevant</td><td>Legitimate interests (or consent, where applicable)</td></tr>
+            <tr><td>Sign you in via magic link and sync your saved events</td><td>To provide account features you request</td><td>Performance of a contract</td></tr>
+            <tr><td>Use precise location when you opt in</td><td>To show nearby events more accurately</td><td>Consent</td></tr>
+            <tr><td>Translate event content</td><td>To show events in your language</td><td>Legitimate interests</td></tr>
+            <tr><td>Error monitoring and security</td><td>To keep the Service working and secure</td><td>Legitimate interests</td></tr>
+            <tr><td>Process feedback you send</td><td>To fix issues and improve the Service</td><td>Legitimate interests / consent</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">Where we rely on consent (for example, precise location), you can withdraw it at any time without affecting your use of the rest of the Service.</div>
+    </section>
+
+    <section>
+      <h2><span class="num">4</span> Who We Share Data With (Processors)</h2>
+      <p>We do <strong>not</strong> sell your personal data, and we do <strong>not</strong> allow advertisers to target you. We share data only with service providers ("processors") who help us run the Service, under agreements that require them to protect your data and use it only on our instructions:</p>
+      <ul>
+        <li><strong>Supabase</strong> — database and authentication hosting. Your account data and saved activity are stored here. Data is hosted in the EU (Frankfurt, Germany).</li>
+        <li><strong>Vercel</strong> — hosting and delivery of the website and its backend functions.</li>
+        <li><strong>Google (Gemini API)</strong> — used to translate event titles and descriptions into your language. Only event text is sent for translation, never your personal account data.</li>
+        <li><strong>Sentry</strong> — error monitoring to detect and fix technical problems. Configured to use the EU data region with personal data minimised.</li>
+        <li><strong>Upstash</strong> — rate-limiting infrastructure to help prevent abuse. Processes IP addresses transiently.</li>
+      </ul>
+      <p>Some providers may process data outside the EU. Where that happens, such transfers are protected by appropriate safeguards (for example, EU Standard Contractual Clauses).</p>
+    </section>
+
+    <section>
+      <h2><span class="num">5</span> How Long We Keep Your Data</h2>
+      <ul>
+        <li><strong>Account data (signed-in users):</strong> Kept while your account is active. If your account is inactive for 2 years, we will delete or anonymise your personal data. You may also delete your account at any time (see Section 6), which removes your associated personal data.</li>
+        <li><strong>Guest usage signals:</strong> Retained for up to 12 months for recommendations and catalogue improvement, then deleted or anonymised.</li>
+        <li><strong>Feedback:</strong> Kept for up to 24 months, as long as needed to address the issue and improve the Service.</li>
+        <li><strong>Technical and security logs:</strong> Kept for up to 90 days for security and debugging.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">6</span> Your Rights</h2>
+      <p>Under the GDPR, you have the right to:</p>
+      <ul>
+        <li><strong>Access</strong> the personal data we hold about you.</li>
+        <li><strong>Rectify</strong> inaccurate or incomplete data.</li>
+        <li><strong>Erase</strong> your data (the "right to be forgotten").</li>
+        <li><strong>Restrict</strong> or <strong>object</strong> to certain processing, including profiling for recommendations.</li>
+        <li><strong>Data portability</strong> — receive your data in a portable format.</li>
+        <li><strong>Withdraw consent</strong> at any time, where processing is based on consent.</li>
+        <li><strong>Lodge a complaint</strong> with your local data protection authority. In Belgium, this is the Data Protection Authority (Gegevensbeschermingsautoriteit / Autorité de protection des données), <a href="https://www.dataprotectionauthority.be" target="_blank" rel="noopener">www.dataprotectionauthority.be</a>.</li>
+      </ul>
+      <p>To exercise any of these rights, contact us at <a href="mailto:privacy@shou.be">privacy@shou.be</a>. We will respond within the timeframes required by law (normally one month).</p>
+    </section>
+
+    <section>
+      <h2><span class="num">7</span> Children</h2>
+      <p>The Service is not directed at children under 13. We do not knowingly collect personal data from children below this age. If you believe a child has provided us data, contact us and we will delete it.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">8</span> Security</h2>
+      <p>We take reasonable technical and organisational measures to protect your data, including hosting in the EU, encrypted connections (HTTPS), restricted access to personal data, and rate-limiting to prevent abuse. No system is perfectly secure, but we work to protect your information and to address any issues promptly.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">9</span> Cookies and Local Storage</h2>
+      <p>We use browser local storage to remember your language preference and keep you signed in. These are essential to the functioning of the Service. We do <strong>not</strong> use third-party advertising or cross-site tracking cookies.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">10</span> Changes to This Policy</h2>
+      <p>We may update this policy from time to time. When we make material changes, we will update the "Last updated" date above and, where appropriate, notify you in the app.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">11</span> Contact</h2>
+      <p>Questions, requests, or complaints:</p>
+      <div class="card">
+        <ul>
+          <li><strong>ABSS Analytics</strong></li>
+          <li><a href="mailto:privacy@shou.be">privacy@shou.be</a></li>
+          <li>Ch. de Louvain 1220, Brussels, 1200, Belgium</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p class="brand-sm">shou</p>
+    <p>After-dark events across Brussels &amp; Belgium.</p>
+    <p>© 2026 ABSS Analytics · <a href="/">shou.be</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
