@@ -6062,19 +6062,29 @@ function cm2(){
   omSingleEvent = false;
   // Restore the URL (drop ?event= param).
   //
-  // HOW matters: if om() pushed a history entry for this modal (in-app card
-  // click), closing should POP that entry via history.back() — the old code
-  // pushed a THIRD entry ('/' on top of '/?event=x'), so the browser back
-  // button reopened the modal before reaching the page the user came from.
-  // If the modal did NOT push (deep link / popstate restore), back() would
-  // throw the user off-site to the referrer — so we replaceState instead,
-  // turning the current '?event=x' entry into the bare URL in place.
+  // HOW matters — three cases:
+  // 1. om() pushed a history entry (in-app card click) → POP it via
+  //    history.back(). The old code pushed a THIRD entry on top, so the
+  //    browser back button reopened the modal before reaching the page
+  //    the user came from.
+  // 2. Deep link FROM A SHOU PAGE (e.g. shou.be/this-week) → also
+  //    history.back(): closing the event returns the visitor to the page
+  //    they were browsing, completing the round-trip they expect.
+  // 3. Deep link from anywhere else (WhatsApp share, Google, direct paste)
+  //    → replaceState to the bare URL. history.back() here would throw the
+  //    visitor out of the app to a dead end; landing them in the catalog
+  //    keeps them somewhere useful.
   const currentParams = new URLSearchParams(window.location.search);
   if (currentParams.has('event') && !urlRoutingSelfDriven) {
+    const cameFromShou = /^https:\/\/([a-z0-9-]+\.)?shou\.be\//i.test(document.referrer);
     if (modalPushedHistory) {
       modalPushedHistory = false;
       // popstate fires after back(); the handler sees no ?event and the
       // modal is already closed, so it only resets the title — idempotent.
+      history.back();
+    } else if (cameFromShou && history.length > 1) {
+      // Deep-linked from our own site (this-week page, landing, etc.) —
+      // return there directly.
       history.back();
     } else {
       urlRoutingSelfDriven = true;
