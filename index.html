@@ -4264,8 +4264,11 @@ function shapeCatalogEvent(e){
       time:e.time||'TBA',
       img:e.img,
       url:e.url||'#',
-      mn:e.mn!=null?e.mn/100:null,   // API returns cents, convert to euros
-      mx:e.mx!=null?e.mx/100:null,
+      // Prices arrive in EUROS — localizeEvent in api/events.js already
+      // converts from price_min_cents (e.g. 2500 → 25). Do NOT divide again:
+      // the old `/100` here turned €25 into €0.25, rendered as "€0" by pStr.
+      mn:e.mn!=null?e.mn:null,
+      mx:e.mx!=null?e.mx:null,
       desc:e.desc||t('descFallback')(e.name||'This event',e.venue||'Belgium'),
       pop:e.pop||50,
       likes:e.likes||0,
