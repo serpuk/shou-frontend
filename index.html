@@ -5906,6 +5906,11 @@ function directionsUrl(e) {
 // True if we're currently navigating programmatically (push/pop) so the
 // popstate handler doesn't double-fire on our own pushState calls.
 let urlRoutingSelfDriven = false;
+// True when the currently-open modal PUSHED its own history entry (in-app
+// card click). False when the modal was opened from the URL itself (deep
+// link / popstate) — closing must then NOT call history.back(), or the user
+// would be thrown off-site to the referring page instead of seeing the app.
+let modalPushedHistory = false;
 
 // Build the inner HTML for a single event card in the modal. Returns image
 // (or placeholder) + body. Pulled out of om() so we can render three of
@@ -6023,12 +6028,16 @@ function om(id, _opts){
   // Update the URL — adds a history entry so browser back closes the modal.
   // Skip when we're restoring from URL (don't add a duplicate history entry)
   // or when the URL already shows this event.
+  // Reset the pushed-entry flag on EVERY open (stale true from a previous
+  // open would make cm2() call history.back() incorrectly).
+  modalPushedHistory = false;
   if (!_opts?.fromUrl) {
     const currentParams = new URLSearchParams(window.location.search);
     if (currentParams.get('event') !== id) {
       urlRoutingSelfDriven = true;
       const newUrl = eventCanonicalUrl(id);
       history.pushState({ event: id }, '', newUrl);
+      modalPushedHistory = true;
       // Update page title for browser tab + share previews
       document.title = `${e.name} — shou`;
       urlRoutingSelfDriven = false;
@@ -6051,15 +6060,28 @@ function cm2(){
   // Clear solo-mode flag — next om() open starts in normal multi-event mode
   // unless the caller passes singleEvent again.
   omSingleEvent = false;
-  // Restore the URL (drop ?event= param). Only push history if we're not
-  // already at the bare URL (e.g. user navigated via back button which
-  // already updated the URL).
+  // Restore the URL (drop ?event= param).
+  //
+  // HOW matters: if om() pushed a history entry for this modal (in-app card
+  // click), closing should POP that entry via history.back() — the old code
+  // pushed a THIRD entry ('/' on top of '/?event=x'), so the browser back
+  // button reopened the modal before reaching the page the user came from.
+  // If the modal did NOT push (deep link / popstate restore), back() would
+  // throw the user off-site to the referrer — so we replaceState instead,
+  // turning the current '?event=x' entry into the bare URL in place.
   const currentParams = new URLSearchParams(window.location.search);
   if (currentParams.has('event') && !urlRoutingSelfDriven) {
-    urlRoutingSelfDriven = true;
-    history.pushState({}, '', window.location.pathname);
-    document.title = 'shou — live tonight';
-    urlRoutingSelfDriven = false;
+    if (modalPushedHistory) {
+      modalPushedHistory = false;
+      // popstate fires after back(); the handler sees no ?event and the
+      // modal is already closed, so it only resets the title — idempotent.
+      history.back();
+    } else {
+      urlRoutingSelfDriven = true;
+      history.replaceState({}, '', window.location.pathname);
+      document.title = 'shou — live tonight';
+      urlRoutingSelfDriven = false;
+    }
   }
 }
 
