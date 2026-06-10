@@ -4227,17 +4227,13 @@ function langBadge(e){
 }
 function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'–€'+Math.round(e.mx):'');return t('see');}
 
-async function fetchEvts(){
-  document.getElementById('fw').innerHTML='<div class="loading"><div class="spin"></div><p>'+t('ld')+'</p></div>';
-  try{
-    // We fetch the full catalog for client-side filtering.
-    // For ~2k events this is ~3 MB — acceptable for a fast initial load.
-    // When scaling past 10k events, move filtering server-side via query params.
-    const p=new URLSearchParams({lang:lang,limit:500,sort:'popularity'});
-    const r=await fetch(API_BASE+'/api/events?'+p);
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    all=(d.events||[]).map((e,i)=>({
+// Normalize one raw /api/events event into the client-side catalog shape.
+// Extracted from fetchEvts' inline .map() so the single-event deep-link
+// fallback (maybeOpenEventFromUrl) produces IDENTICAL objects — including
+// the cents→euros price conversion and sources normalization that
+// shapeAIEvent does NOT do.
+function shapeCatalogEvent(e){
+  return {
       id:e.id,
       name:e.name||e.title||'Untitled',
       // Fallback chain for the localized category label shown in the pill:
@@ -4281,7 +4277,20 @@ async function fetchEvts(){
       isTranslated:e.isTranslated,
       availableLangs:e.availableLangs||[],
       going_count: 0   // populated by fetchGoingCounts() below
-    })).sort((a,b)=>b.pop-a.pop);
+  };
+}
+
+async function fetchEvts(){
+  document.getElementById('fw').innerHTML='<div class="loading"><div class="spin"></div><p>'+t('ld')+'</p></div>';
+  try{
+    // We fetch the full catalog for client-side filtering.
+    // For ~2k events this is ~3 MB — acceptable for a fast initial load.
+    // When scaling past 10k events, move filtering server-side via query params.
+    const p=new URLSearchParams({lang:lang,limit:500,sort:'popularity'});
+    const r=await fetch(API_BASE+'/api/events?'+p);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    all=(d.events||[]).map(shapeCatalogEvent).sort((a,b)=>b.pop-a.pop);
     // Going-counts: fire-and-forget batch lookup. Doesn't block initial
     // render — cards paint with 0 (button shown without count), then once
     // the RPC resolves we merge counts in and re-render. Typical latency
@@ -6068,18 +6077,43 @@ window.addEventListener('popstate', () => {
 
 // On initial page load: if URL has ?event=<id>, open that modal once the
 // events catalog has loaded. fetchEvts populates `all`, then this runs.
-function maybeOpenEventFromUrl() {
+//
+// Two paths:
+//   1. Event is in the initial top-500 popularity page → open directly.
+//   2. Event is NOT in the first page (the common case for shared links —
+//      the catalog holds ~21k upcoming events, the first page only 500) →
+//      fetch it individually via /api/events?id=<uuid>, normalize with the
+//      same shapeCatalogEvent the catalog uses, merge into `all`, and open
+//      in solo mode (no swipe/arrows — the event isn't part of the visible
+//      filtered context, so neighbor navigation would be misleading).
+// Only if the id is genuinely unknown/expired do we strip the param.
+async function maybeOpenEventFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const eventId = params.get('event');
   if (!eventId) return;
   if (!all.length) return;  // catalog not loaded yet — caller will retry
-  const exists = all.find(x => x.id === eventId);
-  if (exists) {
+  if (all.some(x => x.id === eventId)) {
     om(eventId, { fromUrl: true });
-  } else {
-    // Bad/stale URL — strip the param silently so it doesn't litter.
-    history.replaceState({}, '', window.location.pathname);
+    return;
   }
+  // Not in the first page — try the single-event endpoint.
+  try {
+    const p = new URLSearchParams({ lang, id: eventId });
+    const r = await fetch(API_BASE + '/api/events?' + p);
+    if (r.ok) {
+      const d = await r.json();
+      const ev = (d.events || []).find(x => x.id === eventId);
+      if (ev) {
+        all.push(shapeCatalogEvent(ev));
+        om(eventId, { fromUrl: true, singleEvent: true });
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('maybeOpenEventFromUrl single-event fetch failed:', err);
+  }
+  // Bad/stale URL — strip the param silently so it doesn't litter.
+  history.replaceState({}, '', window.location.pathname);
 }
 
 // ──────────────────────────────────────────────────────────────────────
