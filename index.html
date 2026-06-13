@@ -5182,9 +5182,12 @@ function renderAll(){
   //   going — user's personal collection
   // These get no shelves above (the curation IS the list).
   const isNarrowOrPersonal = isLive || isLiked || isGoing;
-  // Trending shelf visibility: shown in default home and broad category
-  // filters. Narrow/personal filters and AI search get a flat list.
-  const showTrending = !isNarrowOrPersonal && !aiQ;
+  // Trending shelf visibility: ONLY on the unfiltered/personalized home
+  // (actF === 'all'). Trending is now a country-wide "what's hot" overview, so
+  // showing it above a category filter contradicts the user's narrowing intent
+  // and mismatches it (e.g. a Music headliner over an "Arts & Theatre" filter).
+  // Category, Live/Liked/Going, and AI search all get a flat filtered list.
+  const showTrending = actF === 'all' && !aiQ;
   // Personalized browse replaces the "All Events" header with "Recommended
   // for you" when the user has liked enough events to make recommendations
   // meaningful. The sort itself is unified — eventScore() always weighs
