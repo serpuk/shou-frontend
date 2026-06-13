@@ -3577,6 +3577,25 @@ const loadedAreas = new Set();
 // simultaneous fetches for the same area.
 const areaFetchInFlight = new Set();
 
+// Same lazy-load story for CATEGORY filters. fetchEvts() pulls the top-100 by
+// popularity, which is almost entirely music + theatre — so Cinema/Sports/
+// Family/Festival/Exhibition events exist in the catalog (hundreds each) but
+// aren't in the loaded slice, and the client-side filter would show 0. When a
+// category filter is clicked we fetch that category from the backend
+// (/api/events?category=<slug>) and merge into `all`; the existing client-side
+// filter then handles it. Maps each filter button to the category_slug(s) it
+// covers — must match the actF→categorySlug logic in applyF() (the "theatre"
+// button is a super-category spanning theatre/comedy/dance/exhibition).
+const CAT_SLUGS = {
+  music:   ['music'],
+  cinema:  ['cinema'],
+  sports:  ['sports'],
+  family:  ['family'],
+  theatre: ['theatre', 'comedy', 'dance', 'exhibition'],
+};
+const loadedCats = new Set();          // category slugs already pulled this session
+const catFetchInFlight = new Set();    // slugs currently being fetched
+
 // SVG icon constants. We use inline SVG instead of unicode characters
 // (♥/♡/✓/○/↗/🎟) because rendering of those characters is inconsistent
 // across browsers and platforms — ♡ doesn't render on iOS Safari, the
@@ -4632,7 +4651,7 @@ function labelToSlug(seg){
   return 'other';
 }
 
-function sf(f,btn){
+async function sf(f,btn){
   actF=f;
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
@@ -4650,6 +4669,13 @@ function sf(f,btn){
     if (aiInput) aiInput.value = '';
     const aiPanel = document.getElementById('aip');
     if (aiPanel) aiPanel.classList.remove('show');
+  }
+  // Category filters: the home slice (top-100) is music/theatre-heavy, so a
+  // selected category may have zero events loaded. Pull it from the backend
+  // first (showing the loading spinner during the merge), then filter.
+  if (CAT_SLUGS[f] && CAT_SLUGS[f].some(s => !loadedCats.has(s))) {
+    document.getElementById('fw').innerHTML = '<div class="loading"><div class="spin"></div><p>' + t('ld') + '</p></div>';
+    await fetchCategoryEvents(f);
   }
   applyF();
 }
@@ -4751,6 +4777,52 @@ function goHome() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function loadMore(){vis+=6;renderAll();}
+
+// Pull a category's events from the backend and merge into `all` (deduped by
+// id). Mirrors fetchAreaEvents: in-flight guard, fetch-once cache (loadedCats),
+// fire-and-forget going-count refresh. Backend caps each page at 100; the
+// "theatre" super-category fans out across its slugs in parallel. Marks a slug
+// loaded only on a successful response so a transient failure can retry.
+async function fetchCategoryEvents(filter) {
+  const slugs = CAT_SLUGS[filter];
+  if (!slugs) return;   // not a category filter (all/live/liked/going)
+  const need = slugs.filter(s => !loadedCats.has(s) && !catFetchInFlight.has(s));
+  if (need.length === 0) return;
+  need.forEach(s => catFetchInFlight.add(s));
+  try {
+    const results = await Promise.all(need.map(async s => {
+      try {
+        const p = new URLSearchParams({ lang, category: s, limit: 100, sort: 'popularity' });
+        const r = await fetch(API_BASE + '/api/events?' + p);
+        if (!r.ok) { console.warn('fetchCategoryEvents HTTP', r.status, 'for', s); return { slug: s, ok: false, events: [] }; }
+        const d = await r.json();
+        return { slug: s, ok: true, events: d.events || [] };
+      } catch (e) { console.warn('fetchCategoryEvents failed for', s, e); return { slug: s, ok: false, events: [] }; }
+    }));
+    const existing = new Set(all.map(e => e.id));
+    const newEvents = [];
+    for (const res of results) {
+      if (res.ok) loadedCats.add(res.slug);   // only cache successful fetches
+      for (const e of res.events) {
+        if (!existing.has(e.id)) { existing.add(e.id); newEvents.push(shapeAIEvent(e)); }
+      }
+    }
+    if (newEvents.length) {
+      all = all.concat(newEvents);
+      // Refresh going-counts for the merged events (mirrors fetchAreaEvents).
+      (async () => {
+        const ids = newEvents.map(e => e.id);
+        const counts = await fetchGoingCounts(ids);
+        if (counts.size === 0) return;
+        let touched = false;
+        for (const e of all) { if (counts.has(e.id)) { e.going_count = counts.get(e.id); touched = true; } }
+        if (touched) renderAll();
+      })();
+    }
+  } finally {
+    need.forEach(s => catFetchInFlight.delete(s));
+  }
+}
 
 // Wire up scroll arrows for a horizontal shelf. Called after the shelf
 // HTML is injected. Idempotent — finds the .shelf-wrap inside the given
