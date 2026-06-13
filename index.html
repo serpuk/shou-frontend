@@ -4684,6 +4684,33 @@ async function sf(f,btn){
   applyF();
 }
 
+// Hydrate a set of event ids into `all` (deduped) via the backend batch path
+// (/api/events?ids=). Used so "Recommended for you" can render get_recommendations'
+// actual picks — many sit outside the popular pool, so without this they'd never
+// show. Mirrors fetchCategoryEvents: skip ids we already have, fire-and-forget
+// going-count refresh. Safe no-op on error.
+async function hydrateEventsByIds(eventIds) {
+  const existing = new Set(all.map(e => e.id));
+  const missing = (eventIds || []).filter(id => id && !existing.has(id));
+  if (missing.length === 0) return;
+  try {
+    const p = new URLSearchParams({ lang, ids: missing.slice(0, 100).join(',') });
+    const r = await fetch(API_BASE + '/api/events?' + p);
+    if (!r.ok) { console.warn('hydrateEventsByIds HTTP', r.status); return; }
+    const d = await r.json();
+    const newEvents = (d.events || []).filter(e => !existing.has(e.id)).map(shapeAIEvent);
+    if (newEvents.length === 0) return;
+    all = all.concat(newEvents);
+    (async () => {
+      const counts = await fetchGoingCounts(newEvents.map(e => e.id));
+      if (counts.size === 0) return;
+      let touched = false;
+      for (const e of all) { if (counts.has(e.id)) { e.going_count = counts.get(e.id); touched = true; } }
+      if (touched) renderAll();
+    })();
+  } catch (e) { console.warn('hydrateEventsByIds failed:', e && e.message); }
+}
+
 // Fetch personalized recommendations from the Supabase get_recommendations RPC.
 // Populates forYouIds (event_id → score). Idempotent — refetches each call so
 // likes/views accumulated since last fetch are reflected.
@@ -4708,6 +4735,9 @@ async function fetchForYou() {
     }
     forYouIds = new Map((data || []).map(r => [r.rec_event_id, Number(r.rec_score)]));
     updateForYouMaxScore();
+    // Pull the recommended events' full data into `all` so the Recommended grid
+    // can actually render them (applyF selects forYouIds when personalized).
+    await hydrateEventsByIds([...forYouIds.keys()]);
   } catch (err) {
     console.warn('get_recommendations exception:', err);
     forYouIds = new Map();
@@ -5021,7 +5051,14 @@ function applyF(){
   // region. We therefore bypass the client-side cm filter during AI — the
   // backend is the source of truth, and re-filtering here would zero-out
   // any cross-area suggestions the AI legitimately wants to show.
+  // "Recommended for you" is a SELECTION, not just a re-rank: when the user
+  // qualifies, the home grid shows get_recommendations' actual picks (hydrated
+  // into `all` by fetchForYou), ordered by the unified eventScore below — so a
+  // strongly-recommended event surfaces even if it's outside the popular pool.
+  const personalizedSel = actF === 'all' && !aiQ && currentSession
+    && lk.size >= FORYOU_MIN_LIKES && forYouIds.size > 0;
   filtered=all.filter(e=>{
+    if (personalizedSel) return forYouIds.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
@@ -5298,10 +5335,10 @@ function renderAll(){
       const extraCount=allHeader.querySelector('.sc');
       if(extraCount) extraCount.remove();
     }
-    // Grid renders the full sorted catalog. When personalizedBrowse is
-    // active, the sort already prioritized rec_score events at the top
-    // (see secondary comparator above), so the grid IS the personalized
-    // view of the full catalog — not a separate shortlist.
+    // Grid renders `filtered`. When personalizedBrowse is active, applyF()
+    // narrowed `filtered` to get_recommendations' actual picks (hydrated into
+    // `all` by fetchForYou) and sorted them by the unified eventScore — so the
+    // grid IS the recommendation set, not the popular pool re-ranked.
     const rest = filtered.slice(0, vis);
     document.getElementById('eg').innerHTML = rest.map(e=>smCard(e)).join('');
   }
