@@ -4271,9 +4271,13 @@ function applyI18n(){
   }
 }
 
-function segCls(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'cm';if(l.includes('art')||l.includes('theatre')||l.includes('comedy'))return'ca';if(l.includes('sport'))return'cs';if(l.includes('family'))return'cfa';return'cx';}
-function segEmoji(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'🎵';if(l.includes('art')||l.includes('theatre'))return'🎭';if(l.includes('sport'))return'⚽';if(l.includes('family'))return'🎠';return'✨';}
-function segThumb(s){const l=(s||'').toLowerCase();if(l.includes('music'))return'tc1';if(l.includes('art')||l.includes('theatre'))return'tc2';if(l.includes('sport'))return'tc3';if(l.includes('family'))return'tc4';return'tc5';}
+// Classify by the LANGUAGE-NEUTRAL category_slug — NOT the localized seg label.
+// Matching English substrings against e.seg broke every non-English language
+// (e.g. "Musique".includes('music') is false), leaving Music/Family/etc. in the
+// neutral bucket. Callers pass e.categorySlug.
+function segCls(slug){const s=(slug||'').toLowerCase();if(s==='music')return'cm';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'ca';if(s==='sports'||s==='sport')return'cs';if(s==='family')return'cfa';return'cx';}
+function segEmoji(slug){const s=(slug||'').toLowerCase();if(s==='music')return'🎵';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'🎭';if(s==='sports'||s==='sport')return'⚽';if(s==='family')return'🎠';return'✨';}
+function segThumb(slug){const s=(slug||'').toLowerCase();if(s==='music')return'tc1';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'tc2';if(s==='sports'||s==='sport')return'tc3';if(s==='family')return'tc4';return'tc5';}
 function fmtD(d){
   if(!d) return 'TBA';
   const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', en:'en-GB'};
@@ -5397,7 +5401,7 @@ function renderAll(){
 // as a flat list now. Function kept here in case area-grouped rendering is
 // reintroduced later (e.g. as a Netflix-style themed shelf per region).
 function th(e,big){
-  const tc=segThumb(e.seg),em=segEmoji(e.seg);
+  const tc=segThumb(e.categorySlug),em=segEmoji(e.categorySlug);
   const h=big?320:165,cls=big?'fph':'cph';
   if(e.img){
     // Use a unique id + global fallback function to avoid quote-escaping hell
@@ -5416,7 +5420,7 @@ function mimgFail(id,tc,em){
   el.outerHTML=`<div class="mph ${tc}"><span>${em}</span></div>`;
 }
 function bigCard(e){
-  const cl=segCls(e.seg),isL=lk.has(e.id),isG=gn.has(e.id),pop=Math.min(99,Math.round(e.pop));
+  const cl=segCls(e.categorySlug),isL=lk.has(e.id),isG=gn.has(e.id),pop=Math.min(99,Math.round(e.pop));
   const priceText = pStr(e);
   const hasRealPrice = priceText !== t('see');
   const goingN = e.going_count || 0;
@@ -5459,7 +5463,7 @@ function bigCard(e){
 }
 
 function smCard(e){
-  const cl=segCls(e.seg),isL=lk.has(e.id),isG=gn.has(e.id);
+  const cl=segCls(e.categorySlug),isL=lk.has(e.id),isG=gn.has(e.id);
   // Hide the price row when it would just say "See website" — that's filler
   // on a card preview. Users see Get Tickets which is the actionable choice.
   // Keep the row for events with actual price info (€20, €15-30, etc).
@@ -6114,13 +6118,13 @@ let modalPushedHistory = false;
 // when they drag left. No more black void during swipe.
 function buildEventCardHTML(e) {
   if (!e) return '';
-  const cl=segCls(e.seg);
+  const cl=segCls(e.categorySlug);
   const isL=lk.has(e.id);
   const isG=gn.has(e.id);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
-    ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.seg)}','${segEmoji(e.seg)}')">`
-    : `<div class="mph ${segThumb(e.seg)}"><span>${segEmoji(e.seg)}</span></div>`;
+    ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.categorySlug)}','${segEmoji(e.categorySlug)}')">`
+    : `<div class="mph ${segThumb(e.categorySlug)}"><span>${segEmoji(e.categorySlug)}</span></div>`;
   return `${bigTh}
 <div class="mb">
 <span class="cpill ${cl}">${e.seg}${e.genre?' · '+e.genre:''}</span>
