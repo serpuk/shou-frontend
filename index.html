@@ -4338,6 +4338,10 @@ async function fetchEvts(){
     // For ~2k events this is ~3 MB — acceptable for a fast initial load.
     // When scaling past 10k events, move filtering server-side via query params.
     const p=new URLSearchParams({lang:lang,limit:500,sort:'popularity'});
+    // "Near me": send coordinates so the backend selects candidates by the
+    // composite rank_events score (popularity+recency+distance) instead of
+    // top-N-by-popularity. Omitted otherwise → cacheable popularity path.
+    if (aiShouldUseLocation()) { p.set('lat', userGeo.latitude); p.set('lng', userGeo.longitude); }
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
@@ -4730,7 +4734,12 @@ function syncGeoState() {
     showAI(aiQ);
     return;
   }
-  applyF();
+  // Geo mode changed → re-pull the catalog so candidate SELECTION reflects it:
+  // scored (popularity+recency+distance) when 'near', cacheable popularity when
+  // 'all'. Reset the per-category cache so category filters re-fetch under the
+  // new mode too. fetchEvts() re-runs applyF()/renderAll() when it resolves.
+  loadedCats.clear();
+  fetchEvts();
 }
 // Resolve the pill's current state to the label to display. Strips the
 // leading 📍 from 'cNear' since the pill already has a pin via CSS.
@@ -4793,6 +4802,7 @@ async function fetchCategoryEvents(filter) {
     const results = await Promise.all(need.map(async s => {
       try {
         const p = new URLSearchParams({ lang, category: s, limit: 100, sort: 'popularity' });
+        if (aiShouldUseLocation()) { p.set('lat', userGeo.latitude); p.set('lng', userGeo.longitude); }
         const r = await fetch(API_BASE + '/api/events?' + p);
         if (!r.ok) { console.warn('fetchCategoryEvents HTTP', r.status, 'for', s); return { slug: s, ok: false, events: [] }; }
         const d = await r.json();
