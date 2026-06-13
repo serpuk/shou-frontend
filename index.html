@@ -852,6 +852,9 @@ h1 .bl {
    not browsing the catalog. Triggered by syncAiActiveClass() which
    toggles body.ai-active whenever aiResultIds/aiSearching is truthy. */
 body.ai-active .stats { display: none; }
+/* During AI search, don't pin the filter bar — the focused results view scrolls
+   freely (the search bar, not the category pills, is the relevant control). */
+body.ai-active .filters { position: static; box-shadow: none; }
 
 /* Anchor the AI suggestions banner clear of the fixed top nav (70px)
    when scrollIntoView({block:'start'}) snaps it into view. Without
@@ -870,6 +873,12 @@ body.ai-active .stats { display: none; }
     rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius); backdrop-filter: blur(12px);
+  /* Pin to the top while scrolling so filters stay reachable in long lists.
+     The blur(12px) keeps the pills legible over scrolling cards; a soft shadow
+     separates it from content underneath. Suppressed during AI search — see the
+     body.ai-active rule — for a focused results view. */
+  position: sticky; top: 0; z-index: 60;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 .fb {
   background: transparent;
