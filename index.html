@@ -5317,9 +5317,11 @@ function renderAll(){
 
   emp.classList.remove('on');
 
-  if(isFiltering){
-    // Narrow/personal filter (Live now, Liked, Going) or AI search active —
-    // flat list, no shelves. The curation IS the list.
+  if(!showTrending){
+    // No Trending shelf here. Everything except the unfiltered/personalized
+    // home gets a flat filtered list: category filters (Music/Cinema/…),
+    // narrow/personal filters (Live now/Liked/Going), and AI search. Trending
+    // only rides above the home (showTrending = actF === 'all' && !aiQ).
     fw.innerHTML='';
     if(trendingHeader) trendingHeader.style.display='none';
     if(allHeader){
