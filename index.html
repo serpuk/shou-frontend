@@ -3599,6 +3599,7 @@ const CAT_SLUGS = {
 };
 const loadedCats = new Set();          // category slugs already pulled this session
 const catFetchInFlight = new Set();    // slugs currently being fetched
+const slugTotals = new Map();          // slug → catalog-wide total (for "N events found")
 
 // SVG icon constants. We use inline SVG instead of unicode characters
 // (♥/♡/✓/○/↗/🎟) because rendering of those characters is inconsistent
@@ -4880,13 +4881,13 @@ async function fetchCategoryEvents(filter) {
         const r = await fetch(API_BASE + '/api/events?' + p);
         if (!r.ok) { console.warn('fetchCategoryEvents HTTP', r.status, 'for', s); return { slug: s, ok: false, events: [] }; }
         const d = await r.json();
-        return { slug: s, ok: true, events: d.events || [] };
+        return { slug: s, ok: true, events: d.events || [], total: d.total };
       } catch (e) { console.warn('fetchCategoryEvents failed for', s, e); return { slug: s, ok: false, events: [] }; }
     }));
     const existing = new Set(all.map(e => e.id));
     const newEvents = [];
     for (const res of results) {
-      if (res.ok) loadedCats.add(res.slug);   // only cache successful fetches
+      if (res.ok) { loadedCats.add(res.slug); slugTotals.set(res.slug, Number(res.total) || 0); }   // cache + remember catalog total
       for (const e of res.events) {
         if (!existing.has(e.id)) { existing.add(e.id); newEvents.push(shapeAIEvent(e)); }
       }
@@ -4906,6 +4907,18 @@ async function fetchCategoryEvents(filter) {
   } finally {
     need.forEach(s => catFetchInFlight.delete(s));
   }
+}
+
+// Catalog-wide event count for a category filter — sums the per-slug totals the
+// backend returns (e.g. Arts & Theatre = theatre + comedy + dance + exhibition).
+// Used for "N events found" so the number means "events in this category", not
+// the loaded page. Returns null when no slug totals are known yet.
+function categoryTotal(filter) {
+  const slugs = CAT_SLUGS[filter];
+  if (!slugs) return null;
+  let sum = 0, any = false;
+  for (const s of slugs) { if (slugTotals.has(s)) { sum += slugTotals.get(s); any = true; } }
+  return any ? sum : null;
 }
 
 // Wire up scroll arrows for a horizontal shelf. Called after the shelf
@@ -5346,7 +5359,10 @@ function renderAll(){
       allHeader.style.marginTop='0';  // no gap since trending header is gone
       let countEl=allHeader.querySelector('.sc');
       if(!countEl){ countEl=document.createElement('span'); countEl.className='sc'; allHeader.appendChild(countEl); }
-      countEl.textContent=t('ne2')(filtered.length);
+      // Category filters show the catalog-wide total ("events in this category");
+      // Live/Liked/Going (no slug map) show the loaded count, which IS the set.
+      const catTot=categoryTotal(actF);
+      countEl.textContent=t('ne2')(catTot!=null?catTot:filtered.length);
     }
     const toShow=filtered.slice(0, vis + 2);
     document.getElementById('eg').innerHTML = toShow.map(e=>smCard(e)).join('');
