@@ -889,6 +889,17 @@ body.ai-active .stats { display: none; }
   border-color: transparent;
   box-shadow: 0 8px 24px rgba(255, 46, 126, 0.25);
 }
+/* Category filters: when active, the pill takes its bucket colour — the same
+   accent the grid then shows — so picking a category visually links the filter
+   to its results. Inactive pills stay neutral (one colour at a time keeps the
+   bar calm). Higher specificity than .fb.on, so these win for the five; All,
+   Live, Liked, Going keep their own treatments. Cinema = the neutral "other"
+   bucket, matching how cinema cards render. */
+.fb.on[data-c="music"]   { background: linear-gradient(120deg,#ff2e7e,#ff5fb8); color: var(--ink); box-shadow: 0 8px 24px rgba(255,46,126,.28); }
+.fb.on[data-c="theatre"] { background: linear-gradient(120deg,#8b3ee0,#a96cf0); color: #fff;        box-shadow: 0 8px 24px rgba(139,62,224,.30); }
+.fb.on[data-c="sports"]  { background: linear-gradient(120deg,#ff9966,#ffba8c); color: var(--ink); box-shadow: 0 8px 24px rgba(255,153,102,.28); }
+.fb.on[data-c="family"]  { background: linear-gradient(120deg,#ffa3d9,#ffc6e8); color: var(--ink); box-shadow: 0 8px 24px rgba(255,163,217,.28); }
+.fb.on[data-c="cinema"]  { background: linear-gradient(120deg,#d8d0d8,#efe8ef); color: var(--ink); box-shadow: 0 8px 24px rgba(246,239,239,.14); }
 /* Liked filter — soft pink hover/active */
 .fb.liked-tab { color: var(--pink-hot); border-color: rgba(255, 95, 184, 0.30); }
 .fb.liked-tab:hover { color: var(--bone); border-color: var(--pink-hot); }
@@ -1350,11 +1361,29 @@ body.ai-active .stats { display: none; }
   font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
   text-transform: uppercase; margin-bottom: 10px;
 }
-.cm  { background: rgba(255,153,102,0.1);  color: var(--cyan);     border: 1px solid rgba(255,153,102,0.35); }
-.ca  { background: rgba(248,249,250,0.05);color: var(--bone);    border: 1px solid rgba(248,249,250,0.18); }
-.cs  { background: rgba(255,153,102,0.08); color: var(--cyan2);    border: 1px solid rgba(255,153,102,0.3); }
-.cfa { background: rgba(255,46,126,0.1);   color: var(--magenta2); border: 1px solid rgba(255,46,126,0.3); }
-.cx  { background: rgba(255,46,126,0.1);   color: var(--magenta);  border: 1px solid rgba(255,46,126,0.3); }
+/* Category buckets, 5 distinct on-brand hues (kept the same 5 segCls() maps):
+   cm Music = magenta · ca Arts/Theatre/Comedy = violet · cs Sport = coral ·
+   cfa Family = soft pink · cx Other = neutral. */
+.cm  { background: rgba(255,46,126,0.12);  color: var(--magenta2);  border: 1px solid rgba(255,46,126,0.40); }
+.ca  { background: rgba(139,62,224,0.16);  color: #c79bff;          border: 1px solid rgba(139,62,224,0.45); }
+.cs  { background: rgba(255,153,102,0.12); color: var(--cyan2);     border: 1px solid rgba(255,153,102,0.40); }
+.cfa { background: rgba(255,163,217,0.14); color: var(--pink-light);border: 1px solid rgba(255,163,217,0.42); }
+.cx  { background: rgba(246,239,239,0.06); color: var(--bone2);     border: 1px solid rgba(246,239,239,0.20); }
+
+/* Card-level category cue: a 3px top accent bar that mirrors the pill colour,
+   keyed off the pill's category class via :has() — so no change to the JS card
+   templates. A thin bar (not a full background tint) keeps the cover image the
+   hero while still letting you scan by type. Applies to grid (.card) and the
+   trending shelf (.featured); both are position:relative + overflow:hidden. */
+.card:has(.cpill.cm),  .featured:has(.cpill.cm)  { --cat: #ff2e7e; }
+.card:has(.cpill.ca),  .featured:has(.cpill.ca)  { --cat: #8b3ee0; }
+.card:has(.cpill.cs),  .featured:has(.cpill.cs)  { --cat: #ff9966; }
+.card:has(.cpill.cfa), .featured:has(.cpill.cfa) { --cat: #ffa3d9; }
+.card:has(.cpill.cx),  .featured:has(.cpill.cx)  { --cat: rgba(246,239,239,0.5); }
+.card:has(.cpill)::before, .featured:has(.cpill)::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--cat, transparent); z-index: 3; pointer-events: none;
+}
 
 /* Language badge — subtle indicator that title/desc wasn't translated to user's language */
 .lang-badge {
