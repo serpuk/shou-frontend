@@ -5082,8 +5082,7 @@ function applyF(){
   // qualifies, the home grid shows get_recommendations' actual picks (hydrated
   // into `all` by fetchForYou), ordered by the unified eventScore below — so a
   // strongly-recommended event surfaces even if it's outside the popular pool.
-  const personalizedSel = actF === 'all' && !aiQ && currentSession
-    && lk.size >= FORYOU_MIN_LIKES && forYouIds.size > 0;
+  const personalizedSel = actF === 'all' && !aiQ && currentSession && forYouIds.size > 0;
   filtered=all.filter(e=>{
     if (personalizedSel) return forYouIds.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
@@ -5196,7 +5195,6 @@ function renderAll(){
     !isNarrowOrPersonal &&
     !aiQ &&
     currentSession &&
-    lk.size >= FORYOU_MIN_LIKES &&
     forYouIds.size > 0
   );
   const trendingHeader = document.getElementById('trendingHeader');
@@ -7921,7 +7919,10 @@ function renderAuthSurface() {
   // When user signs out, drop the recommendations so the home feed reverts
   // to plain trending. Re-apply the filter so the change is immediately visible.
   if (currentSession) {
-    if (lk.size >= FORYOU_MIN_LIKES && forYouIds.size === 0 && !forYouFetching) {
+    // Signed-in users always get Recommendations (the score falls back to
+    // popularity+recency+distance when taste signals are sparse). No like-count
+    // gate — fetch whenever we don't have recs loaded yet.
+    if (forYouIds.size === 0 && !forYouFetching) {
       // Fire-and-forget. When it resolves, re-apply filter to swap in ranking.
       fetchForYou().then(() => {
         if (forYouIds.size > 0) applyF();
