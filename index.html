@@ -4199,9 +4199,12 @@ function setLang(l) {
       showAI(aiQ);
       return;
     }
-    // Re-load the active category in the new language — its events were dropped
-    // when `all` reloaded, and loadedCats was just cleared.
+    // Re-load the active filter's events in the new language — they were dropped
+    // when `all` reloaded (loadedCats was just cleared). Categories re-fetch;
+    // Liked/Going re-hydrate from the personal sets.
     if (CAT_SLUGS[actF]) fetchCategoryEvents(actF).then(() => applyF());
+    else if (actF === 'liked' && lk.size) hydrateEventsByIds([...lk]).then(() => applyF());
+    else if (actF === 'going' && gn.size) hydrateEventsByIds([...gn]).then(() => applyF());
     // Re-hydrate recommendations so the signed-in home isn't reduced to just
     // the recs that happen to be in the fresh top-N.
     if (currentSession && forYouIds.size > 0) hydrateEventsByIds([...forYouIds.keys()]).then(() => applyF());
@@ -4716,6 +4719,12 @@ async function sf(f,btn){
   if (CAT_SLUGS[f] && CAT_SLUGS[f].some(s => !loadedCats.has(s))) {
     document.getElementById('fw').innerHTML = '<div class="loading"><div class="spin"></div><p>' + t('ld') + '</p></div>';
     await fetchCategoryEvents(f);
+  } else if ((f === 'liked' && lk.size) || (f === 'going' && gn.size)) {
+    // Liked/Going are personal collections — hydrate their events into `all` so
+    // the full set shows, not just whichever ones happen to be loaded. Without
+    // this they go sparse/empty after `all` is rebuilt (e.g. a language switch).
+    document.getElementById('fw').innerHTML = '<div class="loading"><div class="spin"></div><p>' + t('ld') + '</p></div>';
+    await hydrateEventsByIds([...(f === 'liked' ? lk : gn)]);
   }
   applyF();
 }
