@@ -4181,6 +4181,12 @@ function setLang(l) {
   // Belgium-wide — niche AI-search results or area-specific events outside
   // that top-500 would otherwise vanish from `all` and the grid goes empty
   // even though aiResultIds / area pill still look active.
+  // Language-dependent pools must be rebuilt too, or they keep old-language
+  // content / go sparse. Clear the per-category cache (so the active category
+  // re-fetches in the new language instead of showing only whatever survived in
+  // the fresh top-N) and refresh the country-wide Trending shelf.
+  loadedCats.clear();
+  fetchTrending();
   fetchEvts().then(() => {
     // Cached AI prefetches are keyed by query but encoded in the old language;
     // clear them so re-runs hit the backend fresh in the new language.
@@ -4190,7 +4196,14 @@ function setLang(l) {
     // own applyF.
     if (aiQ && aiQ.length > 0) {
       showAI(aiQ);
+      return;
     }
+    // Re-load the active category in the new language — its events were dropped
+    // when `all` reloaded, and loadedCats was just cleared.
+    if (CAT_SLUGS[actF]) fetchCategoryEvents(actF).then(() => applyF());
+    // Re-hydrate recommendations so the signed-in home isn't reduced to just
+    // the recs that happen to be in the fresh top-N.
+    if (currentSession && forYouIds.size > 0) hydrateEventsByIds([...forYouIds.keys()]).then(() => applyF());
   });
 }
 
