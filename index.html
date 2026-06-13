@@ -3567,6 +3567,10 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing();
+// Trending shelf source — kept SEPARATE from `all`. `all` is proximity-/
+// recommendation-selected (near-me, For You), but Trending must stay
+// country-wide "most popular" for everyone, so it has its own Belgium-wide pool.
+let trendingAll=[];
 // Areas whose full event set has been lazy-loaded via /api/events?area=<id>.
 // The initial fetchEvts() pulls top-500 by popularity which omits less-busy
 // regions (Wallonia south, Limburg edges); selecting one of those triggers
@@ -4331,6 +4335,20 @@ function shapeCatalogEvent(e){
   };
 }
 
+// Country-wide "Most Popular" for the Trending shelf. Deliberately sends NO
+// coordinates (and ignores For You), so it stays Belgium-wide for every user
+// and is edge-cacheable — decoupled from `all`, which is near-me/rec-selected.
+// Fetched once on load; the shelf re-renders from trendingAll on every render.
+async function fetchTrending(){
+  try{
+    const p=new URLSearchParams({lang,limit:24,sort:'popularity'});
+    const r=await fetch(API_BASE+'/api/events?'+p);
+    if(!r.ok) return;
+    const d=await r.json();
+    trendingAll=(d.events||[]).map(shapeCatalogEvent).sort((a,b)=>(b.pop||0)-(a.pop||0));
+    renderAll();
+  }catch(e){ console.warn('fetchTrending failed:', e && e.message); }
+}
 async function fetchEvts(){
   document.getElementById('fw').innerHTML='<div class="loading"><div class="spin"></div><p>'+t('ld')+'</p></div>';
   try{
@@ -5316,7 +5334,11 @@ function renderAll(){
     // stays a stable Belgium-wide signal ("what's hot right now") rather
     // than location-aware. The main grid below still respects the pill.
     if(trendingHeader) trendingHeader.style.display='';
-    const trendingPool = [...filtered].sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    // Country-wide popularity, NOT the (near-me/rec-selected) `filtered` pool —
+    // so Trending stays Belgium-wide. Falls back to `filtered` only until
+    // fetchTrending() resolves on first paint.
+    const trendingSrc = trendingAll.length ? trendingAll : filtered;
+    const trendingPool = [...trendingSrc].sort((a, b) => (b.pop || 0) - (a.pop || 0));
     const trending = trendingPool.slice(0, TRENDING_SHELF_SIZE);
     fw.innerHTML = `<div class="shelf-wrap">
       <button class="shelf-arrow left"  aria-label="Scroll left"  disabled>‹</button>
@@ -8787,6 +8809,7 @@ updateGoingCount();
 // patterns — page never blocks on this.
 fetchCategories();
 fetchEvts();
+fetchTrending();   // country-wide "Most Popular" shelf, independent of `all`
 // Feature-detect Web Speech API support and reveal the mic button on
 // browsers that support it (Chrome/Edge/Safari yes; Firefox no). Hidden
 // by default in CSS; this adds .supported when detection succeeds.
