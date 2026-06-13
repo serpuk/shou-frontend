@@ -879,11 +879,12 @@ body.ai-active .filters { position: static; box-shadow: none; }
     rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius); backdrop-filter: blur(12px);
-  /* Pin to the top while scrolling so filters stay reachable in long lists.
-     The blur(12px) keeps the pills legible over scrolling cards; a soft shadow
-     separates it from content underneath. Suppressed during AI search — see the
+  /* Pin while scrolling so filters stay reachable in long lists. top:70px sits
+     just below the fixed 70px <nav>; at top:0 it pinned BEHIND the nav (higher
+     z-index) and was hidden. The blur(12px) keeps pills legible over scrolling
+     cards; a soft shadow separates it. Suppressed during AI search — see the
      body.ai-active rule — for a focused results view. */
-  position: sticky; top: 0; z-index: 60;
+  position: sticky; top: 70px; z-index: 60;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 .fb {
