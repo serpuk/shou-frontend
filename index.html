@@ -1982,7 +1982,10 @@ body.ai-active .filters { position: static; box-shadow: none; }
    getting cropped at the brow. Standard pattern for thumbnails with people. */
 .mth {
   width: 100%; height: 320px;
-  object-fit: cover; object-position: center 30%;
+  /* Bias the crop toward the top: faces / poster headlines sit in the upper
+     part of most event images, and center 30% was still cutting heads on tall
+     portraits (cropping the window down to nose level). 20% keeps the subject. */
+  object-fit: cover; object-position: center 20%;
   display: block;
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--ink);
@@ -3680,6 +3683,9 @@ let aiSearchArea = null;
 // prevent the user accidentally drifting into the broader catalog. Reset
 // by cm2() / closeModal whenever the modal closes.
 let omSingleEvent = false;
+// Id of the event whose modal is currently open (null when closed). Lets a
+// language switch re-render the open modal in the newly-selected language.
+let omCurrentId = null;
 
 // Sync body.ai-active class with AI state. CSS uses this to hide redundant
 // controls (city dropdown) while an AI search is active. Call after any
@@ -4219,6 +4225,15 @@ function setLang(l) {
     // Cached AI prefetches are keyed by query but encoded in the old language;
     // clear them so re-runs hit the backend fresh in the new language.
     if (typeof aiPrefetchCache !== 'undefined') aiPrefetchCache.clear();
+    // Re-render an open event modal in the new language. The open event may not
+    // be in the freshly reloaded top-N (e.g. a deep-linked single event), so
+    // hydrate it by id (fetched in the new `lang`) before re-rendering. Runs
+    // before the AI early-return so it also works while an AI search is active.
+    if (omCurrentId && document.getElementById('mov')?.classList.contains('on')) {
+      const openId = omCurrentId, wasSingle = omSingleEvent;
+      const reopen = () => { if (all.some(x => x.id === openId)) om(openId, { fromUrl: true, skipScrollReset: true, singleEvent: wasSingle }); };
+      if (all.some(x => x.id === openId)) reopen(); else hydrateEventsByIds([openId]).then(reopen);
+    }
     // If an AI search is active, re-run it so the backend returns the same
     // events with translated content. Returns early — showAI handles its
     // own applyF.
@@ -6239,6 +6254,7 @@ ${mTicketBtn(e)}
 
 function om(id, _opts){
   const e=all.find(x=>x.id===id);if(!e)return;
+  omCurrentId = id;
   // Track engagement signal for popularity scoring. Skip when the modal was
   // opened by URL restoration (e.g. on page load with ?event=...) — that's
   // not the same as a user clicking a card.
@@ -6311,6 +6327,7 @@ function cm2(){
   // Clear solo-mode flag — next om() open starts in normal multi-event mode
   // unless the caller passes singleEvent again.
   omSingleEvent = false;
+  omCurrentId = null;
   // Restore the URL (drop ?event= param).
   //
   // HOW matters — three cases:
