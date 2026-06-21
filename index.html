@@ -6362,19 +6362,21 @@ window.addEventListener('popstate', () => {
 //      in solo mode (no swipe/arrows — the event isn't part of the visible
 //      filtered context, so neighbor navigation would be misleading).
 // Only if the id is genuinely unknown/expired do we strip the param.
+// Idempotent so the several fetchEvts() calls on load (initial + geo flip +
+// lang) don't double-open or race. Crucially it does NOT strip ?event= on a
+// miss — a single transient API hiccup used to delete the param, permanently
+// killing the deep link with no way to retry.
+let deepLinkHandled = false;
 async function maybeOpenEventFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const eventId = params.get('event');
+  if (deepLinkHandled) return;
+  const eventId = new URLSearchParams(window.location.search).get('event');
   if (!eventId) return;
-  if (!all.length) return;  // catalog not loaded yet — caller will retry
-  if (all.some(x => x.id === eventId)) {
-    om(eventId, { fromUrl: true });
-    return;
-  }
-  // Not in the first page — try the single-event endpoint.
+  deepLinkHandled = true;  // claim immediately to avoid concurrent double-open
+  // Already in the loaded catalog → open straight away.
+  if (all.some(x => x.id === eventId)) { om(eventId, { fromUrl: true }); return; }
+  // Otherwise fetch just this event — doesn't depend on the catalog being ready.
   try {
-    const p = new URLSearchParams({ lang, id: eventId });
-    const r = await fetch(API_BASE + '/api/events?' + p);
+    const r = await fetch(API_BASE + '/api/events?' + new URLSearchParams({ lang, id: eventId }));
     if (r.ok) {
       const d = await r.json();
       const ev = (d.events || []).find(x => x.id === eventId);
@@ -6384,11 +6386,12 @@ async function maybeOpenEventFromUrl() {
         return;
       }
     }
+    console.warn('deep-link: event not found', eventId, 'status', r.status);
   } catch (err) {
-    console.warn('maybeOpenEventFromUrl single-event fetch failed:', err);
+    console.warn('deep-link single-event fetch failed:', err);
   }
-  // Bad/stale URL — strip the param silently so it doesn't litter.
-  history.replaceState({}, '', window.location.pathname);
+  // Leave ?event= in the URL so a later fetchEvts() (geo/lang/refresh) retries.
+  deepLinkHandled = false;
 }
 
 // ──────────────────────────────────────────────────────────────────────
