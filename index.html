@@ -4171,6 +4171,22 @@ const t=k=>T[lang][k]||T.en[k]||k;
 // --------------------------------------------------------------------------
 // LANGUAGE DROPDOWN
 // --------------------------------------------------------------------------
+// Sync the language UI (dropdown button label + active states on both the
+// header menu and the profile-modal pills) to language `l`. Extracted from
+// setLang so it can also run once at boot — the label is hardcoded EN in the
+// markup and would otherwise misrepresent a non-EN initial lang (from ?lang=
+// or a saved preference) until the user manually switches.
+function syncLangUI(l) {
+  const lbl = document.getElementById('langLabel');
+  if (lbl) lbl.textContent = l.toUpperCase();
+  document.querySelectorAll('.lm-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.l === l);
+  });
+  document.querySelectorAll('.pe-lang-opt').forEach(b => {
+    b.classList.toggle('on', b.dataset.l === l);
+  });
+}
+
 // Re-render the currently-open event modal in the active `lang`. Fetches just
 // the open event by id (so it works even for deep-linked events not in the
 // catalog) and re-renders in place, preserving scroll position. No-op when no
@@ -4218,20 +4234,7 @@ function setLang(l) {
   // previous locale and continuing would produce mismatched transcripts.
   // User can re-trigger after switch in the new language.
   if (voiceRecActive) stopVoiceInput();
-  // Update the dropdown button label to the chosen language's ISO code (uppercase).
-  const lbl = document.getElementById('langLabel');
-  if (lbl) lbl.textContent = l.toUpperCase();
-  // Mark the active item in the menu.
-  document.querySelectorAll('.lm-item').forEach(b => {
-    b.classList.toggle('active', b.dataset.l === l);
-  });
-  // Mirror the active state on the profile modal's language pills so the
-  // selection stays in sync regardless of which entry point was used.
-  // Different class ('on' vs 'active') because the modal pill follows the
-  // .pe-priv-opt convention; the header menu has its own .lm-item style.
-  document.querySelectorAll('.pe-lang-opt').forEach(b => {
-    b.classList.toggle('on', b.dataset.l === l);
-  });
+  syncLangUI(l);
   closeLangMenu();
   applyI18n();
   // Re-render an open event modal immediately in the new language — don't wait
@@ -8148,11 +8151,18 @@ async function fetchProfile() {
     // else), apply it. setLang re-renders + refetches the catalog in the new
     // language. The setLang call writes back to profile, but it's the same
     // value we just read so it's a no-op update — no infinite loop.
-    if (currentProfile.preferred_language
+    // An explicit ?lang= deep link (e.g. an event opened from the localized
+    // /this-week page) is a deliberate per-visit choice and must win over the
+    // stored account preference — otherwise the selector/content flip to the
+    // profile language and contradict the page the user came from.
+    const urlLangExplicit = SUPPORTED_LANGS.includes(_urlLang);
+    if (!urlLangExplicit
+        && currentProfile.preferred_language
         && currentProfile.preferred_language !== lang
         && SUPPORTED_LANGS.includes(currentProfile.preferred_language)) {
       setLang(currentProfile.preferred_language);
-    } else if (!currentProfile.preferred_language
+    } else if (!urlLangExplicit
+               && !currentProfile.preferred_language
                && SUPPORTED_LANGS.includes(lang)) {
       // Guest-choice promotion: the account has never expressed a language
       // preference (NULL on the freshly-created or older profile row), but
@@ -8944,6 +8954,10 @@ updateGoingCount();
 // fetch and is available by the time we render. If it lands later (or
 // fails), the fallback chain still resolves correctly via hardcoded
 // patterns — page never blocks on this.
+// Reflect the resolved initial language (from ?lang=, saved pref, or navigator)
+// in the dropdown label + active states — the markup hardcodes EN, so without
+// this a uk/nl/etc. initial lang would show the wrong selector.
+syncLangUI(lang);
 fetchCategories();
 fetchEvts();
 fetchTrending();   // country-wide "Most Popular" shelf, independent of `all`
