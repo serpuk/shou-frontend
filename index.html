@@ -4171,6 +4171,30 @@ const t=k=>T[lang][k]||T.en[k]||k;
 // --------------------------------------------------------------------------
 // LANGUAGE DROPDOWN
 // --------------------------------------------------------------------------
+// Re-render the currently-open event modal in the active `lang`. Fetches just
+// the open event by id (so it works even for deep-linked events not in the
+// catalog) and re-renders in place, preserving scroll position. No-op when no
+// modal is open. Decoupled from the catalog reload so the switch feels instant.
+async function rerenderOpenModalForLang() {
+  const openId = omCurrentId;
+  if (!openId || !document.getElementById('mov')?.classList.contains('on')) return;
+  const wasSingle = omSingleEvent;
+  try {
+    const r = await fetch(API_BASE + '/api/events?' + new URLSearchParams({ lang, ids: openId }));
+    if (!r.ok) return;
+    const ev = ((await r.json()).events || []).find(x => x.id === openId);
+    if (!ev) return;
+    const shaped = shapeAIEvent(ev);
+    const i = all.findIndex(x => x.id === openId);
+    if (i >= 0) all[i] = shaped; else all.push(shaped);
+    // Re-check the modal is still open on the same event (user may have closed
+    // or navigated during the await) before swapping its content.
+    if (omCurrentId === openId && document.getElementById('mov')?.classList.contains('on')) {
+      om(openId, { fromUrl: true, skipScrollReset: true, singleEvent: wasSingle });
+    }
+  } catch (e) { console.warn('modal re-render on lang switch failed:', e && e.message); }
+}
+
 function setLang(l) {
   lang = l;
   // Persist for next page load. Two layers:
@@ -4210,6 +4234,10 @@ function setLang(l) {
   });
   closeLangMenu();
   applyI18n();
+  // Re-render an open event modal immediately in the new language — don't wait
+  // for the full catalog reload below (slow, and may not even contain a
+  // deep-linked single event). Fetches just the open event.
+  rerenderOpenModalForLang();
   // Refetch the catalog in the new language, then restore whatever fetch
   // state was active before. fetchEvts loads the top-500 most-popular events
   // Belgium-wide — niche AI-search results or area-specific events outside
@@ -4225,15 +4253,6 @@ function setLang(l) {
     // Cached AI prefetches are keyed by query but encoded in the old language;
     // clear them so re-runs hit the backend fresh in the new language.
     if (typeof aiPrefetchCache !== 'undefined') aiPrefetchCache.clear();
-    // Re-render an open event modal in the new language. The open event may not
-    // be in the freshly reloaded top-N (e.g. a deep-linked single event), so
-    // hydrate it by id (fetched in the new `lang`) before re-rendering. Runs
-    // before the AI early-return so it also works while an AI search is active.
-    if (omCurrentId && document.getElementById('mov')?.classList.contains('on')) {
-      const openId = omCurrentId, wasSingle = omSingleEvent;
-      const reopen = () => { if (all.some(x => x.id === openId)) om(openId, { fromUrl: true, skipScrollReset: true, singleEvent: wasSingle }); };
-      if (all.some(x => x.id === openId)) reopen(); else hydrateEventsByIds([openId]).then(reopen);
-    }
     // If an AI search is active, re-run it so the backend returns the same
     // events with translated content. Returns early — showAI handles its
     // own applyF.
