@@ -7869,8 +7869,22 @@ async function handleAuthStateChange(event, session) {
 
     closeSignInModal();
     try {
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
+      // Strip ONLY auth artifacts — the magic-link/OAuth hash tokens and the
+      // OAuth ?code/?error params — while preserving app query params. This
+      // block runs on EVERY load for an already-signed-in user (INITIAL_SESSION
+      // makes justSignedIn true), so a blanket strip to origin+pathname would
+      // wipe ?event= and break deep links before maybeOpenEventFromUrl reads it.
+      const url = new URL(window.location.href);
+      let dirty = false;
+      if (/(access_token|refresh_token|provider_token|expires_in|token_type)=/.test(url.hash)) {
+        url.hash = ''; dirty = true;
+      }
+      for (const p of ['code', 'error', 'error_description', 'error_code']) {
+        if (url.searchParams.has(p)) { url.searchParams.delete(p); dirty = true; }
+      }
+      if (dirty) {
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+      }
     } catch {}
     // Sign-in invalidates any "guest nudge" dismissal cooldown — the user
     // is no longer a guest, and if they sign out later they should see the
