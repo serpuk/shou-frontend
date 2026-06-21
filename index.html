@@ -3490,11 +3490,22 @@ const T={
 // to the same place.
 const SUPPORTED_LANGS = ['en','fr','nl','de','es','it','uk'];
 
+// An explicit ?lang=xx in the URL (e.g. an event opened from the localized
+// /this-week page, or a shared deep link) is a deliberate signal and takes
+// precedence over the saved preference, so the modal opens in that language.
+const _urlLang   = (() => { try { return new URLSearchParams(location.search).get('lang'); } catch { return null; } })();
 const _savedLang = (() => { try { return localStorage.getItem('shou.lang'); } catch { return null; } })();
 const _navLang   = navigator.language?.slice(0,2);
-let lang = SUPPORTED_LANGS.includes(_savedLang)
-  ? _savedLang
-  : (SUPPORTED_LANGS.includes(_navLang) && _navLang !== 'en' ? _navLang : 'en');
+let lang = SUPPORTED_LANGS.includes(_urlLang)
+  ? _urlLang
+  : SUPPORTED_LANGS.includes(_savedLang)
+    ? _savedLang
+    : (SUPPORTED_LANGS.includes(_navLang) && _navLang !== 'en' ? _navLang : 'en');
+// Persist a URL-supplied language so it sticks like a manual pick (and survives
+// the modal's pushState, which drops query params from the address bar).
+if (SUPPORTED_LANGS.includes(_urlLang)) {
+  try { localStorage.setItem('shou.lang', _urlLang); } catch {}
+}
 
 // --------------------------------------------------------------------------
 // LIKES, CONSENT, AND ANONYMOUS SESSION ID
