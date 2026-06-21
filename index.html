@@ -9,7 +9,14 @@
      PII disabled for GDPR; data region is EU (DSN host = ingest.de.sentry.io). -->
 <script src="https://browser.sentry-cdn.com/10.56.0/bundle.min.js" crossorigin="anonymous"></script>
 <script>
-  if (window.Sentry) {
+  // Only report from the live https site — not the local file:// preview,
+  // localhost, or anything else. Edit-time errors in the preview panel were
+  // being ingested as "production" incidents (and paging the team). Gating on
+  // host keeps Sentry to real user traffic.
+  var _sentryLive = location.protocol === 'https:' &&
+    (location.hostname === 'shou.be' || location.hostname === 'beta.shou.be' ||
+     location.hostname.endsWith('.shou.be'));
+  if (window.Sentry && _sentryLive) {
     Sentry.init({
       dsn: 'https://3207db16366210ae3afd3442684f4b29@o4511513450905601.ingest.de.sentry.io/4511513604653136',
       environment: 'production',
