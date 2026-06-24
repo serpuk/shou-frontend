@@ -6174,7 +6174,7 @@ function buildShareIntro(e) {
 }
 
 function stw(id){
-  const e=all.find(x=>x.id===id);if(!e)return;
+  const e=findEv(id);if(!e)return;
   const u=eventShareUrl(id);   // OG-aware URL routes through /api/share
   track(id,'share');
   // Tweet structure: "Event Name · 📍 Venue, City · 📅 Date #shou" + URL
@@ -6202,7 +6202,7 @@ function stw(id){
   window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweet)+'&url='+encodeURIComponent(u),'_blank');
 }
 function sfb(id){
-  const e=all.find(x=>x.id===id);if(!e)return;
+  const e=findEv(id);if(!e)return;
   const u=eventShareUrl(id);   // OG-aware URL routes through /api/share
   track(id,'share');
   const intro = buildShareIntro(e);
@@ -6229,7 +6229,7 @@ function sfb(id){
   );
 }
 function cp2(id){
-  const e=all.find(x=>x.id===id);if(!e)return;
+  const e=findEv(id);if(!e)return;
   const u=eventShareUrl(id);
   track(id,'share');
   // Copy ONLY the URL — clean for pasting into a browser address bar, email
@@ -6263,7 +6263,7 @@ function cp2(id){
 // (≤768px viewport on a desktop browser, or weird responsive testing), we
 // fall back to the X-platform path so something useful still happens.
 function sgen(id) {
-  const e = all.find(x => x.id === id);
+  const e = findEv(id);
   if (!e) return;
   const u = eventShareUrl(id);
   track(id, 'share');
@@ -6468,7 +6468,7 @@ ${mTicketBtn(e)}
 }
 
 function om(id, _opts){
-  const e=all.find(x=>x.id===id);if(!e)return;
+  const e=findEv(id);if(!e)return;
   omCurrentId = id;
   // Track engagement signal for popularity scoring. Skip when the modal was
   // opened by URL restoration (e.g. on page load with ?event=...) — that's
