@@ -2738,19 +2738,23 @@ footer p {
    banner so they don't overlap on first visit. */
 .fab-feedback {
   position: fixed; right: 20px; bottom: 20px; z-index: 250;
-  display: none; align-items: center; justify-content: center;
-  width: 52px; height: 52px; border-radius: 50%;
+  display: none; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 18px; border-radius: 999px;
   background: linear-gradient(135deg, var(--magenta), var(--coral));
   color: #fff; border: none; cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset;
-  font-size: 22px; line-height: 1;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .2px; line-height: 1;
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .fab-feedback.on { display: inline-flex; }
-.fab-feedback:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+.fab-feedback:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 12px 30px rgba(255,46,126,0.4); }
 .fab-feedback:active { transform: translateY(0) scale(0.98); }
+.fab-feedback .fab-ic { font-size: 17px; line-height: 1; }
 @media (max-width: 600px) {
-  .fab-feedback { width: 46px; height: 46px; right: 14px; bottom: 76px; font-size: 19px; }
+  /* Compact icon circle on small screens (sits above the mobile bar). */
+  .fab-feedback { padding: 0; width: 48px; height: 48px; border-radius: 50%; right: 14px; bottom: 76px; }
+  .fab-feedback .fab-tx { display: none; }
+  .fab-feedback .fab-ic { font-size: 20px; }
 }
 .pe-charcount { font-size: 11px; color: var(--bone3); text-align: right; margin-top: 4px; }
 .pe-charcount.warn { color: var(--magenta); }
@@ -3291,7 +3295,7 @@ footer p {
 <!-- Floating feedback button: signed-in users, every screen. Visibility
      toggled by syncFeedbackFab() on auth state change. Reports from wherever
      the user is, so captured context reflects the actual screen. -->
-<button class="fab-feedback" id="fabFeedback" onclick="openFeedback()" aria-label="Send feedback" title="Send feedback">💬</button>
+<button class="fab-feedback" id="fabFeedback" onclick="openFeedback()" aria-label="Send feedback" title="Send feedback"><span class="fab-ic" aria-hidden="true">💬</span><span class="fab-tx">Feedback</span></button>
 
 <!-- Feedback modal: signed-in users send a bug report / idea / other. Reuses
      the profile-sheet styling. Submits to /api/feedback with the auth token. -->
