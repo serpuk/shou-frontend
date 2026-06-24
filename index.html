@@ -5501,7 +5501,7 @@ function renderAll(){
   //   liked — user's personal collection
   //   going — user's personal collection
   // These get no shelves above (the curation IS the list).
-  const isNarrowOrPersonal = isLive || isLiked || isGoing;
+  const isNarrowOrPersonal = isLive || isMine;
   // Trending shelf visibility: ONLY on the unfiltered/personalized home
   // (actF === 'all'). Trending is now a country-wide "what's hot" overview, so
   // showing it above a category filter contradicts the user's narrowing intent
