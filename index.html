@@ -4458,7 +4458,7 @@ async function fetchTrending(){
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok) return;
     const d=await r.json();
-    trendingAll=(d.events||[]).map(shapeCatalogEvent).sort((a,b)=>(b.pop||0)-(a.pop||0));
+    trendingAll=dedupeByContent((d.events||[]).map(shapeCatalogEvent)).sort((a,b)=>(b.pop||0)-(a.pop||0));
     renderAll();
   }catch(e){ console.warn('fetchTrending failed:', e && e.message); }
 }
@@ -5197,6 +5197,21 @@ function matchesAIQuery(e,c){
   return true;
 }
 
+// Collapse cross-source duplicates — the same real event ingested as two rows
+// with different ids (the browse API only de-dupes by id, so these slip
+// through). Key on title+date+venue, keep the most popular. Mirrors the
+// this-week page's server-side dedupe. Preserves first-seen order.
+function dedupeByContent(list){
+  const best=new Map(), order=[];
+  for(const e of (list||[])){
+    const key=(e.name||'').toLowerCase().trim()+'|'+(e.date||'')+'|'+(e.venue||'').toLowerCase().trim();
+    const prev=best.get(key);
+    if(!prev){ best.set(key,e); order.push(key); }
+    else if((e.pop||0)>(prev.pop||0)) best.set(key,e);
+  }
+  return order.map(k=>best.get(k));
+}
+
 function applyF(){
   // When AI search is active, only events in aiResultIds pass the filter.
   // aiResultIds is set by the /api/search response. While a search is in
@@ -5231,6 +5246,8 @@ function applyF(){
     // Region scoping for AI search happens server-side via body.area.
     return sm && am;
   });
+  // Drop cross-source duplicate rows before ranking/rendering.
+  filtered = dedupeByContent(filtered);
 
   // SORT LOGIC
   // ---------------------------------------------------------------------
