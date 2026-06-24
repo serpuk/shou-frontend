@@ -3077,8 +3077,7 @@ footer p {
     <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
     <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
     <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
-    <button class="fb liked-tab" data-c="liked" onclick="sf('liked',this)" data-k="fliked" title="Interested">★ <span class="liked-count" id="lcn"></span></button>
-    <button class="fb going-tab" data-c="going" onclick="sf('going',this)" data-k="fgoing" title="Events you're going to">○ <span class="going-count" id="gcn"></span></button>
+    <button class="fb liked-tab" data-c="mine" onclick="sf('mine',this)" title="Events you're interested in or going to">★ My events <span class="liked-count" id="mcn"></span></button>
   </div>
 
   <!-- Geo precision prompt: shown ONLY when the user has never been asked
@@ -3763,7 +3762,7 @@ function setRsvp(id, target){
   // Calm update: re-render ONLY this event's control in place. A full
   // renderAll() would rebuild the trending carousel + grid (visible churn) and
   // is only needed on the Interested/Going tabs, where the visible set changes.
-  if (actF === 'liked' || actF === 'going') {
+  if (actF === 'mine') {
     renderAll();
   } else {
     refreshRsvpUI(id);
@@ -4467,8 +4466,7 @@ function setLang(l) {
     // when `all` reloaded (loadedCats was just cleared). Categories re-fetch;
     // Liked/Going re-hydrate from the personal sets.
     if (CAT_SLUGS[actF]) fetchCategoryEvents(actF).then(() => applyF());
-    else if (actF === 'liked' && lk.size) hydrateEventsByIds([...lk]).then(() => applyF());
-    else if (actF === 'going' && gn.size) hydrateEventsByIds([...gn]).then(() => applyF());
+    else if (actF === 'mine' && (lk.size || gn.size)) hydrateEventsByIds([...new Set([...lk, ...gn])]).then(() => applyF());
     // Re-hydrate recommendations so the signed-in home isn't reduced to just
     // the recs that happen to be in the fresh top-N.
     if (currentSession && forYouIds.size > 0) hydrateEventsByIds([...forYouIds.keys()]).then(() => applyF());
@@ -4985,12 +4983,12 @@ async function sf(f,btn){
   if (CAT_SLUGS[f] && CAT_SLUGS[f].some(s => !loadedCats.has(s))) {
     document.getElementById('fw').innerHTML = '<div class="loading"><div class="spin"></div><p>' + t('ld') + '</p></div>';
     await fetchCategoryEvents(f);
-  } else if ((f === 'liked' && lk.size) || (f === 'going' && gn.size)) {
-    // Liked/Going are personal collections — hydrate their events into `all` so
-    // the full set shows, not just whichever ones happen to be loaded. Without
-    // this they go sparse/empty after `all` is rebuilt (e.g. a language switch).
+  } else if (f === 'mine' && (lk.size || gn.size)) {
+    // "My events" is a personal collection — hydrate its events into `all` so the
+    // full set shows, not just whichever ones happen to be loaded (e.g. after a
+    // language switch rebuilds `all`).
     document.getElementById('fw').innerHTML = '<div class="loading"><div class="spin"></div><p>' + t('ld') + '</p></div>';
-    await hydrateEventsByIds([...(f === 'liked' ? lk : gn)]);
+    await hydrateEventsByIds([...new Set([...lk, ...gn])]);
   }
   applyF();
 }
@@ -5408,8 +5406,7 @@ function applyF(){
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
-      || (actF === 'liked' && lk.has(e.id))
-      || (actF === 'going' && gn.has(e.id))
+      || (actF === 'mine' && (lk.has(e.id) || gn.has(e.id)))
       || (actF === 'live' && isEventLive(e))
       || e.categorySlug === actF
       || (actF==='theatre' && ['theatre','comedy','dance','exhibition'].includes(e.categorySlug));
@@ -5434,8 +5431,7 @@ function applyF(){
   //      into the score with exponential decay.
   // ---------------------------------------------------------------------
   const isLive         = actF === 'live';
-  const isLiked        = actF === 'liked';
-  const isGoing        = actF === 'going';
+  const isMine         = actF === 'mine';
 
   let comparator;
   if (aiQ && aiResultIds) {
@@ -5447,7 +5443,7 @@ function applyF(){
       aiRank.set(id, i++);
     }
     comparator = (a, b) => (aiRank.get(a.id) ?? 9999) - (aiRank.get(b.id) ?? 9999);
-  } else if (isLive || isLiked || isGoing) {
+  } else if (isLive || isMine) {
     // Time-based filters: chronological. Tiebreak by time within same date.
     comparator = (a, b) => {
       const d = String(a.date || '').localeCompare(String(b.date || ''));
@@ -5484,14 +5480,13 @@ function renderAll(){
   // applyF which has its own copies). These drive both the shelf/grid layout
   // decisions below and the header text swaps later in this function.
   const isLive      = actF === 'live';
-  const isLiked     = actF === 'liked';
-  const isGoing     = actF === 'going';
+  const isMine      = actF === 'mine';
   // "Filtering" now means narrow/personal filters (Live now, Liked, Going)
   // or an active AI search. Broad category filters (Music, Theatre, Sports,
   // Family) keep the shelves visible — they're broad browse contexts where
   // shelves add value. The city pill (all/near) is never counted; it only
   // affects sort order.
-  const isFiltering = isLive || isLiked || isGoing || aiQ;
+  const isFiltering = isLive || isMine || aiQ;
   // ── New shelf/browse model ─────────────────────────────────────────────
   // - Trending shelf: always Belgium-wide popular (ignores pill), shown for
   //   default home + broad category filters (not for Live/Liked/Going/AI)
@@ -5586,12 +5581,9 @@ function renderAll(){
     } else if (isLive) {
       allHeaderTitle.textContent = t('atLive');
       allHeaderTitle.dataset.k    = 'atLive';
-    } else if (isLiked) {
-      allHeaderTitle.textContent = t('atL');
-      allHeaderTitle.dataset.k    = 'atL';
-    } else if (isGoing) {
-      allHeaderTitle.textContent = t('atG');
-      allHeaderTitle.dataset.k    = 'atG';
+    } else if (isMine) {
+      allHeaderTitle.textContent = 'My events';
+      allHeaderTitle.dataset.k    = '';
     } else if (categoryHeaders[actF]) {
       const key = categoryHeaders[actF];
       allHeaderTitle.textContent = t(key);
@@ -5613,18 +5605,12 @@ function renderAll(){
     if (isLive) {
       empMsg.textContent = t('neLive');
       empMsg.dataset.k = 'neLive';
-    } else if (isLiked && !currentSession) {
-      empMsg.innerHTML = `${t('neL')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neLSignIn')}</span>`;
-      empMsg.dataset.k = 'neL';
-    } else if (isLiked) {
-      empMsg.textContent = t('neL');
-      empMsg.dataset.k = 'neL';
-    } else if (isGoing && !currentSession) {
-      empMsg.innerHTML = `${t('neG')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neLSignIn')}</span>`;
-      empMsg.dataset.k = 'neG';
-    } else if (isGoing) {
-      empMsg.textContent = t('neG');
-      empMsg.dataset.k = 'neG';
+    } else if (isMine && !currentSession) {
+      empMsg.innerHTML = `No saved events yet.<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neLSignIn')}</span>`;
+      empMsg.dataset.k = '';
+    } else if (isMine) {
+      empMsg.textContent = 'No saved events yet.';
+      empMsg.dataset.k = '';
     } else {
       empMsg.textContent = t('ne');
       empMsg.dataset.k = 'ne';
@@ -6094,15 +6080,13 @@ async function fetchGoingCounts(eventIds) {
 }
 
 // Updates the small badge on the "Liked" filter button.
+// "My events" tab count = Interested + Going (mutually exclusive, so they sum).
 function updateLikedCount(){
-  const el = document.getElementById('lcn');
-  if (el) el.textContent = lk.size > 0 ? String(lk.size) : '';
+  const el = document.getElementById('mcn');
+  const n = lk.size + gn.size;
+  if (el) el.textContent = n > 0 ? String(n) : '';
 }
-// Going count for the filter chip — mirrors updateLikedCount exactly.
-function updateGoingCount(){
-  const el = document.getElementById('gcn');
-  if (el) el.textContent = gn.size > 0 ? String(gn.size) : '';
-}
+function updateGoingCount(){ updateLikedCount(); }
 
 // Guest nudge banner — shown above results on Liked / Going filters for
 // anonymous users with ≥1 saved item, unless dismissed within last 30 days.
@@ -6113,10 +6097,9 @@ function updateGuestNudge(){
   // Signed in → never show.
   if (currentSession) { el.hidden = true; return; }
   // Only show on personal filters (Liked / Going).
-  if (actF !== 'liked' && actF !== 'going') { el.hidden = true; return; }
-  // Need at least one saved item in the active filter — banner is pointless
-  // for users with nothing to lose.
-  const hasItems = (actF === 'liked' ? lk.size : gn.size) > 0;
+  if (actF !== 'mine') { el.hidden = true; return; }
+  // Need at least one saved item — banner is pointless otherwise.
+  const hasItems = (lk.size + gn.size) > 0;
   if (!hasItems) { el.hidden = true; return; }
   // 30-day dismissal cooldown. If user closed it recently, don't nag.
   try {
