@@ -995,6 +995,16 @@ body.ai-active .filters { position: static; box-shadow: none; }
   text-align: center;
 }
 .liked-count:empty { display: none; }
+/* Per-tab event-count badge — same pill as the My-events count, muted. */
+.fbn {
+  display: inline-block; margin-left: 6px; min-width: 14px; padding: 0 5px;
+  height: 16px; line-height: 16px; border-radius: 8px;
+  background: rgba(255,255,255,0.12); color: var(--bone3);
+  font-size: 10px; font-weight: 700; vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.fbn:empty { display: none; }
+.fb.on .fbn { background: rgba(0,0,0,0.20); color: inherit; }
 
 /* Going filter — coral tint to match the ○ icon on cards. Same shape as Liked
    but a different color identity so the two personal filters read as a pair
@@ -4734,7 +4744,13 @@ async function fetchEvts(){
     if (totals.sources != null) {
       document.getElementById('ss').textContent = totals.sources;
     }
+    // Per-category catalog totals → seed slugTotals so the filter tabs can show
+    // counts upfront (without waiting for each category to be clicked).
+    if (totals.categories && typeof totals.categories === 'object') {
+      for (const [slug, n] of Object.entries(totals.categories)) slugTotals.set(slug, Number(n) || 0);
+    }
     applyF();
+    renderTabCounts();
     // If the page was loaded with ?event=<id>, auto-open that event's modal.
     // Has to run AFTER the catalog populates, since om() looks up the event
     // in the `all` array. Safe to call when no param is present (no-op).
@@ -5216,6 +5232,34 @@ function categoryTotal(filter) {
   let sum = 0, any = false;
   for (const s of slugs) { if (slugTotals.has(s)) { sum += slugTotals.get(s); any = true; } }
   return any ? sum : null;
+}
+
+// Compact count: 999 -> "999", 8500 -> "8.5K", 21914 -> "22K".
+function fmtK(n) {
+  if (n == null) return '';
+  if (n < 1000) return String(n);
+  if (n < 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return Math.round(n / 1000) + 'K';
+}
+
+// Render the event-count badge on each filter tab. Category tabs use the
+// catalog-wide per-slug totals; All = their sum; Live = the (loaded) live set;
+// My events keeps its own Interested+Going badge.
+function renderTabCounts() {
+  let allTotal = null;
+  if (slugTotals.size) { allTotal = 0; for (const v of slugTotals.values()) allTotal += v; }
+  document.querySelectorAll('.fb[data-c]').forEach(btn => {
+    const f = btn.dataset.c;
+    if (f === 'mine') return;
+    let n = null;
+    if (f === 'all') n = allTotal;
+    else if (f === 'live') n = all.filter(isEventLive).length;
+    else n = categoryTotal(f);
+    let span = btn.querySelector('.fbn');
+    if (n == null) { if (span) span.textContent = ''; return; }
+    if (!span) { span = document.createElement('span'); span.className = 'fbn'; btn.appendChild(span); }
+    span.textContent = fmtK(n);
+  });
 }
 
 // Wire up scroll arrows for a horizontal shelf. Called after the shelf
