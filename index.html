@@ -3722,6 +3722,9 @@ const ICON_CARET = '<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden=
 function rsvpState(id){ return lk.has(id) ? 'interested' : gn.has(id) ? 'going' : ni.has(id) ? 'notint' : null; }
 const RSVP_LABEL = { interested:'Interested', going:'Going', notint:'Not interested' };
 function rsvpIcon(st){ return st==='interested'?ICON_STAR : st==='going'?ICON_CHECK : st==='notint'?ICON_XCIRCLE : ICON_STAR; }
+// Trending shelf renders from trendingAll, which can hold events not in `all` —
+// look in both so RSVP updates work on trending-only cards.
+function findEv(id){ return all.find(x => x.id === id) || trendingAll.find(x => x.id === id) || null; }
 
 // Apply a new RSVP state (or null to clear). Mutually exclusive; mirrors the
 // server tables for the two that have counts (likes/going) and updates counts
@@ -3738,7 +3741,7 @@ function setRsvp(id, target){
   if(nowLk!==wasLk){ syncLikeToServer(id, nowLk); track(id, nowLk?'like':'unlike'); }
   if(nowGn!==wasGn){ syncGoingToServer(id, nowGn); }
   saveLikes(lk); saveGoing(gn); saveNI(ni);
-  const e=all.find(x=>x.id===id);
+  const e=findEv(id);
   if(e && currentSession){
     if(nowLk&&!wasLk) e.likes=(e.likes||0)+1; else if(!nowLk&&wasLk) e.likes=Math.max(0,(e.likes||0)-1);
     if(nowGn&&!wasGn) e.going_count=(e.going_count||0)+1; else if(!nowGn&&wasGn) e.going_count=Math.max(0,(e.going_count||0)-1);
@@ -3760,7 +3763,7 @@ function setRsvp(id, target){
 // trending shelf) without touching the rest of the DOM — keeps the carousel
 // still when the user changes their RSVP.
 function refreshRsvpUI(id){
-  const e = all.find(x => x.id === id);
+  const e = findEv(id);
   if (!e) return;
   document.querySelectorAll(`.rsvp-wrap[data-id="${id}"]`).forEach(w => {
     w.innerHTML = rsvpBtn(e) + rsvpCounts(e);
@@ -3822,7 +3825,7 @@ function updateModalRsvp(id){
   if(!modal || !modal.classList.contains('on')) return;
   const box=document.getElementById('movRsvp');
   if(!box || box.dataset.id!==id) return;
-  const e=all.find(x=>x.id===id);
+  const e=findEv(id);
   if(e) box.innerHTML=rsvpBtn(e)+rsvpCounts(e);
 }
 
