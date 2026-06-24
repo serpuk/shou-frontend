@@ -5271,8 +5271,11 @@ function applyF(){
 
   filtered.sort(comparator);
 
+  // The count belongs on the main grid header, not the Trending header (the
+  // shelf only shows a fixed few). Clear the Trending-header slot; renderAll()
+  // sets the count on the "All Events" header for both modes.
   const ec=document.getElementById('ec');
-  if(ec) ec.textContent=t('ne2')(filtered.length);
+  if(ec) ec.textContent='';
   renderAll();
 }
 function renderAll(){
@@ -5486,12 +5489,18 @@ function renderAll(){
     const trendingSrc = trendingAll.length ? trendingAll : filtered;
     const trendingPool = [...trendingSrc].sort((a, b) => (b.pop || 0) - (a.pop || 0));
     const trending = trendingPool.slice(0, TRENDING_SHELF_SIZE);
+    // Preserve the horizontal scroll across re-render: a like/going toggle
+    // calls renderAll(), which rebuilds this shelf — without this the strip
+    // would jump back to the start on every button click.
+    const prevShelf = fw.querySelector('.trending-shelf');
+    const prevScroll = prevShelf ? prevShelf.scrollLeft : 0;
     fw.innerHTML = `<div class="shelf-wrap">
       <button class="shelf-arrow left"  aria-label="Scroll left"  disabled>‹</button>
       <div class="trending-shelf">${trending.map(e=>bigCard(e)).join('')}</div>
       <button class="shelf-arrow right" aria-label="Scroll right">›</button>
     </div>`;
     wireShelfArrows(fw);
+    if (prevScroll) { const ns = fw.querySelector('.trending-shelf'); if (ns) ns.scrollLeft = prevScroll; }
 
     // Main browse view header is set by the centralized switch above
     // (personalizedBrowse → "Recommended for you", category → category name,
@@ -5500,8 +5509,12 @@ function renderAll(){
     if(allHeader){
       allHeader.style.display='';
       allHeader.style.marginTop='52px';
-      const extraCount=allHeader.querySelector('.sc');
-      if(extraCount) extraCount.remove();
+      // Show the total on the main grid header (where the events actually are),
+      // not on the Trending header.
+      let countEl=allHeader.querySelector('.sc');
+      if(!countEl){ countEl=document.createElement('span'); countEl.className='sc'; allHeader.appendChild(countEl); }
+      const catTot=categoryTotal(actF);
+      countEl.textContent=t('ne2')(catTot!=null?catTot:filtered.length);
     }
     // Grid renders `filtered`. When personalizedBrowse is active, applyF()
     // narrowed `filtered` to get_recommendations' actual picks (hydrated into
