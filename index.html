@@ -204,6 +204,20 @@ nav::after {
 }
 .navr { display: flex; gap: 10px; align-items: center; }
 
+/* ── "THIS WEEK" NAV LINK ── matches the language pill */
+.navlink {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: transparent; border: 1px solid rgba(255,153,102,0.2);
+  border-radius: 20px; padding: 6px 14px;
+  color: var(--bone3); text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  white-space: nowrap; transition: all .2s;
+}
+.navlink:hover { border-color: rgba(255,153,102,0.5); color: var(--cyan); }
+.navlink svg { opacity: .85; }
+@media (max-width: 560px) { .navlink .navlink-tx { display: none; } .navlink { padding: 6px 11px; } }
+
 /* ── LANGUAGE DROPDOWN ── */
 .langbox { position: relative; }
 .lb-btn {
@@ -2931,6 +2945,10 @@ footer p {
     <span class="logo-text">shou</span>
   </div>
   <div class="navr">
+    <a class="navlink" id="thisWeekLink" href="https://shou.be/this-week" aria-label="This week's top concerts and parties">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+      <span class="navlink-tx">This week</span>
+    </a>
     <div class="langbox">
       <button class="lb-btn" id="langBtn" onclick="toggleLangMenu(event)" aria-haspopup="true" aria-expanded="false">
         <span id="langLabel">EN</span>
@@ -4186,6 +4204,9 @@ const t=k=>T[lang][k]||T.en[k]||k;
 function syncLangUI(l) {
   const lbl = document.getElementById('langLabel');
   if (lbl) lbl.textContent = l.toUpperCase();
+  // Carry the active language into the this-week page link.
+  const tw = document.getElementById('thisWeekLink');
+  if (tw) tw.href = 'https://shou.be/this-week?lang=' + l;
   document.querySelectorAll('.lm-item').forEach(b => {
     b.classList.toggle('active', b.dataset.l === l);
   });
