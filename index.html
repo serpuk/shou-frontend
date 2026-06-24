@@ -244,7 +244,7 @@ nav::after {
 .rsvp-opt.opt-going .rsvp-opt-ic { color:var(--coral,#ff9966); }
 .rsvp-opt.sel { color:#fff; }
 .rsvp-opt.sel .rsvp-opt-rd { border-color:var(--pink-hot,#ff5fb8); background:radial-gradient(circle, var(--pink-hot,#ff5fb8) 0 6px, transparent 7px); }
-.iact-rsvp { display:inline-flex; align-items:center; gap:6px; }
+.iact-rsvp, .rsvp-wrap { display:inline-flex; align-items:center; gap:6px; }
 
 /* ── LANGUAGE DROPDOWN ── */
 .langbox { position: relative; }
@@ -3745,8 +3745,26 @@ function setRsvp(id, target){
   }
   updateLikedCount();
   closeRsvpMenu();
-  renderAll();
+  // Calm update: re-render ONLY this event's control in place. A full
+  // renderAll() would rebuild the trending carousel + grid (visible churn) and
+  // is only needed on the Interested/Going tabs, where the visible set changes.
+  if (actF === 'liked' || actF === 'going') {
+    renderAll();
+  } else {
+    refreshRsvpUI(id);
+  }
   updateModalRsvp(id);
+}
+
+// Update every on-screen RSVP control for one event (cards in the grid and the
+// trending shelf) without touching the rest of the DOM — keeps the carousel
+// still when the user changes their RSVP.
+function refreshRsvpUI(id){
+  const e = all.find(x => x.id === id);
+  if (!e) return;
+  document.querySelectorAll(`.rsvp-wrap[data-id="${id}"]`).forEach(w => {
+    w.innerHTML = rsvpBtn(e) + rsvpCounts(e);
+  });
 }
 
 // The dropdown button shown on cards + in the modal.
@@ -5733,7 +5751,7 @@ function bigCard(e){
       </div>
       <div class="feat-actions">
         <div class="socs">
-          ${rsvpBtn(e)}${rsvpCounts(e)}
+          <span class="rsvp-wrap" data-id="${e.id}">${rsvpBtn(e)}${rsvpCounts(e)}</span>
           <button class="sb share-platform" onclick="event.stopPropagation();stw('${e.id}')">𝕏</button>
           <button class="sb share-platform" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb share-platform" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
@@ -5767,7 +5785,7 @@ function smCard(e){
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
-${rsvpBtn(e)}${rsvpCounts(e)}
+<span class="rsvp-wrap" data-id="${e.id}">${rsvpBtn(e)}${rsvpCounts(e)}</span>
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;
 }
