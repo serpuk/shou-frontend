@@ -3781,6 +3781,27 @@ function refreshRsvpUI(id){
   });
 }
 
+// Legacy cleanup: before RSVP was merged, Like and Going were independent, so a
+// user could be in BOTH for one event (showing ★1 ✓1 = themselves twice, plus a
+// "GOING" badge under an "Interested" button). RSVP is now mutually exclusive —
+// collapse any overlap to a single state (keep Interested, matching the button's
+// lk-first priority) and drop the stale Going, mirroring the removal to the
+// server so the going_count decrements. Idempotent: a no-op once cleaned.
+function reconcileRsvp(){
+  let changed = false;
+  for (const id of [...gn]) {
+    if (lk.has(id)) {
+      gn.delete(id);
+      syncGoingToServer(id, false);            // remove the legacy user_going row (no-op if signed out)
+      const e = findEv(id);
+      if (e && currentSession) e.going_count = Math.max(0, (e.going_count || 0) - 1);
+      changed = true;
+    }
+  }
+  for (const id of [...ni]) { if (lk.has(id) || gn.has(id)) { ni.delete(id); changed = true; } }
+  if (changed) { saveGoing(gn); saveNI(ni); updateLikedCount(); }
+}
+
 // The dropdown button shown on cards + in the modal.
 function rsvpBtn(e){
   const st=rsvpState(e.id);
@@ -5385,6 +5406,7 @@ function dedupeByContent(list){
 }
 
 function applyF(){
+  reconcileRsvp();   // collapse any legacy Interested+Going overlap to one state
   // When AI search is active, only events in aiResultIds pass the filter.
   // aiResultIds is set by the /api/search response. While a search is in
   // flight, we don't render the old results (the skeleton UI takes over).
