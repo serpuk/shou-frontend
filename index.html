@@ -2154,13 +2154,12 @@ body.ai-active .filters { position: static; box-shadow: none; }
    content is the platform buttons that media queries hide. The share-generic
    button in .mact-primary becomes visible so users get a single ↗ button
    inline with like / going / Get Tickets — no orphaned row. */
-.share-generic  { display: none; }
-.share-platform { display: inline-flex; }
-@media (max-width: 768px) {
-  .share-platform { display: none; }
-  .share-generic  { display: inline-flex; }
-  .mact-share     { display: none; }   /* row now empty on mobile, drop entirely */
-}
+/* One native-share button on every viewport — opens the OS share sheet
+   (X / Facebook / copy / anything), with a copy-link fallback where the Web
+   Share API is missing (e.g. desktop Firefox). The platform-specific icons are
+   retired in favour of this single ↗ button, matching the mobile experience. */
+.share-generic  { display: inline-flex; }
+.share-platform { display: none; }
 
 /* ── Modal action redesign (Instagram-style flat icons) ────────────────
    Three vertically-stacked icon+count columns: Save / Going / Share.
@@ -2194,11 +2193,8 @@ body.ai-active .filters { position: static; box-shadow: none; }
    none }` rule (defined earlier in the file) — leaking the mobile-only
    share button onto desktop and vice versa. These explicit rules win
    the cascade by being later in source order. */
-.iact.share-generic { display: none; }                /* hidden on desktop */
-@media (max-width: 768px) {
-  .iact.share-platform { display: none; }             /* hidden on mobile */
-  .iact.share-generic  { display: flex; }             /* shown on mobile */
-}
+.iact.share-platform { display: none; }   /* retired — single share button now */
+.iact.share-generic  { display: flex; }    /* single native-share button, all viewports */
 .iact-icon {
   background: transparent;
   border: 0;
