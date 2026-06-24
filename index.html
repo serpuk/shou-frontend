@@ -1470,8 +1470,11 @@ body.ai-active .filters { position: static; box-shadow: none; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .emeta { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
-.mr { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--bone2); }
-.mi { font-size: 13px; width: 18px; text-align: center; opacity: .8; }
+.mr { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--bone2); line-height: 1.45; }
+.mi { font-size: 13px; width: 18px; text-align: center; opacity: .8; flex: none; }
+/* Venue · city · distance flow as ONE wrapping text block so a long venue name
+   doesn't detach the city/distance (the icon stays top-aligned beside it). */
+.mr-tx { min-width: 0; }
 /* Venue name on cards — slightly brighter than the city (--bone vs --bone2)
    so the eye lands on the specific place first; the city follows as context.
    The middle-dot separator stays in the muted color of the parent .mr. */
@@ -5803,7 +5806,7 @@ function smCard(e){
 <div class="ctitle">${e.name}${langBadge(e)}</div>
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
-<div class="mr"><span class="mi">📍</span>${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}${(()=>{ const d = eventDistanceLabel(e); return d ? ` · <span class="cdist">${d}</span>` : ''; })()}</div>
+<div class="mr"><span class="mi">📍</span><span class="mr-tx">${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}${(()=>{ const d = eventDistanceLabel(e); return d ? ` · <span class="cdist">${d}</span>` : ''; })()}</span></div>
 <div class="mr"><span class="mi">📅</span>${fmtD(e.date)}${timeStr}</div>
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
