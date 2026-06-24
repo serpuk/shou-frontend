@@ -218,6 +218,34 @@ nav::after {
 .navlink svg { opacity: .85; }
 @media (max-width: 560px) { .navlink .navlink-tx { display: none; } .navlink { padding: 6px 11px; } }
 
+/* ── RSVP control (Interested / Going / Not interested — combined) ── */
+.rsvp-btn { display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.16); border-radius:11px; padding:8px 12px; color:var(--bone3,#9a8fb0); font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.rsvp-btn:hover { border-color:rgba(255,255,255,0.32); }
+.rsvp-btn .rsvp-ic, .rsvp-btn .rsvp-cr { display:inline-flex; }
+.rsvp-btn .rsvp-ic svg { width:16px; height:16px; }
+.rsvp-btn .rsvp-cr { opacity:.6; }
+.rsvp-btn.rsvp-interested { color:var(--pink-hot,#ff5fb8); border-color:rgba(255,95,184,0.45); background:rgba(255,95,184,0.10); }
+.rsvp-btn.rsvp-going { color:var(--coral,#ff9966); border-color:rgba(255,153,102,0.45); background:rgba(255,153,102,0.10); }
+.rsvp-btn.rsvp-notint { color:var(--bone3,#9a8fb0); }
+.rsvp-cnt { display:inline-flex; align-items:center; gap:4px; background:none; border:none; cursor:pointer; color:var(--bone3,#9a8fb0); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; padding:6px 5px; }
+.rsvp-cnt:hover { color:var(--bone,#f0ebf4); }
+.rsvp-cnt .rsvp-cnt-ic { display:inline-flex; }
+.rsvp-cnt .rsvp-cnt-ic svg { width:13px; height:13px; }
+.rsvp-cnt.cnt-int .rsvp-cnt-ic { color:var(--pink-hot,#ff5fb8); }
+.rsvp-cnt.cnt-go  .rsvp-cnt-ic { color:var(--coral,#ff9966); }
+.rsvp-menu { position:fixed; z-index:9999; display:none; min-width:212px; background:#1a1420; border:1px solid rgba(255,255,255,0.14); border-radius:14px; padding:6px; box-shadow:0 18px 50px rgba(0,0,0,0.55); }
+.rsvp-opt { display:flex; align-items:center; gap:12px; width:100%; background:none; border:none; cursor:pointer; color:var(--bone,#f0ebf4); font-family:'Inter',sans-serif; font-size:14px; font-weight:600; padding:11px 12px; border-radius:9px; text-align:left; }
+.rsvp-opt:hover { background:rgba(255,255,255,0.06); }
+.rsvp-opt .rsvp-opt-ic { display:inline-flex; flex:none; color:var(--bone3,#9a8fb0); }
+.rsvp-opt .rsvp-opt-ic svg { width:18px; height:18px; }
+.rsvp-opt .rsvp-opt-tx { flex:1; }
+.rsvp-opt .rsvp-opt-rd { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.25); flex:none; }
+.rsvp-opt.opt-interested .rsvp-opt-ic { color:var(--pink-hot,#ff5fb8); }
+.rsvp-opt.opt-going .rsvp-opt-ic { color:var(--coral,#ff9966); }
+.rsvp-opt.sel { color:#fff; }
+.rsvp-opt.sel .rsvp-opt-rd { border-color:var(--pink-hot,#ff5fb8); background:radial-gradient(circle, var(--pink-hot,#ff5fb8) 0 6px, transparent 7px); }
+.iact-rsvp { display:inline-flex; align-items:center; gap:6px; }
+
 /* ── LANGUAGE DROPDOWN ── */
 .langbox { position: relative; }
 .lb-btn {
@@ -3037,7 +3065,7 @@ footer p {
     <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
     <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
     <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
-    <button class="fb liked-tab" data-c="liked" onclick="sf('liked',this)" data-k="fliked" title="Saved events">♥ <span class="liked-count" id="lcn"></span></button>
+    <button class="fb liked-tab" data-c="liked" onclick="sf('liked',this)" data-k="fliked" title="Interested">★ <span class="liked-count" id="lcn"></span></button>
     <button class="fb going-tab" data-c="going" onclick="sf('going',this)" data-k="fgoing" title="Events you're going to">○ <span class="going-count" id="gcn"></span></button>
   </div>
 
@@ -3552,6 +3580,7 @@ const LS = {
   CONSENT: 'shou_consent',
   LIKES:   'shou_likes',
   GOING:   'shou_going',
+  NOTINT:  'shou_notint',
   ANONID:  'shou_anon_id',
 };
 
@@ -3598,6 +3627,19 @@ function saveGoing(set) {
   } catch {}
 }
 
+// "Not interested" — local-only (private, no count/social meaning, doesn't hide
+// the event). Same persistence pattern as likes/going.
+function loadNI() {
+  try {
+    if (!hasConsent()) return new Set();
+    const raw = localStorage.getItem(LS.NOTINT);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+function saveNI(set) {
+  try { if (hasConsent()) localStorage.setItem(LS.NOTINT, JSON.stringify(Array.from(set))); } catch {}
+}
+
 // Get-or-create the anonymous session UUID. Generated lazily on first need.
 // Used by the /api/track endpoint to attribute behavior to this device.
 function getAnonId() {
@@ -3621,7 +3663,8 @@ function fallbackUuid() {
   });
 }
 
-let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing();
+let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing(),ni=loadNI();
+let rsvpMenuId=null;   // event id the shared RSVP popover currently targets
 // Trending shelf source — kept SEPARATE from `all`. `all` is proximity-/
 // recommendation-selected (near-me, For You), but Trending must stay
 // country-wide "most popular" for everyone, so it has its own Belgium-wide pool.
@@ -3668,6 +3711,102 @@ const ICON_HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 const ICON_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>';
 const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+const ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2l2.95 6.4 6.85.62-5.15 4.6 1.5 6.78L12 17.9 5.85 20.6l1.5-6.78L2.2 9.22l6.85-.62z"/></svg>';
+const ICON_XCIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>';
+const ICON_CARET = '<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M1 3 L5 7 L9 3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// ── RSVP (combined Interested / Going / Not interested — FB-style) ──────────
+// One mutually-exclusive state per event. Interested ↔ user_likes (lk),
+// Going ↔ user_going (gn), Not interested → local-only (ni). Picking one clears
+// the others. Counts + "who's interested / going" lists are preserved.
+function rsvpState(id){ return lk.has(id) ? 'interested' : gn.has(id) ? 'going' : ni.has(id) ? 'notint' : null; }
+const RSVP_LABEL = { interested:'Interested', going:'Going', notint:'Not interested' };
+function rsvpIcon(st){ return st==='interested'?ICON_STAR : st==='going'?ICON_CHECK : st==='notint'?ICON_XCIRCLE : ICON_STAR; }
+
+// Apply a new RSVP state (or null to clear). Mutually exclusive; mirrors the
+// server tables for the two that have counts (likes/going) and updates counts
+// optimistically, exactly like the old tl()/tg().
+function setRsvp(id, target){
+  const wasLk=lk.has(id), wasGn=gn.has(id);
+  const cur=rsvpState(id);
+  if(target===cur) target=null;                 // re-selecting the active state clears it
+  lk.delete(id); gn.delete(id); ni.delete(id);
+  if(target==='interested') lk.add(id);
+  else if(target==='going') gn.add(id);
+  else if(target==='notint') ni.add(id);
+  const nowLk=lk.has(id), nowGn=gn.has(id);
+  if(nowLk!==wasLk){ syncLikeToServer(id, nowLk); track(id, nowLk?'like':'unlike'); }
+  if(nowGn!==wasGn){ syncGoingToServer(id, nowGn); }
+  saveLikes(lk); saveGoing(gn); saveNI(ni);
+  const e=all.find(x=>x.id===id);
+  if(e && currentSession){
+    if(nowLk&&!wasLk) e.likes=(e.likes||0)+1; else if(!nowLk&&wasLk) e.likes=Math.max(0,(e.likes||0)-1);
+    if(nowGn&&!wasGn) e.going_count=(e.going_count||0)+1; else if(!nowGn&&wasGn) e.going_count=Math.max(0,(e.going_count||0)-1);
+  }
+  updateLikedCount();
+  closeRsvpMenu();
+  renderAll();
+  updateModalRsvp(id);
+}
+
+// The dropdown button shown on cards + in the modal.
+function rsvpBtn(e){
+  const st=rsvpState(e.id);
+  return `<button class="rsvp-btn${st?(' rsvp-'+st):''}" onclick="event.stopPropagation();openRsvpMenu(event,'${e.id}')" aria-haspopup="true" aria-label="RSVP">`
+    + `<span class="rsvp-ic">${rsvpIcon(st)}</span>`
+    + `<span class="rsvp-lb">${st?RSVP_LABEL[st]:'RSVP'}</span>`
+    + `<span class="rsvp-cr">${ICON_CARET}</span></button>`;
+}
+// Preserved social counts: clickable Interested / Going tallies → people lists.
+function rsvpCounts(e){
+  const L=displayLikes(e), G=displayGoing(e); let h='';
+  if(L>0) h+=`<button class="rsvp-cnt cnt-int" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" title="Interested"><span class="rsvp-cnt-ic">${ICON_STAR}</span>${L}</button>`;
+  if(G>0) h+=`<button class="rsvp-cnt cnt-go" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" title="Going"><span class="rsvp-cnt-ic">${ICON_CHECK}</span>${G}</button>`;
+  return h;
+}
+
+// Shared single popover (built once), positioned next to the clicked button.
+function ensureRsvpMenu(){
+  let m=document.getElementById('rsvpMenu');
+  if(m) return m;
+  m=document.createElement('div');
+  m.id='rsvpMenu'; m.className='rsvp-menu';
+  m.innerHTML=['interested','going','notint'].map(v=>
+    `<button class="rsvp-opt opt-${v}" data-v="${v}" onclick="rsvpPick('${v}')">`
+    + `<span class="rsvp-opt-ic">${rsvpIcon(v)}</span>`
+    + `<span class="rsvp-opt-tx">${RSVP_LABEL[v]}</span>`
+    + `<span class="rsvp-opt-rd" aria-hidden="true"></span></button>`).join('');
+  document.body.appendChild(m);
+  return m;
+}
+function openRsvpMenu(ev, id){
+  ev.stopPropagation();
+  const m=ensureRsvpMenu();
+  rsvpMenuId=id;
+  const st=rsvpState(id);
+  m.querySelectorAll('.rsvp-opt').forEach(b=>b.classList.toggle('sel', b.dataset.v===st));
+  m.style.display='block';
+  const r=ev.currentTarget.getBoundingClientRect();
+  const mw=m.offsetWidth, mh=m.offsetHeight;
+  let left=Math.min(r.left, window.innerWidth-mw-8);
+  let top=r.bottom+6;
+  if(top+mh > window.innerHeight-8) top=r.top-mh-6;   // flip above if no room below
+  m.style.left=Math.max(8,left)+'px';
+  m.style.top=Math.max(8,top)+'px';
+}
+function closeRsvpMenu(){ const m=document.getElementById('rsvpMenu'); if(m) m.style.display='none'; rsvpMenuId=null; }
+function rsvpPick(v){ if(rsvpMenuId) setRsvp(rsvpMenuId, v); }
+
+// Re-render the modal's RSVP control after a change (mirror of the old
+// updateModalLikeButton/GoingButton, now a single container).
+function updateModalRsvp(id){
+  const modal=document.getElementById('mov');
+  if(!modal || !modal.classList.contains('on')) return;
+  const box=document.getElementById('movRsvp');
+  if(!box || box.dataset.id!==id) return;
+  const e=all.find(x=>x.id===id);
+  if(e) box.innerHTML=rsvpBtn(e)+rsvpCounts(e);
+}
 
 // Display-count helpers. Return the server-tracked count for likes/going.
 // We deliberately do NOT add a local +1 for anonymous saves: the count
@@ -4326,6 +4465,8 @@ function closeLangMenu() {
 document.addEventListener('click', e => {
   if (!e.target.closest('.langbox')) closeLangMenu();
   if (!e.target.closest('.authbox')) closeAvatarMenu();
+  // Close the RSVP popover unless the click was inside it or on a trigger button.
+  if (!e.target.closest('#rsvpMenu') && !e.target.closest('.rsvp-btn')) closeRsvpMenu();
 });
 function applyI18n(){
   document.querySelectorAll('[data-k]').forEach(el=>{
@@ -5592,12 +5733,7 @@ function bigCard(e){
       </div>
       <div class="feat-actions">
         <div class="socs">
-          <button class="sb${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}')" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}"><span class="sb-heart">${ICON_HEART}</span></button>
-          ${displayLikes(e) > 0 ? `<span class="ln clickable" onclick="event.stopPropagation();openLikedBy('${e.id}')">${displayLikes(e)}</span>` : ''}
-          <button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" title="${t('going')}">
-            <span class="going-icon">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
-            ${displayGoing(e) > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${displayGoing(e)}</span>` : ''}
-          </button>
+          ${rsvpBtn(e)}${rsvpCounts(e)}
           <button class="sb share-platform" onclick="event.stopPropagation();stw('${e.id}')">𝕏</button>
           <button class="sb share-platform" onclick="event.stopPropagation();sfb('${e.id}')">f</button>
           <button class="sb share-platform" onclick="event.stopPropagation();cp2('${e.id}')">🔗</button>
@@ -5631,14 +5767,7 @@ function smCard(e){
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
-<button class="like-btn${isL?' lk':''}" onclick="event.stopPropagation();tl('${e.id}', this)" aria-label="Like" title="${isL ? t('saved') : t('save')}">
-  <span class="like-heart">${ICON_HEART}</span>
-  ${displayLikes(e) > 0 ? `<span class="like-count clickable" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')">${displayLikes(e)}</span>` : ''}
-</button>
-<button class="going-btn${isG?' gn':''}" onclick="event.stopPropagation();tg('${e.id}', this)" aria-label="${t('going')}" title="${t('going')}">
-  <span class="going-icon">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
-  ${displayGoing(e) > 0 ? `<span class="going-count clickable" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')">${displayGoing(e)}</span>` : ''}
-</button>
+${rsvpBtn(e)}${rsvpCounts(e)}
 <a class="tb blue" href="${eventUrl(e).url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','click')">${eventUrl(e).isDirect?t('tk'):t('find')} →</a>
 </div></div></div>`;
 }
@@ -6286,18 +6415,7 @@ function buildEventCardHTML(e) {
 ${mSourcesRow(e)}
 <div class="mact-primary">
 <div class="mact-secondary">
-  <div class="iact iact-save${isL ? ' on' : ''}">
-    <button class="iact-icon" onclick="event.stopPropagation();tl('${e.id}', this)" title="${isL ? t('saved') : t('save')}" aria-label="${isL ? t('saved') : t('save')}" aria-pressed="${isL}">
-      <span class="iact-glyph iact-glyph-heart" aria-hidden="true">${ICON_HEART}</span>
-    </button>
-    ${displayLikes(e) > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openLikedBy('${e.id}')" aria-label="See who liked this">${displayLikes(e)}</button>` : '<span class="iact-spacer"></span>'}
-  </div>
-  <div class="iact iact-going${isG ? ' on' : ''}">
-    <button class="iact-icon" onclick="event.stopPropagation();tg('${e.id}', this)" title="${t('going')}" aria-label="${t('going')}" aria-pressed="${isG}">
-      <span class="iact-glyph iact-glyph-going">${isG ? ICON_CHECK : ICON_CIRCLE}</span>
-    </button>
-    ${displayGoing(e) > 0 ? `<button class="iact-num" onclick="event.stopPropagation();event.preventDefault();openGoing('${e.id}')" aria-label="See who's going">${displayGoing(e)}</button>` : '<span class="iact-spacer"></span>'}
-  </div>
+  <div class="iact-rsvp" id="movRsvp" data-id="${e.id}">${rsvpBtn(e)}${rsvpCounts(e)}</div>
   <!-- Desktop: 3 platform-specific share icons (X / Facebook / Copy).
        Each is its own .iact column for visual consistency with Save/Going.
        Hidden on mobile via .share-platform class. -->
