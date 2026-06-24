@@ -2102,7 +2102,7 @@ body.ai-active .filters { position: static; box-shadow: none; }
    Layout: column. Top row is the .mact-secondary 3-button grid
    (Save / Going / Share); bottom row is the full-width Get Tickets CTA. */
 .mact-primary {
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: row; align-items: center; gap: 14px;
   position: sticky; bottom: 0;
   margin-left: -32px; margin-right: -32px;      /* extend beyond .mb padding (28px 32px) */
   /* Asymmetric padding: more on top (24px) so there's visible breathing
@@ -2186,6 +2186,9 @@ body.ai-active .filters { position: static; box-shadow: none; }
    gap that pushed the icon out of vertical centre next to the RSVP pill). */
 .iact.share-generic .iact-spacer { display: none; }
 .iact.share-generic { min-width: 0; }
+/* Single-row action bar: RSVP + share grouped left, Get Tickets fills the rest. */
+.mact-primary > .mact-secondary { padding: 0; margin: 0; flex-shrink: 0; }
+.mact-primary > .tb { flex: 1; justify-content: center; padding-top: 13px; padding-bottom: 13px; }
 .iact {
   display: flex;
   flex-direction: column;
@@ -2398,7 +2401,10 @@ body.ai-active .filters { position: static; box-shadow: none; }
     margin-left: -22px; margin-right: -22px;
     padding: 12px 22px;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    /* Stack on mobile — one row (RSVP + share + Get Tickets) would be cramped. */
+    flex-direction: column; align-items: stretch;
   }
+  .mact-primary > .tb { flex: none; }
   /* Share buttons right-aligned on mobile to balance the layout. */
   .mact-share {
     justify-content: flex-end;
