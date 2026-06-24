@@ -2176,11 +2176,16 @@ body.ai-active .filters { position: static; box-shadow: none; }
    icons vertically aligned across all three actions. */
 .mact-secondary {
   display: flex;
-  justify-content: space-around;
-  align-items: flex-start;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 14px;
   padding: 8px 12px 14px;
   margin-bottom: 4px;
 }
+/* Lone share button no longer needs the count-alignment spacer (it left a dead
+   gap that pushed the icon out of vertical centre next to the RSVP pill). */
+.iact.share-generic .iact-spacer { display: none; }
+.iact.share-generic { min-width: 0; }
 .iact {
   display: flex;
   flex-direction: column;
