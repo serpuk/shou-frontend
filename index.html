@@ -1853,10 +1853,15 @@ body.ai-active .filters { position: static; box-shadow: none; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .cf2 {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
   margin-top: auto; padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
+/* RSVP control keeps its natural width; Get Tickets fills the rest of the row
+   and never wraps its label — dropping to its own full-width line on narrow
+   cards (e.g. when a count chip is present) instead of getting squeezed. */
+.cf2 > .rsvp-wrap { flex: 0 1 auto; min-width: 0; }
+.cf2 > .tb { flex: 1 1 auto; justify-content: center; white-space: nowrap; min-width: max-content; }
 
 /* ── LOADING / EMPTY / ERR ── */
 .loading { text-align: center; padding: 80px 20px; color: var(--bone3); }
