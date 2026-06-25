@@ -5737,8 +5737,8 @@ function renderAll(){
       allHeaderTitle.textContent = t('atLive');
       allHeaderTitle.dataset.k    = 'atLive';
     } else if (isMine) {
-      allHeaderTitle.textContent = 'My events';
-      allHeaderTitle.dataset.k    = '';
+      allHeaderTitle.textContent = t('myEv');
+      allHeaderTitle.dataset.k    = 'myEv';
     } else if (categoryHeaders[actF]) {
       const key = categoryHeaders[actF];
       allHeaderTitle.textContent = t(key);
