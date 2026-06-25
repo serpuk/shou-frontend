@@ -43,7 +43,7 @@
 <meta property="og:title" content="shou — belgium after dark">
 <meta property="og:description" content="Your city, after dark. Concerts, festivals, clubs & live events across Belgium.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0e0915">
+<meta name="theme-color" content="#080610">
 <!-- shou favicon — classic 4-point sparkle. Static design, brand-consistent with pill icon. -->
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -64,7 +64,7 @@
      keep working without rewiring — just the hex values are remapped.
      What used to be cyan is now warm coral; what used to be magenta is
      now a refined hot-pink. */
-  --ink:       #0e0915;
+  --ink:       #080610;
   --ink2:      #18101f;
   --ink3:      #211528;
   --magenta:   #ff2e7e;
@@ -128,20 +128,22 @@ body {
 }
 
 /* ── HERO BG ── */
+/* Concierge backdrop — clean near-black with the mockup's atmospheric glows
+   (warm pink/orange on the right behind the orb, violet top-left) over a solid
+   ink base, plus a subtle film grain. The old Unsplash hero photo was dropped
+   in the AI-first redesign. */
 .hero-bg {
   position: fixed; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(14, 9, 21, 0.76), rgba(14, 9, 21, 0.92)),
-    url('https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?w=1920&q=85');
-  background-size: cover;
-  background-position: center;
-  filter: contrast(1.08) saturate(1.1);
+  background:
+    radial-gradient(900px 700px at 88% 2%,  rgba(255,61,139,0.18), transparent 55%),
+    radial-gradient(760px 620px at 98% 30%, rgba(255,155,61,0.12), transparent 55%),
+    radial-gradient(800px 700px at 6% 8%,   rgba(155,92,255,0.12), transparent 58%),
+    var(--ink);
 }
 .hero-bg::after {
   content: ''; position: absolute; inset: 0;
-  background:
-    radial-gradient(ellipse 50% 50% at 20% 30%, rgba(255,46,126,0.18) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 50% at 80% 25%, rgba(255,153,102,0.15) 0%, transparent 60%);
+  opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── NAV ── */
@@ -149,7 +151,7 @@ nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   height: 70px; padding: 0 40px;
   display: flex; align-items: center; justify-content: space-between;
-  background: rgba(14, 9, 21, 0.78); backdrop-filter: blur(20px);
+  background: rgba(8, 6, 16, 0.78); backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 nav::after {
@@ -739,7 +741,7 @@ h1 .bl {
 .sbtn {
   flex-shrink: 0;
   align-self: stretch;
-  background: var(--magenta); color: #fff;
+  background: var(--grad-mix); color: #fff;
   border: none; border-radius: 40px;
   padding: 0 22px;
   font-family: 'Inter', sans-serif;
@@ -2959,6 +2961,95 @@ footer p {
   border-bottom-color: var(--bone3);
   color: var(--bone);
 }
+
+/* ============================================================================
+   CONCIERGE HERO (AI-first redesign) — namespaced .cc-* so nothing collides
+   with the app's existing .pulse / .ring / .orb-free utility classes.
+   ========================================================================== */
+/* 2-col hero: text (40%) + orb (60%). Search row + chips sit full-width below. */
+.cc-hero-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 24px; align-items: center; margin-bottom: 30px; }
+.cc-hero-text { min-width: 0; }
+.cc-hero-text h1 { font-size: clamp(40px, 4.8vw, 74px); line-height: 1.0; margin-bottom: 20px; }
+.cc-hero-text .sub { margin-bottom: 0; max-width: 460px; }
+/* Ask bar + chips break out to the full hero width under the grid. */
+.hero .search-row { max-width: none; }
+.hero .search-row .sw { max-width: none; }
+
+/* Concierge orb */
+.cc-orb-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 460px; }
+.cc-orb-wrap { position: relative; width: 440px; height: 440px; max-width: 100%; }
+.cc-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(255,95,184,0.18); }
+.cc-ring.a { inset: 0; animation: cc-spin 22s linear infinite; }
+.cc-ring.b { inset: 42px; border-color: rgba(255,153,102,0.16); animation: cc-spin 30s linear infinite reverse; }
+.cc-ring.c { inset: 86px; border-color: rgba(155,92,255,0.18); animation: cc-spin 18s linear infinite; }
+@keyframes cc-spin { to { transform: rotate(360deg); } }
+.cc-pulse { position: absolute; inset: 112px; border-radius: 50%; border: 1px solid rgba(255,46,126,.5); opacity: 0; animation: cc-sonar 3.6s ease-out infinite; }
+.cc-pulse.d2 { animation-delay: 1.2s; } .cc-pulse.d3 { animation-delay: 2.4s; }
+@keyframes cc-sonar { 0% { transform: scale(.7); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+.cc-orb { position: absolute; inset: 122px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffe3c0 0%, #ff9b3d 22%, #ff2e7e 55%, #b3215f 78%, #5e0f3f 100%);
+  box-shadow: 0 0 70px rgba(255,61,139,.55), 0 0 150px rgba(255,95,184,.3), inset 0 0 50px rgba(255,255,255,.18), inset -20px -24px 60px rgba(94,15,63,.7);
+  animation: cc-breathe 6s ease-in-out infinite; }
+@keyframes cc-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+.cc-spark { position: absolute; inset: 122px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.92); filter: drop-shadow(0 2px 10px rgba(0,0,0,.4)); animation: cc-breathe 6s ease-in-out infinite; }
+.cc-orbcap { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); text-align: center; width: 280px; z-index: 6; }
+.cc-orbcap .t { font-family: 'Fraunces', serif; font-style: italic; font-size: 18px; color: var(--bone); }
+.cc-orbcap .s { font-size: 12px; color: var(--bone3); margin-top: 3px; }
+.cc-dotfloat { position: absolute; border-radius: 50%; background: var(--pink-hot); box-shadow: 0 0 10px var(--pink-hot); }
+.cc-citypin { position: absolute; z-index: 5; display: flex; align-items: center; gap: 7px; animation: cc-breathe 6s ease-in-out infinite; }
+.cc-citypin.r { flex-direction: row-reverse; }
+.cc-citypin .pdot { width: 8px; height: 8px; border-radius: 50%; background: #46e0d2; box-shadow: 0 0 10px #46e0d2, 0 0 22px rgba(70,224,210,.55); }
+.cc-citypin .plbl { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--bone2); }
+.cc-ptl { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--pink-hot); box-shadow: 0 0 8px var(--pink-hot); opacity: 0; animation: cc-drift 8s linear infinite; }
+@keyframes cc-drift { 0% { transform: translate(0,30px) scale(.4); opacity: 0; } 18% { opacity: .9; } 80% { opacity: .6; } 100% { transform: translate(24px,-90px) scale(1); opacity: 0; } }
+
+/* Two-line ask hint (concierge) — a styled fake-placeholder overlay so the bar
+   reads like the mockup (primary prompt + an example) while #ai stays a real
+   single-line input. #ai carries a " " placeholder; :placeholder-shown flips on
+   the first keystroke, hiding the overlay. */
+.si-wrap { min-height: 62px; }
+.ai-ph { position: absolute; left: 56px; right: 56px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.ai-ph .l1 { display: block; font-size: 16px; line-height: 1.2; color: var(--bone); }
+.ai-ph .l2 { display: block; font-size: 12.5px; line-height: 1.2; color: var(--bone3); margin-top: 3px; font-style: italic; }
+#ai:not(:placeholder-shown) ~ .ai-ph { display: none; }
+@media (max-width: 700px) {
+  .si-wrap { min-height: 54px; }
+  .ai-ph { left: 48px; right: 48px; }
+  .ai-ph .l1 { font-size: 14px; }
+  .ai-ph .l2 { display: none; }
+}
+
+/* Surprise-me hero chip — gradient-filled, the signature AI move */
+.chip.cc-chip-hero { border: none; background: var(--grad-mix); color: #fff; font-weight: 700; font-size: 13px; padding: 11px 20px; box-shadow: 0 10px 28px rgba(255,46,126,.34); }
+.chip.cc-chip-hero:hover { transform: translateY(-1px); color: #fff; background: var(--grad-mix); }
+.chip.cc-chip-hero span { color: #fff; }
+
+/* Trust band — replaces the old stats strip */
+.cc-trust { border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); margin: 8px 0 30px; padding: 16px 0; }
+.cc-trust .tline { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; font-size: 14.5px; color: var(--bone2); }
+.cc-trust .cc-stars { letter-spacing: 3px; font-size: 15px; background: var(--grad-mix); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+body.ai-active .cc-trust { display: none; }
+
+/* Nav: My events link (star tinted pink) */
+.navlink.cc-myev svg { color: var(--pink-hot); opacity: 1; }
+.navlink.cc-myev:hover svg { color: var(--coral); }
+.navlink.cc-myev .liked-count { margin-left: 3px; background: rgba(255,95,184,0.22); }
+
+@media (max-width: 860px) {
+  /* On phones the orb is a modest accent between the headline and the search
+     bar — kept small so "Ask Shou" stays near the top of the fold. */
+  .cc-hero-grid { grid-template-columns: 1fr; gap: 4px; }
+  .cc-hero-text h1 { font-size: clamp(40px, 9vw, 60px); }
+  .cc-hero-text .sub { max-width: none; }
+  .cc-orb-stage { min-height: 250px; }
+  .cc-orb-wrap { width: 240px; height: 240px; }
+  .cc-orb, .cc-spark { inset: 64px; } .cc-pulse { inset: 56px; } .cc-ring.c { inset: 42px; } .cc-ring.b { inset: 20px; }
+  .cc-spark svg { width: 56px; height: 56px; }
+  .cc-orbcap { width: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-ring, .cc-pulse, .cc-orb, .cc-spark, .cc-citypin, .cc-ptl { animation: none !important; }
+}
 </style>
 
 
@@ -3009,6 +3100,10 @@ footer p {
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
       <span class="navlink-tx">This week</span>
     </a>
+    <a class="navlink cc-myev" role="button" tabindex="0" onclick="sf('mine',this)" onkeydown="if(event.key==='Enter')sf('mine',this)" title="Events you're interested in or going to" aria-label="My events">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/></svg>
+      <span class="navlink-tx" data-k="myEv">My events</span><span class="liked-count" id="mcn"></span>
+    </a>
     <div class="langbox">
       <button class="lb-btn" id="langBtn" onclick="toggleLangMenu(event)" aria-haspopup="true" aria-expanded="false">
         <span id="langLabel">EN</span>
@@ -3034,17 +3129,41 @@ footer p {
 </nav>
 
 <section class="hero">
+  <div class="cc-hero-grid">
+  <div class="cc-hero-text">
   <div class="eyebrow fu"><span class="pulse"></span><span data-k="ey">live tonight · belgium · right now</span></div>
   <h1 class="fu1">
     <span data-k="h1a">what's the</span> <em data-k="h1b">shou</em><br>
     <span class="bl" data-k="h1c">in belgium</span> <span data-k="h1d">tonight?</span>
   </h1>
-  <p class="sub fu2" data-k="sub">Concerts, clubs, festivals, theatre &amp; more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.</p>
+  <p class="sub fu2" data-k="sub">Tell Shou what you're in the mood for. It finds the best nights out across Belgium&mdash;in any language.</p>
+  </div><!-- /cc-hero-text -->
+  <div class="cc-orb-stage" aria-hidden="true">
+    <div class="cc-orb-wrap">
+      <div class="cc-ring a"></div><div class="cc-ring b"></div><div class="cc-ring c"></div>
+      <div class="cc-pulse"></div><div class="cc-pulse d2"></div><div class="cc-pulse d3"></div>
+      <div class="cc-orb"></div>
+      <div class="cc-spark"><svg width="74" height="74" viewBox="0 0 24 24" fill="rgba(255,255,255,.95)"><path d="M12 2l1.7 5.1L19 8.8l-5.3 1.7L12 16l-1.7-5.5L5 8.8l5.3-1.7z"/><circle cx="18.5" cy="17.5" r="1.4"/><circle cx="6" cy="16" r="1"/></svg></div>
+      <div class="cc-dotfloat" style="width:8px;height:8px;top:24px;right:60px;animation:cc-breathe 5s infinite"></div>
+      <div class="cc-dotfloat" style="width:5px;height:5px;bottom:50px;left:40px;background:var(--coral);box-shadow:0 0 8px var(--coral);animation:cc-breathe 7s infinite"></div>
+      <div class="cc-citypin" style="top:9%; left:46%; animation-delay:.2s"><span class="pdot"></span><span class="plbl">Antwerp</span></div>
+      <div class="cc-citypin" style="top:33%; left:1%; animation-delay:1.4s"><span class="pdot"></span><span class="plbl">Ghent</span></div>
+      <div class="cc-citypin r" style="top:42%; right:1%; animation-delay:.8s"><span class="pdot"></span><span class="plbl">Liège</span></div>
+      <div class="cc-citypin" style="bottom:13%; left:14%; animation-delay:2.1s"><span class="pdot"></span><span class="plbl">Brussels</span></div>
+      <div class="cc-ptl" style="left:30%; bottom:24%; animation-delay:0s"></div>
+      <div class="cc-ptl" style="left:62%; bottom:30%; animation-delay:2.2s; background:var(--coral); box-shadow:0 0 8px var(--coral)"></div>
+      <div class="cc-ptl" style="left:48%; bottom:20%; animation-delay:4s"></div>
+      <div class="cc-ptl" style="left:70%; bottom:22%; animation-delay:5.5s; background:#46e0d2; box-shadow:0 0 8px #46e0d2"></div>
+      <div class="cc-orbcap"><div class="t" data-k="orbT">Shou is listening</div><div class="s" data-k="orbS">ask in any language · powered by AI</div></div>
+    </div>
+  </div><!-- /cc-orb-stage -->
+  </div><!-- /cc-hero-grid -->
   <div class="search-row fu3">
     <div class="sw">
       <div class="si-wrap">
         <span class="sicon">✦</span>
-        <input class="si" id="ai" type="text" enterkeyhint="search" placeholder="ask — e.g. techno in ghent this weekend…" onkeydown="if(event.key==='Enter')doAI()" oninput="aiInputTyped(this.value)" onfocus="maybeOpenHistory()" autocomplete="off">
+        <input class="si" id="ai" type="text" enterkeyhint="search" placeholder=" " aria-label="Ask Shou anything" onkeydown="if(event.key==='Enter')doAI()" oninput="aiInputTyped(this.value)" onfocus="maybeOpenHistory()" autocomplete="off">
+        <div class="ai-ph" aria-hidden="true"><span class="l1" data-k="askPh1">Ask Shou anything…</span><span class="l2" data-k="askPh2">“intimate jazz in Antwerp this Friday”</span></div>
         <button class="smic" id="aiMicBtn" onclick="toggleVoiceInput()" type="button" aria-label="Voice input" title="Voice input">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="9" y="2" width="6" height="12" rx="3"/>
@@ -3055,22 +3174,16 @@ footer p {
       </div>
       <button class="sbtn" onclick="doAI()" type="button" aria-label="Search"><span class="sbtn-text" data-k="ab">ask shou ↗</span><span class="sbtn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7,7 17,7 17,17"/></svg></span></button>
     </div>
-    <div class="city-pill-wrap city-pill-readonly" id="cityPillWrap">
-      <div class="city-pill-stack">
-        <span class="city-pill-label" data-k="showing">Showing</span>
-        <span class="city-pill-value" id="cityPillValue" data-k="ca">All Cities</span>
-      </div>
-    </div>
   </div>
-  <!-- Location is now controlled via the "Near me" option in the city pill
-       above. When the user selects "Near me", AI search uses their lat/lng
-       so distance-aware queries ("concerts near me") work correctly. -->
+  <!-- The readonly "Showing Near me / All Cities" status pill was removed in the
+       concierge redesign for a cleaner full-width ask bar. Geo still works:
+       IP-based ranking runs silently and the geo-precision prompt below offers
+       precise location. updateCityPillLabel() no-ops now (element absent). -->
   <div class="chips fu3">
+    <span class="chip cc-chip-hero" onclick="surpriseMe()" role="button" tabindex="0">✨ <span data-k="surprise">Surprise me tonight</span></span>
     <span class="chip" onclick="qChip('c1')">🎧 <span data-k="c1">techno tonight</span></span>
-    <span class="chip" onclick="qChip('c2')">🎸 <span data-k="c2">live concerts</span></span>
-    <span class="chip" onclick="qChip('c3')">🪩 <span data-k="c3">club nights</span></span>
-    <span class="chip" onclick="qChip('c4')">☀️ <span data-k="c4">festivals</span></span>
-    <span class="chip" onclick="qChip('c5')">🆓 <span data-k="c5">free entry</span></span>
+    <span class="chip" onclick="qChip('caw')">🍸 <span data-k="caw">free afterwork</span></span>
+    <span class="chip" onclick="qChip('c2')">🎤 <span data-k="c2">live concerts</span></span>
   </div>
 </section>
 
@@ -3082,23 +3195,12 @@ footer p {
   </div>
   <div class="err" id="err"></div>
 
-  <div class="stats">
-    <div class="stat"><div class="sn" id="st">—</div><div class="sl" data-k="s1">Events Live</div></div>
-    <div class="stat"><div class="sn" id="sc">18</div><div class="sl" data-k="s2">Cities</div></div>
-    <div class="stat"><div class="sn" id="ss">2</div><div class="sl" data-k="s3">Sources</div></div>
-    <div class="stat"><div class="sn" id="sv">—</div><div class="sl" data-k="s4">Venues</div></div>
-  </div>
-
-  <div class="filters">
-    <button class="fb on" data-c="all" onclick="sf('all',this)" data-k="fa">All</button>
-    <button class="fb live-tab" data-c="live" onclick="sf('live',this)" data-k="flive" title="Happening now">🔴 <span data-k="flive">Live now</span></button>
-    <button class="fb" data-c="music" onclick="sf('music',this)" data-k="fm">Music</button>
-    <button class="fb" data-c="cinema" onclick="sf('cinema',this)" data-k="fci">Cinema</button>
-    <button class="fb" data-c="theatre" onclick="sf('theatre',this)" data-k="fth">Arts &amp; Theatre</button>
-    <button class="fb" data-c="sports" onclick="sf('sports',this)" data-k="fsp">Sports</button>
-    <button class="fb" data-c="family" onclick="sf('family',this)" data-k="ffa">Family</button>
-    <button class="fb liked-tab" data-c="mine" onclick="sf('mine',this)" title="Events you're interested in or going to">★ My events <span class="liked-count" id="mcn"></span></button>
-  </div>
+  <section class="cc-trust">
+    <div class="tline">
+      <span class="cc-stars">★★★★★</span>
+      <span data-k="trust">Loved by nightlife lovers across Belgium</span>
+    </div>
+  </section>
 
   <!-- Geo precision prompt: shown ONLY when the user has never been asked
        (loadGeoPermission() === null) and hasn't dismissed this session.
@@ -3554,13 +3656,13 @@ function renderAvatarInner(avatarUrl, initials, onerrorOverride) {
 }
 
 const T={
-  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:'Concerts, clubs, festivals, theatre & more — the after-dark guide for Brussels, Antwerp, Ghent and beyond.',ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fci:'Cinema',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',fgoing:'Going',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atCinema:'Cinema',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',atG:"You're going to",ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neG:"Tap ○ on events to mark you're going.",neLSignIn:'Sign in to keep them across all your devices.',nudgeGuestT:"You're browsing as a guest",nudgeGuestB:'Sign in to keep your saved events across all your devices',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about what we keep',gdprB:'Shou keeps your liked events, searches, and the events you tap — used to make recommendations relevant and improve the catalog. Anonymous unless you sign in. We also use your approximate location (from your IP) to surface nearby events. Never sold, never shared.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,liveLabel:'LIVE',nearMeLabel:'Near you',showing:'Showing',going:'Going',goingChip:'GOING',goingTo:'Going to',noGoersYet:"No one's marked Going yet.",share:"Share",save:"Save",saved:"Saved",signInToGo:"Sign in to track events you're going to",voiceListening:"Listening…",geoPromptTitle:"Find events closer to you",geoPromptBody:"Allow location access so we can surface what's nearby — not just what's in your IP region.",geoPromptAccept:"Use my location",geoPromptDismiss:"Not now"},
-  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Concerts, clubs, festivals, théâtre & plus — le guide after-dark pour Bruxelles, Anvers, Gand et au-delà.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fci:'Cinéma',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',fgoing:"J'y vais",flive:'En direct',atLive:'🔴 En ce moment',neLive:'Aucun événement en cours pour le moment. Revenez dans un instant.',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atMusic:'Événements musique',atCinema:'Cinéma',atTheatre:'Arts & Théâtre',atSports:'Événements sport',atFamily:'Événements famille',atFY:'Recommandés pour vous',atL:'Vos favoris',atG:'Vous y allez',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',neG:'Touchez ○ sur les événements pour confirmer votre présence.',nudgeGuestT:'Vous naviguez en tant qu\'invité',nudgeGuestB:'Connectez-vous pour conserver vos événements sur tous vos appareils',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',dir:'→ Itinéraire',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos de ce qu\'on garde',gdprB:'Shou conserve vos favoris, vos recherches et les événements que vous consultez — pour rendre les recommandations pertinentes et améliorer le catalogue. Anonyme sauf si vous vous connectez. Nous utilisons aussi votre localisation approximative (via votre IP) pour les événements proches. Jamais vendu, jamais partagé.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.',resultsFor:(q,n)=>`Résultats pour "${q}" · ${n} événement${n===1?'':'s'}`,noMatchesFor:q=>`Aucun résultat pour "${q}"`,clearSearchBtn:'Effacer la recherche ✕',askThinking:'Recherche dans le catalogue belge…',sectionResultsFor:q=>`Résultats pour "${q}"`,liveLabel:'EN DIRECT',nearMeLabel:'Près de vous',showing:'Affichage',going:"J'y vais",goingChip:"J'Y VAIS",goingTo:'Va à',noGoersYet:"Personne n'a encore confirmé.",share:"Partager",save:"Sauver",saved:"Sauvé",signInToGo:"Connectez-vous pour suivre les événements où vous allez",voiceListening:"J'écoute…",geoPromptTitle:"Trouvez des événements près de vous",geoPromptBody:"Autorisez la localisation pour voir ce qui est vraiment à côté — pas seulement dans votre région IP.",geoPromptAccept:"Utiliser ma position",geoPromptDismiss:"Plus tard"},
-  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Concerten, clubs, festivals, theater & meer — de after-dark gids voor Brussel, Antwerpen, Gent en daarbuiten.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'clubavonden',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fci:'Bioscoop',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',fgoing:'Ik ga',flive:'Live nu',atLive:'🔴 Nu bezig',neLive:'Geen evenementen op dit moment. Kom zo terug.',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Populair',at:'Alle evenementen',atMusic:'Muziekevenementen',atCinema:'Bioscoop',atTheatre:'Theater & Kunst',atSports:'Sportevenementen',atFamily:'Familie-evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',atG:'Jij gaat naar',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',neG:'Tik op ○ bij evenementen om aan te geven dat je gaat.',nudgeGuestT:'Je bekijkt shou als gast',nudgeGuestB:'Log in om je opgeslagen evenementen op al je apparaten te bewaren',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',dir:'→ Route',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Wat we bijhouden',gdprB:'Shou bewaart je favorieten, zoekopdrachten en de evenementen die je bekijkt — om aanbevelingen relevant te houden en de catalogus te verbeteren. Anoniem tenzij je inlogt. We gebruiken ook je geschatte locatie (via je IP) om evenementen in de buurt te tonen. Nooit verkocht, nooit gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.',resultsFor:(q,n)=>`Resultaten voor "${q}" · ${n} evenement${n===1?'':'en'}`,noMatchesFor:q=>`Geen resultaten voor "${q}"`,clearSearchBtn:'Zoekopdracht wissen ✕',askThinking:'Zoeken in de Belgische catalogus…',sectionResultsFor:q=>`Resultaten voor "${q}"`,liveLabel:'LIVE',nearMeLabel:'In de buurt',showing:'Toont',going:'Ik ga',goingChip:'IK GA',goingTo:'Gaat naar',noGoersYet:'Nog niemand heeft zich aangemeld.',share:"Delen",save:"Opslaan",saved:"Opgeslagen",signInToGo:"Log in om bij te houden naar welke evenementen je gaat",voiceListening:"Ik luister…",geoPromptTitle:"Evenementen dichterbij je vinden",geoPromptBody:"Sta locatie toe om te zien wat echt in de buurt is — niet alleen in je IP-regio.",geoPromptAccept:"Gebruik mijn locatie",geoPromptDismiss:"Later"},
-  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Konzerte, Clubs, Festivals, Theater & mehr — der After-Dark-Guide für Brüssel, Antwerpen, Gent und darüber hinaus.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Locations',fl:'Filter:',fa:'Alle',fm:'Musik',fci:'Kino',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',fgoing:'Ich gehe',flive:'Live jetzt',atLive:'🔴 Gerade jetzt',neLive:'Aktuell keine Events. Schau gleich wieder vorbei.',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atMusic:'Musik-Events',atCinema:'Kino',atTheatre:'Kunst & Theater',atSports:'Sport-Events',atFamily:'Familien-Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',atG:'Du gehst zu',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',neG:'Tippe auf ○ bei Events, um zu markieren, dass du dabei bist.',nudgeGuestT:'Du bist als Gast unterwegs',nudgeGuestB:'Melde dich an, um deine gespeicherten Events auf allen Geräten zu behalten',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',dir:'→ Route',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Was wir speichern',gdprB:'Shou speichert deine Favoriten, Suchen und die Events, die du anklickst — um Empfehlungen relevant zu halten und den Katalog zu verbessern. Anonym, außer du meldest dich an. Wir nutzen auch deinen ungefähren Standort (über deine IP), um Events in der Nähe zu zeigen. Nie verkauft, nie geteilt.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.',resultsFor:(q,n)=>`Ergebnisse für "${q}" · ${n} Event${n===1?'':'s'}`,noMatchesFor:q=>`Keine Ergebnisse für "${q}"`,clearSearchBtn:'Suche zurücksetzen ✕',askThinking:'Belgischer Katalog wird durchsucht…',sectionResultsFor:q=>`Ergebnisse für "${q}"`,liveLabel:'LIVE',nearMeLabel:'In der Nähe',showing:'Zeigt',going:'Ich gehe',goingChip:'ICH GEHE',goingTo:'Geht zu',noGoersYet:'Noch niemand hat zugesagt.',share:"Teilen",save:"Merken",saved:"Gemerkt",signInToGo:"Melde dich an, um Events zu speichern, zu denen du gehst",voiceListening:"Ich höre zu…",geoPromptTitle:"Events näher bei dir finden",geoPromptBody:"Erlaube uns deinen Standort, damit wir zeigen können, was wirklich in der Nähe ist — nicht nur in deiner IP-Region.",geoPromptAccept:"Standort verwenden",geoPromptDismiss:"Später"},
-  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Conciertos, clubs, festivales, teatro y más — la guía after-dark para Bruselas, Amberes, Gante y más allá.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'noches de club',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fci:'Cine',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',fgoing:'Voy',flive:'En vivo',atLive:'🔴 Ahora mismo',neLive:'No hay eventos en este momento. Vuelve en un rato.',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atMusic:'Eventos de música',atCinema:'Cine',atTheatre:'Artes & Teatro',atSports:'Eventos deportivos',atFamily:'Eventos familiares',atFY:'Recomendados para ti',atL:'Tus favoritos',atG:'Vas a',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',neG:'Toca ○ en los eventos para marcar que vas.',nudgeGuestT:'Estás navegando como invitado',nudgeGuestB:'Inicia sesión para conservar tus eventos guardados en todos tus dispositivos',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',dir:'→ Cómo llegar',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Sobre lo que guardamos',gdprB:'Shou guarda tus eventos favoritos, búsquedas y los eventos que tocas — para hacer las recomendaciones relevantes y mejorar el catálogo. Anónimo a menos que inicies sesión. También usamos tu ubicación aproximada (vía tu IP) para mostrar eventos cercanos. Nunca vendido, nunca compartido.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.',resultsFor:(q,n)=>`Resultados para "${q}" · ${n} evento${n===1?'':'s'}`,noMatchesFor:q=>`Sin resultados para "${q}"`,clearSearchBtn:'Borrar búsqueda ✕',askThinking:'Buscando en el catálogo belga…',sectionResultsFor:q=>`Resultados para "${q}"`,liveLabel:'EN VIVO',nearMeLabel:'Cerca de ti',showing:'Mostrando',going:'Voy',goingChip:'VOY',goingTo:'Va a',noGoersYet:'Nadie ha confirmado todavía.',share:"Compartir",save:"Guardar",saved:"Guardado",signInToGo:"Inicia sesión para guardar los eventos a los que vas",voiceListening:"Escuchando…",geoPromptTitle:"Encuentra eventos más cerca de ti",geoPromptBody:"Permite el acceso a tu ubicación para ver lo que realmente está cerca — no solo en tu región IP.",geoPromptAccept:"Usar mi ubicación",geoPromptDismiss:"Ahora no"},
-  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Concerti, club, festival, teatro e altro — la guida after-dark per Bruxelles, Anversa, Gand e oltre.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'serate club',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fci:'Cinema',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',fgoing:'Ci vado',flive:'In diretta',atLive:'🔴 In questo momento',neLive:'Nessun evento in corso. Riprova tra poco.',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atMusic:'Eventi musicali',atCinema:'Cinema',atTheatre:'Arte & Teatro',atSports:'Eventi sportivi',atFamily:'Eventi famiglia',atFY:'Consigliati per te',atL:'I tuoi preferiti',atG:'Vai a',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',neG:'Tocca ○ sugli eventi per segnare la tua presenza.',nudgeGuestT:'Stai navigando come ospite',nudgeGuestB:'Accedi per mantenere i tuoi eventi salvati su tutti i dispositivi',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',dir:'→ Indicazioni',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Cosa conserviamo',gdprB:'Shou conserva i tuoi eventi preferiti, ricerche e gli eventi che tocchi — per rendere i consigli rilevanti e migliorare il catalogo. Anonimo a meno che tu non acceda. Usiamo anche la tua posizione approssimativa (dal tuo IP) per mostrarti eventi vicini. Mai venduto, mai condiviso.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.',resultsFor:(q,n)=>`Risultati per "${q}" · ${n} event${n===1?'o':'i'}`,noMatchesFor:q=>`Nessun risultato per "${q}"`,clearSearchBtn:'Cancella ricerca ✕',askThinking:'Cerco nel catalogo belga…',sectionResultsFor:q=>`Risultati per "${q}"`,liveLabel:'IN DIRETTA',nearMeLabel:'Vicino a te',showing:'Mostra',going:'Ci vado',goingChip:'CI VADO',goingTo:'Va a',noGoersYet:'Nessuno ha ancora confermato.',share:"Condividi",save:"Salva",saved:"Salvato",signInToGo:"Accedi per tenere traccia degli eventi a cui vai",voiceListening:"In ascolto…",geoPromptTitle:"Trova eventi più vicini a te",geoPromptBody:"Consenti l'accesso alla posizione per vedere cosa è davvero nelle vicinanze — non solo nella tua regione IP.",geoPromptAccept:"Usa la mia posizione",geoPromptDismiss:"Più tardi"},
-  uk:{ey:'наживо ввечері · бельгія · просто зараз',h1a:'які',h1b:'шоу',h1c:'у Бельгії',h1d:'сьогодні?',sub:'Концерти, клуби, фестивалі, театр та інше — нічний путівник по Брюсселю, Антверпену, Генту та далі.',ab:'запитати ↗',c1:'техно сьогодні',c2:'концерти наживо',c3:'клубні ночі',c4:'фестивалі',c5:'безкоштовний вхід',aih:'пропозиції шоу',s1:'Подій',s2:'Міст',s3:'Джерел',s4:'Локацій',fl:'Фільтр:',fa:'Усі',fm:'Музика',fci:'Кіно',fth:'Мистецтво і театр',fsp:'Спорт',ffa:'Сім\'я',ffy:'Для тебе',fliked:'Уподобані',fgoing:'Іду',flive:'Зараз',atLive:'🔴 Триває зараз',neLive:'Подій зараз немає. Зайди трохи пізніше.',ca:'Усі міста',cNear:'📍 Поруч',ft:'🔥 У тренді',at:'Усі події',atMusic:'Музичні події',atCinema:'Кіно',atTheatre:'Мистецтво і театр',atSports:'Спортивні події',atFamily:'Сімейні події',atFY:'Рекомендовано для тебе',atL:'Твої уподобані події',atG:'Ти йдеш на',ne:'Подій не знайдено.',neFY:'Постав ♥ кільком подіям, щоб отримати персональні рекомендації.',neFYSub:'Що більше подобається, то кращі будуть рекомендації.',neL:'Натисни ♥ на події, щоб зберегти їх тут.',neG:'Натисни ○ на події, щоб позначити, що йдеш.',neLSignIn:'Увійди, щоб зберегти їх на всіх своїх пристроях.',nudgeGuestT:'Ти переглядаєш як гість',nudgeGuestB:'Увійди, щоб зберігати події на всіх пристроях',lm:'Завантажити ще',ld:'Завантаження шоу…',tk:'Купити квитки',vi:'Оригінал',xs:'Поділитися в X',fb2:'Поділитися у Facebook',cp:'Копіювати посилання',ne2:n=>`знайдено ${n} ${n===1?'подію':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,see:'Див. сайт',dir:'→ Маршрут',find:'Знайти квитки',search:'Шукати онлайн',descFallback:(n,v)=>`${n} у ${v}. Не пропусти цю захоплюючу подію!`,gdprT:'Коротка примітка про те, що ми зберігаємо',gdprB:'Шоу зберігає твої уподобані події, пошуки та події, які ти відкриваєш — щоб робити рекомендації релевантними і покращувати каталог. Анонімно, якщо ти не увійшов(-ла) в акаунт. Ми також використовуємо твоє приблизне місцезнаходження (за IP), щоб показувати події поруч. Ніколи не продаємо й не передаємо.',gdprY:'Зрозуміло',gdprN:'Дізнатися більше',signIn:'Увійти',signOut:'Вийти',siT:'Увійти в шоу',siS:'Ми надішлемо magic-посилання на email. Без пароля — клікни на посилання і ти всередині.',siP:'ти@приклад.com',siB:'Надіслати посилання',siSending:'Надсилання…',siCT:'Перевір пошту',siCB:'Ми надіслали посилання для входу на',siCH:'Відкрий посилання на цьому пристрої, щоб увійти. Посилання дійсне 1 годину.',siErrInvalidEmail:'Введи дійсну email-адресу.',siErrFailed:'Не вдалося надіслати посилання. Спробуй ще раз.',resultsFor:(q,n)=>`Результати для "${q}" · ${n} ${n===1?'подія':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,noMatchesFor:q=>`Немає результатів для "${q}"`,clearSearchBtn:'Очистити пошук ✕',askThinking:'Шукаю в каталозі Бельгії…',sectionResultsFor:q=>`Результати для "${q}"`,liveLabel:'НАЖИВО',nearMeLabel:'Поруч з тобою',showing:'Показую',going:'Іду',goingChip:'ЙДУ',goingTo:'Йде на',noGoersYet:'Поки ніхто не позначив, що йде.',share:"Поділитися",save:"Зберегти",saved:"Збережено",signInToGo:"Увійди, щоб відстежувати події, на які ти йдеш",voiceListening:"Слухаю…",geoPromptTitle:"Знайди події ближче до тебе",geoPromptBody:"Дозволь доступ до місцезнаходження, щоб ми могли показати, що справді поруч — не лише в твоєму IP-регіоні.",geoPromptAccept:"Використати моє місцезнаходження",geoPromptDismiss:"Не зараз"}
+  en:{ey:'live tonight · belgium · right now',h1a:"what's the",h1b:'shou',h1c:'in belgium',h1d:'tonight?',sub:"Tell Shou what you're in the mood for. It finds the best nights out across Belgium—in any language.",ab:'ask shou ↗',c1:'techno tonight',c2:'live concerts',c3:'club nights',c4:'festivals',c5:'free entry',aih:'shou suggestions',s1:'Live Events',s2:'Cities',s3:'Sources',s4:'Venues',fl:'Filter:',fa:'All',fm:'Music',fci:'Cinema',fth:'Arts & Theatre',fsp:'Sports',ffa:'Family',ffy:'For You',fliked:'Liked',fgoing:'Going',flive:'Live now',atLive:'🔴 Happening now',neLive:'No events happening right now. Check back in a bit.',ca:'All Cities',cNear:'📍 Near me',ft:'🔥 Trending now',at:'All Events',atMusic:'Music Events',atCinema:'Cinema',atTheatre:'Arts & Theatre',atSports:'Sports Events',atFamily:'Family Events',atFY:'Recommended for you',atL:'Your liked events',atG:"You're going to",ne:'No events found.',neFY:'Like a few events to get personalized recommendations.',neFYSub:'The more you like, the better the recommendations.',neL:'Tap ♥ on events to save them here.',neG:"Tap ○ on events to mark you're going.",neLSignIn:'Sign in to keep them across all your devices.',nudgeGuestT:"You're browsing as a guest",nudgeGuestB:'Sign in to keep your saved events across all your devices',lm:'Load more',ld:'Loading tonight\'s shou…',tk:'Get Tickets',vi:'View Original',xs:'Share on X',fb2:'Share on Facebook',cp:'Copy Link',ne2:n=>`${n} events found`,see:'See website',dir:'→ Get directions',find:'Find tickets',search:'Search online',descFallback:(n,v)=>`${n} at ${v}. Don't miss this exciting live event!`,gdprT:'Quick note about what we keep',gdprB:'Shou keeps your liked events, searches, and the events you tap — used to make recommendations relevant and improve the catalog. Anonymous unless you sign in. We also use your approximate location (from your IP) to surface nearby events. Never sold, never shared.',gdprY:'Got it',gdprN:'Read more',signIn:'Sign in',signOut:'Sign out',siT:'Sign in to shou',siS:"We'll email you a magic link. No password needed — click the link and you're in.",siP:'you@example.com',siB:'Send magic link',siSending:'Sending…',siCT:'Check your email',siCB:'We sent a sign-in link to',siCH:'Open the link on this device to sign in. The link expires in 1 hour.',siErrInvalidEmail:'Please enter a valid email address.',siErrFailed:"Couldn't send link. Please try again.",resultsFor:(q,n)=>`Results for "${q}" · ${n} event${n===1?'':'s'}`,noMatchesFor:q=>`No matches for "${q}"`,clearSearchBtn:'Clear search ✕',askThinking:"Searching Belgium's catalog…",sectionResultsFor:q=>`Results for "${q}"`,liveLabel:'LIVE',nearMeLabel:'Near you',showing:'Showing',going:'Going',goingChip:'GOING',goingTo:'Going to',noGoersYet:"No one's marked Going yet.",share:"Share",save:"Save",saved:"Saved",signInToGo:"Sign in to track events you're going to",voiceListening:"Listening…",geoPromptTitle:"Find events closer to you",geoPromptBody:"Allow location access so we can surface what's nearby — not just what's in your IP region.",geoPromptAccept:"Use my location",geoPromptDismiss:"Not now",trust:"Loved by nightlife lovers across Belgium",surprise:"Surprise me tonight",myEv:"My events",orbT:"Shou is listening",orbS:"ask in any language · powered by AI",caw:"free afterwork",askPh1:"Ask Shou anything…",askPh2:"“intimate jazz in Antwerp this Friday”"},
+  fr:{ey:'ce soir · belgique · en direct',h1a:"c'est quoi",h1b:'le shou',h1c:'en belgique',h1d:'ce soir?',sub:'Dites à Shou ce dont vous avez envie. Il trouve les meilleures sorties de Belgique — dans votre langue.',ab:'demander ↗',c1:'techno ce soir',c2:'concerts live',c3:'soirées clubs',c4:'festivals',c5:'gratuit',aih:'suggestions shou',s1:'Événements',s2:'Villes',s3:'Sources',s4:'Salles',fl:'Filtrer:',fa:'Tout',fm:'Musique',fci:'Cinéma',fth:'Arts & Théâtre',fsp:'Sport',ffa:'Famille',ffy:'Pour vous',fliked:'Favoris',fgoing:"J'y vais",flive:'En direct',atLive:'🔴 En ce moment',neLive:'Aucun événement en cours pour le moment. Revenez dans un instant.',ca:'Toutes les villes',cNear:'📍 Près de moi',ft:'🔥 Tendance',at:'Tous les événements',atMusic:'Événements musique',atCinema:'Cinéma',atTheatre:'Arts & Théâtre',atSports:'Événements sport',atFamily:'Événements famille',atFY:'Recommandés pour vous',atL:'Vos favoris',atG:'Vous y allez',ne:'Aucun événement trouvé.',neFY:'Aimez quelques événements pour obtenir des recommandations personnalisées.',neFYSub:'Plus vous aimez, meilleures sont les recommandations.',neL:'Touchez ♥ sur les événements pour les sauvegarder ici.',neG:'Touchez ○ sur les événements pour confirmer votre présence.',nudgeGuestT:'Vous naviguez en tant qu\'invité',nudgeGuestB:'Connectez-vous pour conserver vos événements sur tous vos appareils',lm:'Voir plus',ld:'Chargement du shou…',tk:'Billets',vi:'Voir la page',xs:'Partager sur X',fb2:'Partager sur Facebook',cp:'Copier le lien',ne2:n=>`${n} événements trouvés`,see:'Voir le site',dir:'→ Itinéraire',find:'Trouver des billets',search:'Rechercher en ligne',descFallback:(n,v)=>`${n} au ${v}. À ne pas manquer !`,gdprT:'À propos de ce qu\'on garde',gdprB:'Shou conserve vos favoris, vos recherches et les événements que vous consultez — pour rendre les recommandations pertinentes et améliorer le catalogue. Anonyme sauf si vous vous connectez. Nous utilisons aussi votre localisation approximative (via votre IP) pour les événements proches. Jamais vendu, jamais partagé.',gdprY:'OK',gdprN:'En savoir plus',neLSignIn:'Connectez-vous pour les retrouver sur tous vos appareils.',signIn:'Connexion',signOut:'Déconnexion',siT:'Connectez-vous à shou',siS:'On vous envoie un lien magique par email. Pas de mot de passe — cliquez sur le lien et c\'est tout.',siP:'vous@exemple.com',siB:'Envoyer le lien',siSending:'Envoi…',siCT:'Vérifiez votre boîte mail',siCB:'Nous avons envoyé un lien de connexion à',siCH:'Ouvrez le lien sur cet appareil pour vous connecter. Le lien expire dans 1 heure.',siErrInvalidEmail:'Veuillez entrer une adresse email valide.',siErrFailed:'Envoi impossible. Veuillez réessayer.',resultsFor:(q,n)=>`Résultats pour "${q}" · ${n} événement${n===1?'':'s'}`,noMatchesFor:q=>`Aucun résultat pour "${q}"`,clearSearchBtn:'Effacer la recherche ✕',askThinking:'Recherche dans le catalogue belge…',sectionResultsFor:q=>`Résultats pour "${q}"`,liveLabel:'EN DIRECT',nearMeLabel:'Près de vous',showing:'Affichage',going:"J'y vais",goingChip:"J'Y VAIS",goingTo:'Va à',noGoersYet:"Personne n'a encore confirmé.",share:"Partager",save:"Sauver",saved:"Sauvé",signInToGo:"Connectez-vous pour suivre les événements où vous allez",voiceListening:"J'écoute…",geoPromptTitle:"Trouvez des événements près de vous",geoPromptBody:"Autorisez la localisation pour voir ce qui est vraiment à côté — pas seulement dans votre région IP.",geoPromptAccept:"Utiliser ma position",geoPromptDismiss:"Plus tard",trust:"Adoré par les amateurs de vie nocturne partout en Belgique",surprise:"Surprends-moi ce soir",myEv:"Mes événements",orbT:"Shou vous écoute",orbS:"demandez dans votre langue · propulsé par l'IA",caw:"afterwork gratuit",askPh1:"Demandez à Shou…",askPh2:"« du jazz intime à Anvers ce vendredi »"},
+  nl:{ey:'vanavond · belgië · live',h1a:'wat is',h1b:'de shou',h1c:'in belgië',h1d:'vanavond?',sub:'Vertel Shou waar je zin in hebt. Het vindt de beste avonden uit in heel België — in jouw taal.',ab:'vraag shou ↗',c1:'techno vanavond',c2:'live concerten',c3:'clubavonden',c4:'festivals',c5:'gratis',aih:'shou suggesties',s1:'Evenementen',s2:'Steden',s3:'Bronnen',s4:'Locaties',fl:'Filter:',fa:'Alles',fm:'Muziek',fci:'Bioscoop',fth:'Theater & Kunst',fsp:'Sport',ffa:'Familie',ffy:'Voor jou',fliked:'Favorieten',fgoing:'Ik ga',flive:'Live nu',atLive:'🔴 Nu bezig',neLive:'Geen evenementen op dit moment. Kom zo terug.',ca:'Alle steden',cNear:'📍 In de buurt',ft:'🔥 Populair',at:'Alle evenementen',atMusic:'Muziekevenementen',atCinema:'Bioscoop',atTheatre:'Theater & Kunst',atSports:'Sportevenementen',atFamily:'Familie-evenementen',atFY:'Aanbevolen voor jou',atL:'Jouw favorieten',atG:'Jij gaat naar',ne:'Geen evenementen.',neFY:'Like een paar evenementen voor persoonlijke aanbevelingen.',neFYSub:'Hoe meer je liket, hoe beter de aanbevelingen.',neL:'Tik op ♥ bij evenementen om ze hier op te slaan.',neG:'Tik op ○ bij evenementen om aan te geven dat je gaat.',nudgeGuestT:'Je bekijkt shou als gast',nudgeGuestB:'Log in om je opgeslagen evenementen op al je apparaten te bewaren',lm:'Meer laden',ld:'Shou laadt…',tk:'Tickets',vi:'Originele pagina',xs:'Delen op X',fb2:'Delen op Facebook',cp:'Link kopiëren',ne2:n=>`${n} evenementen gevonden`,see:'Naar de website',dir:'→ Route',find:'Tickets zoeken',search:'Online zoeken',descFallback:(n,v)=>`${n} bij ${v}. Niet te missen!`,gdprT:'Wat we bijhouden',gdprB:'Shou bewaart je favorieten, zoekopdrachten en de evenementen die je bekijkt — om aanbevelingen relevant te houden en de catalogus te verbeteren. Anoniem tenzij je inlogt. We gebruiken ook je geschatte locatie (via je IP) om evenementen in de buurt te tonen. Nooit verkocht, nooit gedeeld.',gdprY:'Oké',gdprN:'Meer info',neLSignIn:'Log in om ze op al je apparaten bij te houden.',signIn:'Inloggen',signOut:'Uitloggen',siT:'Log in op shou',siS:'We sturen je een magische link via email. Geen wachtwoord nodig — klik op de link en je bent erin.',siP:'jij@voorbeeld.be',siB:'Stuur magische link',siSending:'Verzenden…',siCT:'Check je inbox',siCB:'We stuurden een inlog-link naar',siCH:'Open de link op dit apparaat om in te loggen. De link vervalt na 1 uur.',siErrInvalidEmail:'Voer een geldig emailadres in.',siErrFailed:'Kon link niet versturen. Probeer opnieuw.',resultsFor:(q,n)=>`Resultaten voor "${q}" · ${n} evenement${n===1?'':'en'}`,noMatchesFor:q=>`Geen resultaten voor "${q}"`,clearSearchBtn:'Zoekopdracht wissen ✕',askThinking:'Zoeken in de Belgische catalogus…',sectionResultsFor:q=>`Resultaten voor "${q}"`,liveLabel:'LIVE',nearMeLabel:'In de buurt',showing:'Toont',going:'Ik ga',goingChip:'IK GA',goingTo:'Gaat naar',noGoersYet:'Nog niemand heeft zich aangemeld.',share:"Delen",save:"Opslaan",saved:"Opgeslagen",signInToGo:"Log in om bij te houden naar welke evenementen je gaat",voiceListening:"Ik luister…",geoPromptTitle:"Evenementen dichterbij je vinden",geoPromptBody:"Sta locatie toe om te zien wat echt in de buurt is — niet alleen in je IP-regio.",geoPromptAccept:"Gebruik mijn locatie",geoPromptDismiss:"Later",trust:"Geliefd bij nachtliefhebbers in heel België",surprise:"Verras me vanavond",myEv:"Mijn evenementen",orbT:"Shou luistert",orbS:"vraag in elke taal · aangedreven door AI",caw:"gratis afterwork",askPh1:"Vraag Shou alles…",askPh2:"“intieme jazz in Antwerpen deze vrijdag”"},
+  de:{ey:'heute abend · belgien · live',h1a:'was ist',h1b:'die shou',h1c:'in belgien',h1d:'heute abend?',sub:'Sag Shou, worauf du Lust hast. Es findet die besten Nächte in ganz Belgien — in deiner Sprache.',ab:'shou fragen ↗',c1:'techno heute',c2:'live-konzerte',c3:'club-nächte',c4:'festivals',c5:'gratis',aih:'shou-vorschläge',s1:'Events',s2:'Städte',s3:'Quellen',s4:'Locations',fl:'Filter:',fa:'Alle',fm:'Musik',fci:'Kino',fth:'Kunst & Theater',fsp:'Sport',ffa:'Familie',ffy:'Für dich',fliked:'Favoriten',fgoing:'Ich gehe',flive:'Live jetzt',atLive:'🔴 Gerade jetzt',neLive:'Aktuell keine Events. Schau gleich wieder vorbei.',ca:'Alle Städte',cNear:'📍 In meiner Nähe',ft:'🔥 Jetzt angesagt',at:'Alle Events',atMusic:'Musik-Events',atCinema:'Kino',atTheatre:'Kunst & Theater',atSports:'Sport-Events',atFamily:'Familien-Events',atFY:'Für dich empfohlen',atL:'Deine Favoriten',atG:'Du gehst zu',ne:'Keine Events gefunden.',neFY:'Like ein paar Events für persönliche Empfehlungen.',neFYSub:'Je mehr du likest, desto besser werden die Empfehlungen.',neL:'Tippe auf ♥ bei Events, um sie hier zu speichern.',neG:'Tippe auf ○ bei Events, um zu markieren, dass du dabei bist.',nudgeGuestT:'Du bist als Gast unterwegs',nudgeGuestB:'Melde dich an, um deine gespeicherten Events auf allen Geräten zu behalten',lm:'Mehr laden',ld:'Shou lädt…',tk:'Tickets',vi:'Zur Seite',xs:'Auf X teilen',fb2:'Auf Facebook teilen',cp:'Link kopieren',ne2:n=>`${n} Events gefunden`,see:'Zur Website',dir:'→ Route',find:'Tickets finden',search:'Online suchen',descFallback:(n,v)=>`${n} im ${v}. Lassen Sie sich dieses Event nicht entgehen!`,gdprT:'Was wir speichern',gdprB:'Shou speichert deine Favoriten, Suchen und die Events, die du anklickst — um Empfehlungen relevant zu halten und den Katalog zu verbessern. Anonym, außer du meldest dich an. Wir nutzen auch deinen ungefähren Standort (über deine IP), um Events in der Nähe zu zeigen. Nie verkauft, nie geteilt.',gdprY:'OK',gdprN:'Mehr erfahren',neLSignIn:'Logge dich ein, um sie auf allen Geräten zu behalten.',signIn:'Anmelden',signOut:'Abmelden',siT:'Bei shou anmelden',siS:'Wir senden dir einen Magic Link per E-Mail. Kein Passwort nötig — Link anklicken und du bist drin.',siP:'du@beispiel.de',siB:'Magic Link senden',siSending:'Senden…',siCT:'Schau in deine E-Mails',siCB:'Wir haben einen Anmelde-Link gesendet an',siCH:'Öffne den Link auf diesem Gerät, um dich anzumelden. Der Link läuft in 1 Stunde ab.',siErrInvalidEmail:'Bitte gib eine gültige E-Mail-Adresse ein.',siErrFailed:'Link konnte nicht gesendet werden. Bitte erneut versuchen.',resultsFor:(q,n)=>`Ergebnisse für "${q}" · ${n} Event${n===1?'':'s'}`,noMatchesFor:q=>`Keine Ergebnisse für "${q}"`,clearSearchBtn:'Suche zurücksetzen ✕',askThinking:'Belgischer Katalog wird durchsucht…',sectionResultsFor:q=>`Ergebnisse für "${q}"`,liveLabel:'LIVE',nearMeLabel:'In der Nähe',showing:'Zeigt',going:'Ich gehe',goingChip:'ICH GEHE',goingTo:'Geht zu',noGoersYet:'Noch niemand hat zugesagt.',share:"Teilen",save:"Merken",saved:"Gemerkt",signInToGo:"Melde dich an, um Events zu speichern, zu denen du gehst",voiceListening:"Ich höre zu…",geoPromptTitle:"Events näher bei dir finden",geoPromptBody:"Erlaube uns deinen Standort, damit wir zeigen können, was wirklich in der Nähe ist — nicht nur in deiner IP-Region.",geoPromptAccept:"Standort verwenden",geoPromptDismiss:"Später",trust:"Beliebt bei Nachtschwärmern in ganz Belgien",surprise:"Überrasch mich heute Abend",myEv:"Meine Events",orbT:"Shou hört zu",orbS:"frag in jeder Sprache · mit KI",caw:"gratis Afterwork",askPh1:"Frag Shou alles…",askPh2:"„intimer Jazz in Antwerpen am Freitag“"},
+  es:{ey:'esta noche · bélgica · en directo',h1a:'¿qué es',h1b:'el shou',h1c:'en bélgica',h1d:'esta noche?',sub:'Dile a Shou qué te apetece. Encuentra los mejores planes nocturnos de Bélgica, en tu idioma.',ab:'preguntar ↗',c1:'techno esta noche',c2:'conciertos en vivo',c3:'noches de club',c4:'festivales',c5:'gratis',aih:'sugerencias shou',s1:'Eventos',s2:'Ciudades',s3:'Fuentes',s4:'Locales',fl:'Filtrar:',fa:'Todo',fm:'Música',fci:'Cine',fth:'Artes & Teatro',fsp:'Deportes',ffa:'Familia',ffy:'Para ti',fliked:'Favoritos',fgoing:'Voy',flive:'En vivo',atLive:'🔴 Ahora mismo',neLive:'No hay eventos en este momento. Vuelve en un rato.',ca:'Todas las ciudades',cNear:'📍 Cerca de mí',ft:'🔥 Tendencia',at:'Todos los eventos',atMusic:'Eventos de música',atCinema:'Cine',atTheatre:'Artes & Teatro',atSports:'Eventos deportivos',atFamily:'Eventos familiares',atFY:'Recomendados para ti',atL:'Tus favoritos',atG:'Vas a',ne:'No se encontraron eventos.',neFY:'Da like a algunos eventos para obtener recomendaciones personalizadas.',neFYSub:'Cuantos más eventos te gusten, mejores las recomendaciones.',neL:'Toca ♥ en los eventos para guardarlos aquí.',neG:'Toca ○ en los eventos para marcar que vas.',nudgeGuestT:'Estás navegando como invitado',nudgeGuestB:'Inicia sesión para conservar tus eventos guardados en todos tus dispositivos',lm:'Cargar más',ld:'Cargando shou…',tk:'Entradas',vi:'Ver página',xs:'Compartir en X',fb2:'Compartir en Facebook',cp:'Copiar enlace',ne2:n=>`${n} eventos encontrados`,see:'Ver el sitio web',dir:'→ Cómo llegar',find:'Buscar entradas',search:'Buscar en línea',descFallback:(n,v)=>`${n} en ${v}. ¡No te pierdas este evento!`,gdprT:'Sobre lo que guardamos',gdprB:'Shou guarda tus eventos favoritos, búsquedas y los eventos que tocas — para hacer las recomendaciones relevantes y mejorar el catálogo. Anónimo a menos que inicies sesión. También usamos tu ubicación aproximada (vía tu IP) para mostrar eventos cercanos. Nunca vendido, nunca compartido.',gdprY:'OK',gdprN:'Saber más',neLSignIn:'Inicia sesión para verlos en todos tus dispositivos.',signIn:'Iniciar sesión',signOut:'Cerrar sesión',siT:'Inicia sesión en shou',siS:'Te enviamos un enlace mágico por email. Sin contraseña — haz clic en el enlace y listo.',siP:'tu@ejemplo.com',siB:'Enviar enlace',siSending:'Enviando…',siCT:'Revisa tu email',siCB:'Enviamos un enlace de acceso a',siCH:'Abre el enlace en este dispositivo para iniciar sesión. El enlace caduca en 1 hora.',siErrInvalidEmail:'Introduce un email válido.',siErrFailed:'No se pudo enviar el enlace. Inténtalo de nuevo.',resultsFor:(q,n)=>`Resultados para "${q}" · ${n} evento${n===1?'':'s'}`,noMatchesFor:q=>`Sin resultados para "${q}"`,clearSearchBtn:'Borrar búsqueda ✕',askThinking:'Buscando en el catálogo belga…',sectionResultsFor:q=>`Resultados para "${q}"`,liveLabel:'EN VIVO',nearMeLabel:'Cerca de ti',showing:'Mostrando',going:'Voy',goingChip:'VOY',goingTo:'Va a',noGoersYet:'Nadie ha confirmado todavía.',share:"Compartir",save:"Guardar",saved:"Guardado",signInToGo:"Inicia sesión para guardar los eventos a los que vas",voiceListening:"Escuchando…",geoPromptTitle:"Encuentra eventos más cerca de ti",geoPromptBody:"Permite el acceso a tu ubicación para ver lo que realmente está cerca — no solo en tu región IP.",geoPromptAccept:"Usar mi ubicación",geoPromptDismiss:"Ahora no",trust:"Adorado por los amantes de la noche en toda Bélgica",surprise:"Sorpréndeme esta noche",myEv:"Mis eventos",orbT:"Shou te escucha",orbS:"pregunta en cualquier idioma · con IA",caw:"afterwork gratis",askPh1:"Pregúntale a Shou…",askPh2:"«jazz íntimo en Amberes este viernes»"},
+  it:{ey:'stasera · belgio · in diretta',h1a:'qual è',h1b:'lo shou',h1c:'in belgio',h1d:'stasera?',sub:'Dì a Shou cosa ti va. Trova le migliori serate del Belgio — nella tua lingua.',ab:'chiedi ↗',c1:'techno stasera',c2:'concerti dal vivo',c3:'serate club',c4:'festival',c5:'ingresso libero',aih:'suggerimenti shou',s1:'Eventi',s2:'Città',s3:'Fonti',s4:'Locali',fl:'Filtra:',fa:'Tutto',fm:'Musica',fci:'Cinema',fth:'Arte & Teatro',fsp:'Sport',ffa:'Famiglia',ffy:'Per te',fliked:'Preferiti',fgoing:'Ci vado',flive:'In diretta',atLive:'🔴 In questo momento',neLive:'Nessun evento in corso. Riprova tra poco.',ca:'Tutte le città',cNear:'📍 Vicino a me',ft:'🔥 In tendenza',at:'Tutti gli eventi',atMusic:'Eventi musicali',atCinema:'Cinema',atTheatre:'Arte & Teatro',atSports:'Eventi sportivi',atFamily:'Eventi famiglia',atFY:'Consigliati per te',atL:'I tuoi preferiti',atG:'Vai a',ne:'Nessun evento trovato.',neFY:'Metti like a qualche evento per ricevere consigli personalizzati.',neFYSub:'Più like metti, migliori saranno i consigli.',neL:'Tocca ♥ sugli eventi per salvarli qui.',neG:'Tocca ○ sugli eventi per segnare la tua presenza.',nudgeGuestT:'Stai navigando come ospite',nudgeGuestB:'Accedi per mantenere i tuoi eventi salvati su tutti i dispositivi',lm:'Carica altri',ld:'Caricamento shou…',tk:'Biglietti',vi:'Vai alla pagina',xs:'Condividi su X',fb2:'Condividi su Facebook',cp:'Copia link',ne2:n=>`${n} eventi trovati`,see:'Vai al sito',dir:'→ Indicazioni',find:'Cerca biglietti',search:'Cerca online',descFallback:(n,v)=>`${n} a ${v}. Da non perdere!`,gdprT:'Cosa conserviamo',gdprB:'Shou conserva i tuoi eventi preferiti, ricerche e gli eventi che tocchi — per rendere i consigli rilevanti e migliorare il catalogo. Anonimo a meno che tu non acceda. Usiamo anche la tua posizione approssimativa (dal tuo IP) per mostrarti eventi vicini. Mai venduto, mai condiviso.',gdprY:'OK',gdprN:'Scopri di più',neLSignIn:'Accedi per ritrovarli su tutti i tuoi dispositivi.',signIn:'Accedi',signOut:'Esci',siT:'Accedi a shou',siS:'Ti inviamo un link magico via email. Niente password — clicca sul link ed è fatta.',siP:'tu@esempio.it',siB:'Invia link',siSending:'Invio…',siCT:'Controlla la tua email',siCB:'Abbiamo inviato un link di accesso a',siCH:'Apri il link su questo dispositivo per accedere. Il link scade tra 1 ora.',siErrInvalidEmail:'Inserisci un indirizzo email valido.',siErrFailed:'Impossibile inviare il link. Riprova.',resultsFor:(q,n)=>`Risultati per "${q}" · ${n} event${n===1?'o':'i'}`,noMatchesFor:q=>`Nessun risultato per "${q}"`,clearSearchBtn:'Cancella ricerca ✕',askThinking:'Cerco nel catalogo belga…',sectionResultsFor:q=>`Risultati per "${q}"`,liveLabel:'IN DIRETTA',nearMeLabel:'Vicino a te',showing:'Mostra',going:'Ci vado',goingChip:'CI VADO',goingTo:'Va a',noGoersYet:'Nessuno ha ancora confermato.',share:"Condividi",save:"Salva",saved:"Salvato",signInToGo:"Accedi per tenere traccia degli eventi a cui vai",voiceListening:"In ascolto…",geoPromptTitle:"Trova eventi più vicini a te",geoPromptBody:"Consenti l'accesso alla posizione per vedere cosa è davvero nelle vicinanze — non solo nella tua regione IP.",geoPromptAccept:"Usa la mia posizione",geoPromptDismiss:"Più tardi",trust:"Amato dagli amanti della vita notturna in tutto il Belgio",surprise:"Sorprendimi stasera",myEv:"I miei eventi",orbT:"Shou ti ascolta",orbS:"chiedi in qualsiasi lingua · con l'IA",caw:"afterwork gratis",askPh1:"Chiedi a Shou…",askPh2:"«jazz intimo ad Anversa venerdì»"},
+  uk:{ey:'наживо ввечері · бельгія · просто зараз',h1a:'які',h1b:'шоу',h1c:'у Бельгії',h1d:'сьогодні?',sub:'Скажи Shou, чого тобі хочеться. Він знайде найкращі вечори в Бельгії — твоєю мовою.',ab:'запитати ↗',c1:'техно сьогодні',c2:'концерти наживо',c3:'клубні ночі',c4:'фестивалі',c5:'безкоштовний вхід',aih:'пропозиції шоу',s1:'Подій',s2:'Міст',s3:'Джерел',s4:'Локацій',fl:'Фільтр:',fa:'Усі',fm:'Музика',fci:'Кіно',fth:'Мистецтво і театр',fsp:'Спорт',ffa:'Сім\'я',ffy:'Для тебе',fliked:'Уподобані',fgoing:'Іду',flive:'Зараз',atLive:'🔴 Триває зараз',neLive:'Подій зараз немає. Зайди трохи пізніше.',ca:'Усі міста',cNear:'📍 Поруч',ft:'🔥 У тренді',at:'Усі події',atMusic:'Музичні події',atCinema:'Кіно',atTheatre:'Мистецтво і театр',atSports:'Спортивні події',atFamily:'Сімейні події',atFY:'Рекомендовано для тебе',atL:'Твої уподобані події',atG:'Ти йдеш на',ne:'Подій не знайдено.',neFY:'Постав ♥ кільком подіям, щоб отримати персональні рекомендації.',neFYSub:'Що більше подобається, то кращі будуть рекомендації.',neL:'Натисни ♥ на події, щоб зберегти їх тут.',neG:'Натисни ○ на події, щоб позначити, що йдеш.',neLSignIn:'Увійди, щоб зберегти їх на всіх своїх пристроях.',nudgeGuestT:'Ти переглядаєш як гість',nudgeGuestB:'Увійди, щоб зберігати події на всіх пристроях',lm:'Завантажити ще',ld:'Завантаження шоу…',tk:'Купити квитки',vi:'Оригінал',xs:'Поділитися в X',fb2:'Поділитися у Facebook',cp:'Копіювати посилання',ne2:n=>`знайдено ${n} ${n===1?'подію':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,see:'Див. сайт',dir:'→ Маршрут',find:'Знайти квитки',search:'Шукати онлайн',descFallback:(n,v)=>`${n} у ${v}. Не пропусти цю захоплюючу подію!`,gdprT:'Коротка примітка про те, що ми зберігаємо',gdprB:'Шоу зберігає твої уподобані події, пошуки та події, які ти відкриваєш — щоб робити рекомендації релевантними і покращувати каталог. Анонімно, якщо ти не увійшов(-ла) в акаунт. Ми також використовуємо твоє приблизне місцезнаходження (за IP), щоб показувати події поруч. Ніколи не продаємо й не передаємо.',gdprY:'Зрозуміло',gdprN:'Дізнатися більше',signIn:'Увійти',signOut:'Вийти',siT:'Увійти в шоу',siS:'Ми надішлемо magic-посилання на email. Без пароля — клікни на посилання і ти всередині.',siP:'ти@приклад.com',siB:'Надіслати посилання',siSending:'Надсилання…',siCT:'Перевір пошту',siCB:'Ми надіслали посилання для входу на',siCH:'Відкрий посилання на цьому пристрої, щоб увійти. Посилання дійсне 1 годину.',siErrInvalidEmail:'Введи дійсну email-адресу.',siErrFailed:'Не вдалося надіслати посилання. Спробуй ще раз.',resultsFor:(q,n)=>`Результати для "${q}" · ${n} ${n===1?'подія':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,noMatchesFor:q=>`Немає результатів для "${q}"`,clearSearchBtn:'Очистити пошук ✕',askThinking:'Шукаю в каталозі Бельгії…',sectionResultsFor:q=>`Результати для "${q}"`,liveLabel:'НАЖИВО',nearMeLabel:'Поруч з тобою',showing:'Показую',going:'Іду',goingChip:'ЙДУ',goingTo:'Йде на',noGoersYet:'Поки ніхто не позначив, що йде.',share:"Поділитися",save:"Зберегти",saved:"Збережено",signInToGo:"Увійди, щоб відстежувати події, на які ти йдеш",voiceListening:"Слухаю…",geoPromptTitle:"Знайди події ближче до тебе",geoPromptBody:"Дозволь доступ до місцезнаходження, щоб ми могли показати, що справді поруч — не лише в твоєму IP-регіоні.",geoPromptAccept:"Використати моє місцезнаходження",geoPromptDismiss:"Не зараз",trust:"Улюблене серед любителів нічного життя по всій Бельгії",surprise:"Здивуй мене сьогодні",myEv:"Мої події",orbT:"Шоу слухає",orbS:"запитуй будь-якою мовою · на основі ШІ",caw:"безкоштовний afterwork",askPh1:"Запитай Shou про що завгодно…",askPh2:"«камерний джаз в Антверпені цієї п'ятниці»"}
 };
 
 // Initial language resolution: localStorage (explicit user choice from previous
@@ -4546,12 +4648,12 @@ function applyI18n(){
     if(typeof v==='string') el.textContent=v;
   });
   const placeholders={
-    en: 'Ask AI — e.g. electronic music in Ghent this weekend…',
-    fr: "Demandez à l'IA — ex: jazz ce week-end à Gand…",
-    nl: 'Vraag AI — bijv. concert in Gent dit weekend…',
-    de: 'KI fragen — z.B. Techno in Gent am Wochenende…',
-    es: 'Pregunta a la IA — p.ej. jazz este fin de semana en Gante…',
-    it: "Chiedi all'IA — es: jazz a Gand questo weekend…",
+    en: 'Ask Shou anything…',
+    fr: 'Demandez à Shou…',
+    nl: 'Vraag Shou alles…',
+    de: 'Frag Shou alles…',
+    es: 'Pregúntale a Shou…',
+    it: 'Chiedi a Shou…',
   };
   // Mobile gets a shorter prompt so it doesn't get truncated by the mic
   // button and the "ask shou" button to its right. Same intent, just terse.
@@ -4563,9 +4665,11 @@ function applyI18n(){
     es: 'Pregunta a shou…',
     it: 'Chiedi a shou…',
   };
-  const useShort = window.matchMedia('(max-width: 700px)').matches;
-  const placeholderSet = useShort ? placeholdersMobile : placeholders;
-  document.getElementById('ai').placeholder = placeholderSet[lang] || placeholderSet.en;
+  // The visible 2-line hint is the .ai-ph overlay (localized via data-k askPh1/
+  // askPh2). #ai keeps a blank " " placeholder so :placeholder-shown drives the
+  // overlay's show/hide. (placeholders/placeholdersMobile dicts above are kept
+  // for reference but no longer assigned.)
+  document.getElementById('ai').placeholder = ' ';
   // Re-render the AI banner so its labels (Results for, Clear search, etc.)
   // pick up the new language. Static labels via data-k were already handled
   // by the loop above, but the AI banner uses dynamic templated strings
@@ -4715,44 +4819,11 @@ async function fetchEvts(){
     // fetchEvts was in flight). syncGeoState handles the actC update itself
     // when geo state changes; this is just a label refresh.
     updateCityPillLabel();
-    document.getElementById('st').textContent=d.total||all.length;
-    // Stats cards: prefer catalog-wide totals from the backend when available.
-    // Falls back to deriving from the events page when the backend doesn't
-    // ship totals (e.g. migration_stats.sql not yet deployed). Derived
-    // counts heavily undercount because the page is ~500 of ~5000 events.
+    // The 4-card stats strip was replaced by the trust band in the concierge
+    // (AI-first) redesign, so there are no per-stat DOM nodes to populate here.
+    // We still read totals to seed slugTotals — kept for any catalog-count
+    // consumers (e.g. categoryTotal) even though the filter tabs are gone.
     const totals = d.totals || {};
-    document.getElementById('sv').textContent =
-      totals.venues  ?? [...new Set(all.map(e=>e.venue))].length;
-    // Cities: backend ships a LIST of raw city strings. We fold them to a
-    // realistic municipality count two ways:
-    //   1. Submunicipalities are stored as "Deelgemeente (Parent)" — e.g.
-    //      "Heverlee (Leuven)", "Berchem (Antwerpen)". These aren't separate
-    //      cities, so we collapse them to the parent in the "(...)".
-    //   2. Spelling/case/bilingual variants ("Antwerpen"/"Antwerp"/"ANTWERPEN",
-    //      "Gent"/"Ghent") are deduped by lowercasing + trimming.
-    // This stops the stat from overcounting (Belgium has 565 municipalities;
-    // raw strings inflate well past that with deelgemeenten + spellings).
-    if (Array.isArray(totals.cityList)) {
-      const parentOf = (raw) => {
-        const s = String(raw || '').trim();
-        const m = s.match(/\(([^)]+)\)\s*$/);   // trailing "(Parent)"
-        return (m ? m[1] : s).trim().toLowerCase();
-      };
-      const munis = new Set(
-        totals.cityList.map(parentOf).filter(Boolean)
-      );
-      document.getElementById('sc').textContent = munis.size;
-    } else {
-      document.getElementById('sc').textContent = cities.length;
-    }
-    // Sources stat: if backend ships the real count, use it. Otherwise leave
-    // whatever was rendered server-side / initial-paint untouched (the
-    // hardcoded "4" is acceptable as a fallback since source count is stable).
-    if (totals.sources != null) {
-      document.getElementById('ss').textContent = totals.sources;
-    }
-    // Per-category catalog totals → seed slugTotals so the filter tabs can show
-    // counts upfront (without waiting for each category to be clicked).
     if (totals.categories && typeof totals.categories === 'object') {
       for (const [slug, n] of Object.entries(totals.categories)) slugTotals.set(slug, Number(n) || 0);
     }
@@ -5008,7 +5079,7 @@ function labelToSlug(seg){
 async function sf(f,btn){
   actF=f;
   document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
+  if (btn) btn.classList.add('on');
   vis=6;
   // Clear any active AI search when a filter is clicked. Filter buttons and
   // AI search are mutually-exclusive ways of narrowing the catalog.
@@ -5162,8 +5233,10 @@ function goHome() {
   if (mov?.classList.contains('on')) {
     cm2();
   }
+  // Filter tabs were removed in the concierge redesign, so .fb[data-c="all"]
+  // no longer exists — sf() tolerates a null button and just resets actF.
   const allBtn = document.querySelector('.fb[data-c="all"]');
-  if (allBtn && actF !== 'all') {
+  if (actF !== 'all') {
     sf('all', allBtn);
   } else if (aiQ) {
     aiQ = '';
@@ -7251,9 +7324,36 @@ const CHIP_QUERIES = {
     es: 'entrada gratuita',
     it: 'ingresso gratuito',
   },
+  caw: { // free afterwork (concierge hero chip)
+    en: 'free afterwork drinks',
+    fr: 'afterwork gratuit',
+    nl: 'gratis afterwork',
+    de: 'kostenloser Afterwork',
+    es: 'afterwork gratis',
+    it: 'afterwork gratuito',
+  },
 };
 function qChip(id) {
   const q = (CHIP_QUERIES[id] && CHIP_QUERIES[id][lang]) || CHIP_QUERIES[id]?.en || '';
+  if (q) qAI(q);
+}
+
+// "Surprise me" — the signature AI move. Instead of a literal keyword filter,
+// it sends an evocative open-ended prompt to Ask Shou so the LLM surfaces a
+// memorable curated pick (a hidden gem). A few phrasings per language keep it
+// fresh on repeat taps; we pick one at random. Localized like CHIP_QUERIES.
+const SURPRISE_QUERIES = {
+  en: ['surprise me with a hidden gem tonight', 'surprise me — an unexpected night out tonight', 'pick something special for me tonight'],
+  fr: ['surprends-moi avec une pépite ce soir', 'surprends-moi — une sortie inattendue ce soir', 'choisis-moi quelque chose de spécial ce soir'],
+  nl: ['verras me met een verborgen pareltje vanavond', 'verras me — een onverwacht avondje uit vanavond', 'kies iets bijzonders voor me vanavond'],
+  de: ['überrasch mich mit einem Geheimtipp heute Abend', 'überrasch mich — ein unerwarteter Abend heute', 'such mir etwas Besonderes für heute Abend aus'],
+  es: ['sorpréndeme con una joya escondida esta noche', 'sorpréndeme — una salida inesperada esta noche', 'elige algo especial para mí esta noche'],
+  it: ['sorprendimi con una chicca nascosta stasera', 'sorprendimi — una serata inaspettata stasera', 'scegli qualcosa di speciale per me stasera'],
+  uk: ['здивуй мене прихованою перлиною сьогодні', 'здивуй мене — несподіваний вечір сьогодні', 'обери для мене щось особливе сьогодні'],
+};
+function surpriseMe() {
+  const list = SURPRISE_QUERIES[lang] || SURPRISE_QUERIES.en;
+  const q = list[Math.floor(Math.random() * list.length)];
   if (q) qAI(q);
 }
 function clearAI(){
