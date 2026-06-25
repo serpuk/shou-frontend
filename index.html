@@ -3034,6 +3034,10 @@ body.ai-active .cc-trust { display: none; }
 .navlink.cc-myev svg { color: var(--pink-hot); opacity: 1; }
 .navlink.cc-myev:hover svg { color: var(--coral); }
 .navlink.cc-myev .liked-count { margin-left: 3px; background: rgba(255,95,184,0.22); }
+/* Active toggle state — reads as "on" so users know they can click again to exit. */
+.navlink.cc-myev.on { background: var(--grad-mix); border-color: transparent; color: var(--ink); }
+.navlink.cc-myev.on svg { color: var(--ink); }
+.navlink.cc-myev.on .liked-count { background: rgba(0,0,0,0.22); color: var(--ink); }
 
 @media (max-width: 860px) {
   /* On phones the orb is a modest accent between the headline and the search
@@ -3100,7 +3104,7 @@ body.ai-active .cc-trust { display: none; }
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
       <span class="navlink-tx">This week</span>
     </a>
-    <a class="navlink cc-myev" role="button" tabindex="0" onclick="sf('mine',this)" onkeydown="if(event.key==='Enter')sf('mine',this)" title="Events you're interested in or going to" aria-label="My events">
+    <a class="navlink cc-myev" role="button" tabindex="0" aria-pressed="false" onclick="toggleMine(this)" onkeydown="if(event.key==='Enter')toggleMine(this)" title="Show / hide events you're interested in or going to" aria-label="My events">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/></svg>
       <span class="navlink-tx" data-k="myEv">My events</span><span class="liked-count" id="mcn"></span>
     </a>
@@ -5109,6 +5113,7 @@ async function sf(f,btn){
     await hydrateEventsByIds([...new Set([...lk, ...gn])]);
   }
   applyF();
+  syncMyEventsActive();
 }
 
 // Hydrate a set of event ids into `all` (deduped) via the backend batch path
@@ -6237,6 +6242,22 @@ function updateLikedCount(){
   if (el) el.textContent = n > 0 ? String(n) : '';
 }
 function updateGoingCount(){ updateLikedCount(); }
+
+// The header "My events" link doubles as an on/off toggle (the filter tabs that
+// used to hold it are gone). toggleMine flips between the personal collection
+// and the All/home view; syncMyEventsActive keeps the link's visual + a11y
+// state in sync however actF changed (toggle, logo/home reset, etc.).
+function syncMyEventsActive(){
+  const el = document.querySelector('.navlink.cc-myev');
+  if (!el) return;
+  const on = actF === 'mine';
+  el.classList.toggle('on', on);
+  el.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+function toggleMine(el){
+  if (actF === 'mine') sf('all', null);   // already on → back to All / home
+  else sf('mine', el);                     // off → show My events
+}
 
 // Guest nudge banner — shown above results on Liked / Going filters for
 // anonymous users with ≥1 saved item, unless dismissed within last 30 days.
