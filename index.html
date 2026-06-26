@@ -3030,13 +3030,17 @@ footer p {
 .chip.cc-chip-hero span { color: #fff; }
 
 /* Trust band — replaces the old stats strip */
-.cc-trust { border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); margin: 8px 0 30px; padding: 16px 0; }
-.cc-trust .tline { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 18px; font-size: 14.5px; color: var(--bone2); }
+.cc-trust { display: flex; justify-content: center; margin: 8px 0 30px; }
+.cc-trust .tline { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; font-size: 14px; color: var(--bone2); padding: 13px 26px; border: 1px solid rgba(255,255,255,0.10); border-radius: 40px; background: rgba(255,255,255,0.02); }
 .cc-trust .cc-stars { letter-spacing: 3px; font-size: 15px; background: var(--grad-mix); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.cc-trust .titem { display: inline-flex; align-items: center; gap: 8px; }
+.cc-trust .titem { display: inline-flex; align-items: center; gap: 9px; }
 .cc-trust .tnum { font-weight: 700; color: var(--bone); }
-.cc-trust .tsep { width: 1px; height: 15px; background: rgba(255,255,255,0.14); }
-@media (max-width: 640px) { .cc-trust .tsep { display: none; } }
+.cc-trust .tsep { width: 1px; height: 18px; background: rgba(255,255,255,0.12); }
+.cc-trust .ticon { flex: none; }
+.cc-trust .ticon.heart { color: #ff2e7e; }
+.cc-trust .ticon.cal   { color: #ff9966; }
+.cc-trust .ticon.bolt  { color: #ffb24d; }
+@media (max-width: 640px) { .cc-trust .tsep { display: none; } .cc-trust .tline { gap: 9px 16px; padding: 12px 18px; } }
 body.ai-active .cc-trust { display: none; }
 
 /* Nav: My events link (star tinted pink) */
@@ -3248,11 +3252,20 @@ body.ai-active .cc-trust { display: none; }
 
   <section class="cc-trust">
     <div class="tline">
-      <span class="titem"><span class="cc-stars">★★★★★</span> <span data-k="trust">Loved by nightlife lovers across Belgium</span></span>
+      <span class="titem">
+        <svg class="ticon heart" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.6 9 1.6 5.5 4.8 4.7c2-.5 3.8.5 4.9 2 1.1-1.5 2.9-2.5 4.9-2 3.2.8 4.2 4.3 2.8 7.1C19.5 16.4 12 21 12 21z"/></svg>
+        <span class="cc-stars">★★★★★</span> <span data-k="trust">Loved by nightlife lovers across Belgium</span>
+      </span>
       <span class="tsep" aria-hidden="true"></span>
-      <span class="titem"><span class="tnum" id="trustCount">22K+</span> <span data-k="trustEvents">events</span></span>
+      <span class="titem">
+        <svg class="ticon cal" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+        <span class="tnum" id="trustCount">22K+</span> <span data-k="trustEvents">events</span>
+      </span>
       <span class="tsep" aria-hidden="true"></span>
-      <span class="titem"><span data-k="trustFresh">Updated every hour</span></span>
+      <span class="titem">
+        <svg class="ticon bolt" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4.5 13.5H11l-1 8.5L19.5 10H13z"/></svg>
+        <span data-k="trustFresh">Updated every hour</span>
+      </span>
     </div>
   </section>
 
