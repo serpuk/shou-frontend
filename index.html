@@ -5550,20 +5550,19 @@ function normTitleForDedupe(s){
     .replace(/[^a-z0-9]+/g,' ')
     .trim();
 }
-// Same event? (only called for rows already known to share venue+date.) True
-// when one normalized title fully contains the other (≥12 chars — catches a
-// source appending a second-language title, e.g. "X" vs "X / Dutch X") or they
-// share ≥70% of their word tokens.
+// Same event? (only called for rows already known to share venue+date.) NARROW,
+// safe rule: a bilingual "Title / Vertaling" concatenation where one slash-side
+// equals the other title. Deliberately NOT plain prefix/containment — distinct
+// events frequently share a prefix ("Sportmix" vs "Mini-sportmix", a guided
+// tour vs the exhibition, "World Tour" vs "World Tour | VIP Packages"), and
+// merging those would drop real events.
 function titlesSameEvent(a,b){
   const x=normTitleForDedupe(a), y=normTitleForDedupe(b);
   if(!x||!y) return false;
   if(x===y) return true;
-  const short = x.length<=y.length?x:y, long = x.length<=y.length?y:x;
-  if(short.length>=12 && long.indexOf(short)!==-1) return true;
-  const tx=new Set(x.split(' ').filter(Boolean)), ty=new Set(y.split(' ').filter(Boolean));
-  if(tx.size<2 || ty.size<2) return false;
-  let inter=0; for(const t of tx) if(ty.has(t)) inter++;
-  return inter/(tx.size+ty.size-inter) >= 0.7;
+  const slashSide=(raw,other)=> other.length>=8 &&
+    String(raw||'').split('/').some(p=>normTitleForDedupe(p)===other);
+  return slashSide(a,y) || slashSide(b,x);
 }
 // Pick which of two duplicate rows to KEEP for display: prefer the cleaner,
 // fully-translated title — avoid bilingual "X / Y" concatenations, then the
@@ -5586,9 +5585,10 @@ function dedupeByContent(list){
     else if((e.pop||0)>(prev.pop||0)) best.set(key,e);
   }
   let result=order.map(k=>best.get(k));
-  // Second pass: collapse same venue+date rows whose titles are near-identical
-  // (one contains the other / high token overlap) — cross-source dupes the
-  // exact key missed, e.g. one feed appends a second-language title.
+  // Second pass: collapse same venue+date rows that are a bilingual "A / B"
+  // concatenation of each other (one feed appended a second-language title) —
+  // cross-source dupes the exact key missed. See titlesSameEvent for why this
+  // is deliberately narrow (prefix-sharing distinct events must NOT merge).
   const groups=new Map();
   for(const e of result){
     const g=(e.venue||'').toLowerCase().trim()+'|'+(e.date||'');
