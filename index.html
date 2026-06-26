@@ -5565,14 +5565,18 @@ function titlesSameEvent(a,b){
   let inter=0; for(const t of tx) if(ty.has(t)) inter++;
   return inter/(tx.size+ty.size-inter) >= 0.7;
 }
-// Pick which of two duplicate rows to keep: higher popularity, then the one
-// with a real start time, then the more complete (longer) title.
+// Pick which of two duplicate rows to KEEP for display: prefer the cleaner,
+// fully-translated title — avoid bilingual "X / Y" concatenations, then the
+// shorter title — falling back to higher popularity. Time/end/pop are merged
+// onto the keeper separately (see dedupeByContent) so no source data is lost.
 function betterDup(a,b){
-  if((a.pop||0)!==(b.pop||0)) return (a.pop||0)>(b.pop||0)?a:b;
-  const at=!!(a.time&&a.time!=='TBA'&&a.time!=='null'), bt=!!(b.time&&b.time!=='TBA'&&b.time!=='null');
-  if(at!==bt) return at?a:b;
-  return (a.name||'').length>=(b.name||'').length?a:b;
+  const aBi=(a.name||'').indexOf(' / ')!==-1, bBi=(b.name||'').indexOf(' / ')!==-1;
+  if(aBi!==bBi) return aBi?b:a;
+  const al=(a.name||'').length, bl=(b.name||'').length;
+  if(al!==bl) return al<=bl?a:b;
+  return (a.pop||0)>=(b.pop||0)?a:b;
 }
+function hasRealTime(t){ return !!(t&&t!=='TBA'&&t!=='null'); }
 function dedupeByContent(list){
   const best=new Map(), order=[];
   for(const e of (list||[])){
@@ -5599,8 +5603,12 @@ function dedupeByContent(list){
       for(let j=i+1;j<arr.length;j++){
         if(drop.has(arr[j].id)) continue;
         if(titlesSameEvent(arr[i].name, arr[j].name)){
-          const keep=betterDup(arr[i], arr[j]);
-          drop.add((keep===arr[i]?arr[j]:arr[i]).id);
+          const keep=betterDup(arr[i], arr[j]), lose=keep===arr[i]?arr[j]:arr[i];
+          // Keep the cleaner title, but inherit time/end/pop from the other source.
+          if(!hasRealTime(keep.time) && hasRealTime(lose.time)) keep.time=lose.time;
+          if(!keep.endDate && lose.endDate) keep.endDate=lose.endDate;
+          if((lose.pop||0)>(keep.pop||0)) keep.pop=lose.pop;
+          drop.add(lose.id);
         }
       }
     }
