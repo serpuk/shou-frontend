@@ -3058,6 +3058,11 @@ body.ai-active .cc-trust { display: none; }
 .viewtoggle{display:inline-flex;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px}
 .viewtoggle button{border:none;background:none;color:var(--bone2);font:600 12.5px 'Inter';padding:7px 14px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.18s}
 .viewtoggle button.on{background:linear-gradient(120deg,var(--magenta),var(--coral));color:var(--ink)}
+#allHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap}
+#allHeader .ahead-l{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
+#allHeader .ahead-l .sc{align-self:flex-start}
+#allHeader .viewtoggle{flex:0 0 auto}
+@media(max-width:560px){#allHeader{flex-wrap:wrap}}
 #mapPanel{position:relative;height:600px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.10);margin-bottom:30px}
 #mapPanel[hidden]{display:none}
 #gmap{position:absolute;inset:0;background:#e9ebee}
@@ -3256,8 +3261,8 @@ body.ai-active .cc-trust { display: none; }
   <div class="sh" id="trendingHeader"><h2 class="st" data-k="ft">🔥 Most Popular</h2><span class="sc" id="ec"></span></div>
   <div id="fw"><div class="loading"><div class="spin"></div><p data-k="ld">Loading live events…</p></div></div>
 
-  <div class="sh" id="allHeader" style="margin-top:52px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
-    <h2 class="st" data-k="at">All Events</h2>
+  <div class="sh" id="allHeader" style="margin-top:52px;">
+    <div class="ahead-l"><h2 class="st" data-k="at">All Events</h2><span class="sc"></span></div>
     <div class="viewtoggle" id="viewToggle">
       <button class="on" data-v="list" onclick="setViewMode('list')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg> <span data-k="vList">List</span></button>
       <button data-v="map" onclick="setViewMode('map')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg> <span data-k="vMap">Map</span></button>
