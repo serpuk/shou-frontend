@@ -5540,15 +5540,72 @@ function matchesAIQuery(e,c){
 // with different ids (the browse API only de-dupes by id, so these slip
 // through). Key on title+date+venue, keep the most popular. Mirrors the
 // this-week page's server-side dedupe. Preserves first-seen order.
+// Normalize a title for cross-source comparison: lowercase, strip diacritics +
+// punctuation, collapse whitespace. So "Mozart, Éclat de jeunesse" and
+// "mozart eclat de jeunesse / ..." compare on equal footing.
+function normTitleForDedupe(s){
+  return (s||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+}
+// Same event? (only called for rows already known to share venue+date.) True
+// when one normalized title fully contains the other (≥12 chars — catches a
+// source appending a second-language title, e.g. "X" vs "X / Dutch X") or they
+// share ≥70% of their word tokens.
+function titlesSameEvent(a,b){
+  const x=normTitleForDedupe(a), y=normTitleForDedupe(b);
+  if(!x||!y) return false;
+  if(x===y) return true;
+  const short = x.length<=y.length?x:y, long = x.length<=y.length?y:x;
+  if(short.length>=12 && long.indexOf(short)!==-1) return true;
+  const tx=new Set(x.split(' ').filter(Boolean)), ty=new Set(y.split(' ').filter(Boolean));
+  if(tx.size<2 || ty.size<2) return false;
+  let inter=0; for(const t of tx) if(ty.has(t)) inter++;
+  return inter/(tx.size+ty.size-inter) >= 0.7;
+}
+// Pick which of two duplicate rows to keep: higher popularity, then the one
+// with a real start time, then the more complete (longer) title.
+function betterDup(a,b){
+  if((a.pop||0)!==(b.pop||0)) return (a.pop||0)>(b.pop||0)?a:b;
+  const at=!!(a.time&&a.time!=='TBA'&&a.time!=='null'), bt=!!(b.time&&b.time!=='TBA'&&b.time!=='null');
+  if(at!==bt) return at?a:b;
+  return (a.name||'').length>=(b.name||'').length?a:b;
+}
 function dedupeByContent(list){
   const best=new Map(), order=[];
   for(const e of (list||[])){
-    const key=(e.name||'').toLowerCase().trim()+'|'+(e.date||'')+'|'+(e.venue||'').toLowerCase().trim();
+    const key=normTitleForDedupe(e.name)+'|'+(e.date||'')+'|'+(e.venue||'').toLowerCase().trim();
     const prev=best.get(key);
     if(!prev){ best.set(key,e); order.push(key); }
     else if((e.pop||0)>(prev.pop||0)) best.set(key,e);
   }
-  return order.map(k=>best.get(k));
+  let result=order.map(k=>best.get(k));
+  // Second pass: collapse same venue+date rows whose titles are near-identical
+  // (one contains the other / high token overlap) — cross-source dupes the
+  // exact key missed, e.g. one feed appends a second-language title.
+  const groups=new Map();
+  for(const e of result){
+    const g=(e.venue||'').toLowerCase().trim()+'|'+(e.date||'');
+    if(!groups.has(g)) groups.set(g,[]);
+    groups.get(g).push(e);
+  }
+  const drop=new Set();
+  for(const arr of groups.values()){
+    if(arr.length<2) continue;
+    for(let i=0;i<arr.length;i++){
+      if(drop.has(arr[i].id)) continue;
+      for(let j=i+1;j<arr.length;j++){
+        if(drop.has(arr[j].id)) continue;
+        if(titlesSameEvent(arr[i].name, arr[j].name)){
+          const keep=betterDup(arr[i], arr[j]);
+          drop.add((keep===arr[i]?arr[j]:arr[i]).id);
+        }
+      }
+    }
+  }
+  return drop.size ? result.filter(e=>!drop.has(e.id)) : result;
 }
 
 function applyF(){
