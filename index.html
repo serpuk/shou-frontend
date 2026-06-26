@@ -5852,8 +5852,10 @@ function applyF(){
     // Region scoping for AI search happens server-side via body.area.
     return sm && am;
   });
-  // Drop cross-source duplicate rows before ranking/rendering.
-  filtered = dedupeByContent(filtered);
+  // Drop cross-source duplicate rows before ranking/rendering. Skipped for AI
+  // search results: /api/search already deduped them by stable SOURCE titles, so
+  // re-deduping here on the TRANSLATED titles would vary the count per language.
+  if (!aiQ) filtered = dedupeByContent(filtered);
 
   // SORT LOGIC
   // ---------------------------------------------------------------------
