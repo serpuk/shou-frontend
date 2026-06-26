@@ -5989,7 +5989,7 @@ function bigCard(e){
       </div>
     </div>
     <div class="feat-body">
-      <span class="cpill ${cl}">${e.seg}${e.genre?' · '+e.genre:''}</span>
+      <span class="cpill ${cl}">${e.seg}${e.genre && e.genre.toLowerCase()!==(e.seg||'').toLowerCase()?' · '+e.genre:''}</span>
       <h3 class="feat-title">${e.name}${langBadge(e)}</h3>
       <p class="feat-desc">${e.desc}</p>
       <div class="feat-meta">
@@ -6682,7 +6682,7 @@ function buildEventCardHTML(e) {
     : `<div class="mph ${segThumb(e.categorySlug)}"><span>${segEmoji(e.categorySlug)}</span></div>`;
   return `${bigTh}
 <div class="mb">
-<span class="cpill ${cl}">${e.seg}${e.genre?' · '+e.genre:''}</span>
+<span class="cpill ${cl}">${e.seg}${e.genre && e.genre.toLowerCase()!==(e.seg||'').toLowerCase()?' · '+e.genre:''}</span>
 <div class="mtitle">${e.name}</div>
 <p class="mdesc">${e.desc}</p>
 <div class="mdet">
