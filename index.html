@@ -6095,6 +6095,7 @@ function renderAll(){
     document.getElementById('eg').innerHTML='';
     if(trendingHeader) trendingHeader.style.display='none';
     if(allHeader) allHeader.style.display='none';
+    const lmwEmpty=document.querySelector('.lmw'); if(lmwEmpty) lmwEmpty.style.display='none';
     emp.classList.add('on');
     return;
   }
@@ -6172,6 +6173,16 @@ function renderAll(){
     // grid IS the recommendation set, not the popular pool re-ranked.
     const rest = filtered.slice(0, vis);
     document.getElementById('eg').innerHTML = rest.map(e=>smCard(e)).join('');
+  }
+  // Load-more visibility: loadMore() only reveals more of the already-loaded
+  // `filtered` set (vis+=6) — it doesn't fetch — so hide the button once
+  // everything is shown, and always in map view (the map shows the full set).
+  // The two branches above slice to different limits (vis+2 vs vis), so match
+  // that here to avoid leaving the button active with nothing left to load.
+  const lmw=document.querySelector('.lmw');
+  if(lmw){
+    const shownCount = showTrending ? vis : vis + 2;
+    lmw.style.display = (viewMode==='list' && filtered.length > shownCount) ? '' : 'none';
   }
 }
 
