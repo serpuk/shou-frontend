@@ -5412,7 +5412,8 @@ function _mapPop(e){
 // Several events at one venue (identical coords) → list them in the popup,
 // since zoom can never separate same-location markers.
 function _mapVenuePop(list){
-  const rows=list.map(e=>(
+  const mins=e=>{ const tm=(e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:null; const m=tm&&/^(\d{1,2}):(\d{2})/.exec(tm); return m?(+m[1]*60 + +m[2]):99999; };
+  const rows=[...list].sort((a,b)=>mins(a)-mins(b)).map(e=>(
     '<div class="mpv-row" onclick="om(\''+e.id+'\')">'+
     '<span class="mpv-dot" style="background:'+(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0')+'"></span>'+
     '<span class="mpv-t">'+escapeHtml(e.name||'')+'</span>'+
