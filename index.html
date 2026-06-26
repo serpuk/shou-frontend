@@ -3569,28 +3569,12 @@ const API_BASE = 'https://shou-backend.vercel.app';
 // Google Maps JS API key for the Map view. This is a CLIENT key (always visible
 // to the browser when the map loads) — the real protection is its HTTP-referrer
 // + Maps-JavaScript-API restrictions in Google Cloud, NOT secrecy. We no longer
-// hard-code it here; it's fetched at boot from the backend's /api/config (env
-// var GOOGLE_MAPS_KEY) so the literal stays out of this public repo and rotating
-// is just an env-var edit. Starts empty: the List/Map toggle stays hidden until
-// fetchMapsKey() resolves, so the site is unaffected if the key is unset.
+// hard-code it here; it's delivered at boot on the backend's /api/categories
+// response (env var GOOGLE_MAPS_KEY) — see fetchCategories() — so the literal
+// stays out of this public repo and rotating is just an env-var edit. Starts
+// empty: the List/Map toggle stays hidden until fetchCategories() resolves and
+// sets it, so the site is unaffected if the key is unset.
 window.GOOGLE_MAPS_KEY = '';
-
-async function fetchMapsKey() {
-  try {
-    const r = await fetch(API_BASE + '/api/config');
-    if (!r.ok) return;
-    const d = await r.json();
-    if (d && d.mapsKey) {
-      window.GOOGLE_MAPS_KEY = d.mapsKey;
-      // Reveal the List/Map toggle now that the map can actually load (the
-      // boot-time guard below hides it while the key is still empty).
-      const vt = document.getElementById('viewToggle');
-      if (vt) vt.style.display = '';
-    }
-  } catch (err) {
-    console.warn('fetchMapsKey failed:', err.message);
-  }
-}
 
 // ──────────────────────────────────────────────────────────────────
 // CATEGORY METADATA
@@ -3610,6 +3594,15 @@ async function fetchCategories() {
     const r = await fetch(API_BASE + '/api/categories');
     if (!r.ok) return;
     const d = await r.json();
+    // The backend piggybacks the public Google Maps JS client key on this
+    // response (env var GOOGLE_MAPS_KEY) so we don't hard-code it in this repo.
+    // Set it before the categories guard so the map enables even if the
+    // categories payload is somehow malformed.
+    if (d && d.mapsKey) {
+      window.GOOGLE_MAPS_KEY = d.mapsKey;
+      const vt = document.getElementById('viewToggle');
+      if (vt) vt.style.display = '';   // reveal the List/Map toggle
+    }
     if (!d || !Array.isArray(d.categories)) return;
     // Flatten to a map of { slug -> { en, fr, ... } } for O(1) lookups.
     const map = {};
@@ -9674,7 +9667,6 @@ updateGoingCount();
 // this a uk/nl/etc. initial lang would show the wrong selector.
 syncLangUI(lang);
 fetchCategories();
-fetchMapsKey();
 fetchEvts();
 fetchTrending();   // country-wide "Most Popular" shelf, independent of `all`
 // Feature-detect Web Speech API support and reveal the mic button on
