@@ -3094,6 +3094,8 @@ body.ai-active .cc-trust { display: none; }
 .mpv-dot{width:8px;height:8px;border-radius:50%;flex:none}
 .mpv-t{font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;color:#15101e;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mpv-time{font-size:11.5px;color:#0a8f86;font-weight:700;flex:none}
+.mpv-date{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9aa0a6;margin:8px 2px 2px;padding-top:6px;border-top:1px solid #eceef0}
+.mpv-date:first-child{margin-top:0;padding-top:0;border-top:none}
 @media(max-width:700px){#mapPanel{height:560px}}
 </style>
 
@@ -5421,15 +5423,29 @@ function _mapPop(e){
 }
 // Several events at one venue (identical coords) → list them in the popup,
 // since zoom can never separate same-location markers.
+function _mapShortDate(d){
+  if(!d) return 'TBA';
+  const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', it:'it-IT', uk:'uk-UA', en:'en-GB'};
+  const loc = localeMap[lang] || 'en-GB';
+  try { return new Date(d).toLocaleDateString(loc, {weekday:'short', day:'numeric', month:'short'}); }
+  catch { return d; }
+}
 function _mapVenuePop(list){
   const mins=e=>{ const tm=(e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:null; const m=tm&&/^(\d{1,2}):(\d{2})/.exec(tm); return m?(+m[1]*60 + +m[2]):99999; };
-  const rows=[...list].sort((a,b)=>mins(a)-mins(b)).map(e=>(
-    '<div class="mpv-row" onclick="om(\''+e.id+'\')">'+
-    '<span class="mpv-dot" style="background:'+(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0')+'"></span>'+
-    '<span class="mpv-t">'+escapeHtml(e.name||'')+'</span>'+
-    '<span class="mpv-time">'+((e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:'')+'</span></div>'
-  )).join('');
-  return '<div class="mpv"><div class="mpv-h">'+list.length+' '+t('mapEvents')+' · '+escapeHtml(list[0].venue||'')+'</div><div class="mpv-list">'+rows+'</div></div>';
+  // Sort by date, then time within each date, and break the list into per-date
+  // groups with a small subheader — a single venue can hold many events across
+  // weeks, so a flat time-sorted list is ambiguous without the date.
+  const sorted=[...list].sort((a,b)=>(a.date||'').localeCompare(b.date||'') || mins(a)-mins(b));
+  let html='', lastDate=null;
+  for(const e of sorted){
+    const d=e.date||'';
+    if(d!==lastDate){ lastDate=d; html+='<div class="mpv-date">'+escapeHtml(_mapShortDate(d))+'</div>'; }
+    html+='<div class="mpv-row" onclick="om(\''+e.id+'\')">'+
+      '<span class="mpv-dot" style="background:'+(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0')+'"></span>'+
+      '<span class="mpv-t">'+escapeHtml(e.name||'')+'</span>'+
+      '<span class="mpv-time">'+((e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:'')+'</span></div>';
+  }
+  return '<div class="mpv"><div class="mpv-h">'+list.length+' '+t('mapEvents')+' · '+escapeHtml(list[0].venue||'')+'</div><div class="mpv-list">'+html+'</div></div>';
 }
 function renderMapMarkers(){
   if(!gMapReady||!gmap) return;
