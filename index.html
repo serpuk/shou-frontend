@@ -80,6 +80,10 @@
   --violet-deep: #6b2bd9;
   --pink-hot:  #ff5fb8;
   --pink-light: #ffa3d9;
+  /* Teal = the cx "Cinema / other" bucket. Matches the map markers + legend
+     (#46e0d2); teal2 is a lighter tint for pill text on dark backgrounds. */
+  --teal:      #46e0d2;
+  --teal2:     #7ceee2;
   --bone:      #f6efef;
   --bone2:     rgba(246,239,239,0.80);
   --bone3:     rgba(246,239,239,0.50);
@@ -1443,12 +1447,12 @@ body.ai-active .filters { position: static; box-shadow: none; }
 }
 /* Category buckets, 5 distinct on-brand hues (kept the same 5 segCls() maps):
    cm Music = magenta · ca Arts/Theatre/Comedy = violet · cs Sport = coral ·
-   cfa Family = soft pink · cx Other = neutral. */
+   cfa Family = soft pink · cx Cinema/other = teal (matches map + legend). */
 .cm  { background: rgba(255,46,126,0.12);  color: var(--magenta2);  border: 1px solid rgba(255,46,126,0.40); }
 .ca  { background: rgba(139,62,224,0.16);  color: #c79bff;          border: 1px solid rgba(139,62,224,0.45); }
 .cs  { background: rgba(255,153,102,0.12); color: var(--cyan2);     border: 1px solid rgba(255,153,102,0.40); }
 .cfa { background: rgba(255,163,217,0.14); color: var(--pink-light);border: 1px solid rgba(255,163,217,0.42); }
-.cx  { background: rgba(246,239,239,0.06); color: var(--bone2);     border: 1px solid rgba(246,239,239,0.20); }
+.cx  { background: rgba(70,224,210,0.10);  color: var(--teal2);     border: 1px solid rgba(70,224,210,0.38); }
 
 /* Card-level category cue: a 3px top accent bar that mirrors the pill colour,
    keyed off the pill's category class via :has() — so no change to the JS card
@@ -1459,7 +1463,7 @@ body.ai-active .filters { position: static; box-shadow: none; }
 .card:has(.cpill.ca),  .featured:has(.cpill.ca)  { --cat: #8b3ee0; }
 .card:has(.cpill.cs),  .featured:has(.cpill.cs)  { --cat: #ff9966; }
 .card:has(.cpill.cfa), .featured:has(.cpill.cfa) { --cat: #ffa3d9; }
-.card:has(.cpill.cx),  .featured:has(.cpill.cx)  { --cat: rgba(246,239,239,0.5); }
+.card:has(.cpill.cx),  .featured:has(.cpill.cx)  { --cat: #46e0d2; }
 .card:has(.cpill)::before, .featured:has(.cpill)::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: var(--cat, transparent); z-index: 3; pointer-events: none;
