@@ -4311,6 +4311,20 @@ function isEventLive(e) {
   return diff >= -4 * HOUR && diff <= 4 * HOUR;
 }
 
+// True when an event has already happened: it started more than 4h ago. Used to
+// drop today's daytime events from browse/recommended lists once they're over
+// (the catalog only filters by DATE, so a 16:30 show still appears at 22:46).
+// 4h grace aligns with isEventLive's window, so a still-"live" event is never
+// hidden. All-day / unknown-time events are never treated as passed.
+function hasPassed(e) {
+  if (!e.date) return false;
+  const tm = (e.time && e.time !== 'TBA' && e.time !== 'null') ? e.time : null;
+  if (!tm) return false;
+  const start = new Date(`${e.date}T${tm}`);
+  if (isNaN(start.getTime())) return false;
+  return start.getTime() < Date.now() - 4 * 60 * 60 * 1000;
+}
+
 // Render a live badge if the event is currently in the ±4h "happening now-ish"
 // window. Returns empty string otherwise so callers can ${liveBadgeHTML(e)}
 // inline without guarding. Sparkle SVG mirrors the favicon mark, tying the
@@ -5914,6 +5928,11 @@ function applyF(){
   // strongly-recommended event surfaces even if it's outside the popular pool.
   const personalizedSel = actF === 'all' && !aiQ && currentSession && forYouIds.size > 0;
   filtered=all.filter(e=>{
+    // Hide events that already happened (started >4h ago) from browse /
+    // recommended / category views. Kept for "Live now" (its own ±4h window),
+    // "My events" (the user's saved set), and AI search (count + scope owned by
+    // the backend, so re-filtering here would desync the "N events found").
+    if (actF !== 'live' && actF !== 'mine' && !aiQ && hasPassed(e)) return false;
     if (personalizedSel) return forYouIds.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
@@ -6182,7 +6201,9 @@ function renderAll(){
     // so Trending stays Belgium-wide. Falls back to `filtered` only until
     // fetchTrending() resolves on first paint.
     const trendingSrc = trendingAll.length ? trendingAll : filtered;
-    const trendingPool = [...trendingSrc].sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    // Drop already-passed events here too (the shelf draws from the popular
+    // pool, not `filtered`, so it doesn't inherit applyF's past-event guard).
+    const trendingPool = [...trendingSrc].filter(e => !hasPassed(e)).sort((a, b) => (b.pop || 0) - (a.pop || 0));
     const trending = trendingPool.slice(0, TRENDING_SHELF_SIZE);
     // Preserve the horizontal scroll across re-render: a like/going toggle
     // calls renderAll(), which rebuilds this shelf — without this the strip
