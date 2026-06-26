@@ -5459,11 +5459,15 @@ function _mapVenuePop(list){
   }
   return '<div class="mpv"><div class="mpv-h">'+list.length+' '+t('mapEvents')+' · '+escapeHtml(list[0].venue||'')+'</div><div class="mpv-list">'+html+'</div></div>';
 }
+// Guard against corrupt venue coordinates (0,0 "null island", a bad geocode,
+// etc.) plotting a Belgian event in the ocean. Belgium's bounding box, padded
+// slightly for border venues.
+function _inBelgium(lat,lng){ return lat>=49.3 && lat<=51.7 && lng>=2.3 && lng<=6.6; }
 function renderMapMarkers(){
   if(!gMapReady||!gmap) return;
   gMarkers.forEach(m=>m.setMap(null)); gMarkers=[];
   if(gCluster){ gCluster.clearMarkers(); gCluster=null; }
-  const pts=(filtered||[]).filter(e=>Number.isFinite(e.lat)&&Number.isFinite(e.lng));
+  const pts=(filtered||[]).filter(e=>Number.isFinite(e.lat)&&Number.isFinite(e.lng)&&_inBelgium(e.lat,e.lng));
   // Group by venue location (identical coords = same venue → one pin with a count).
   const groups=new Map();
   for(const e of pts){ const k=e.lat.toFixed(5)+','+e.lng.toFixed(5); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(e); }
