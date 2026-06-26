@@ -4697,9 +4697,11 @@ function segEmoji(slug){const s=(slug||'').toLowerCase();if(s==='music')return'�
 function segThumb(slug){const s=(slug||'').toLowerCase();if(s==='music')return'tc1';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'tc2';if(s==='sports'||s==='sport')return'tc3';if(s==='family')return'tc4';return'tc5';}
 function fmtD(d){
   if(!d) return 'TBA';
-  const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', en:'en-GB'};
+  const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', it:'it-IT', uk:'uk-UA', en:'en-GB'};
   const loc = localeMap[lang] || 'en-GB';
-  try { return new Date(d).toLocaleDateString(loc, {day:'numeric', month:'short', year:'numeric'}); }
+  // weekday:'short' prefixes the localized day name (e.g. "Fri, 26 Jun 2026" /
+  // "ven. 26 juin 2026" / "пт, 26 черв. 2026") — nightlife audiences plan by day.
+  try { return new Date(d).toLocaleDateString(loc, {weekday:'short', day:'numeric', month:'short', year:'numeric'}); }
   catch { return d; }
 }
 // Small badge shown next to event titles when the served content is NOT in
