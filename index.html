@@ -3076,6 +3076,14 @@ body.ai-active .cc-trust { display: none; }
 .mp-go,.mp-dir{flex:1;text-align:center;text-decoration:none;font:700 11.5px 'Inter';border-radius:9px;padding:9px 8px}
 .mp-go{background:linear-gradient(120deg,#ff2e7e,#ff9966);color:#fff}
 .mp-dir{background:#eef0f2;color:#3c4043}
+.mpv{font-family:'Inter',sans-serif;width:244px}
+.mpv-h{font-size:11px;font-weight:700;letter-spacing:.02em;color:#15101e;margin-bottom:8px}
+.mpv-list{max-height:210px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+.mpv-row{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:8px;cursor:pointer}
+.mpv-row:hover{background:#f1f3f4}
+.mpv-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.mpv-t{font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;color:#15101e;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mpv-time{font-size:11.5px;color:#0a8f86;font-weight:700;flex:none}
 @media(max-width:700px){#mapPanel{height:560px}}
 </style>
 
@@ -5384,7 +5392,13 @@ window.__shouMapInit=function(){
   renderMapMarkers();
 };
 
-function _mapPinSVG(c){return '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40"><path d="M15 1C7.5 1 1.5 6.9 1.5 14.2 1.5 24 15 39 15 39s13.5-15 13.5-24.8C28.5 6.9 22.5 1 15 1z" fill="'+c+'" stroke="#fff" stroke-width="2.6"/><circle cx="15" cy="14.2" r="4.6" fill="#fff"/></svg>';}
+function _mapVenuePinSVG(c,n){
+  const head='<path d="M15 1C7.5 1 1.5 6.9 1.5 14.2 1.5 24 15 39 15 39s13.5-15 13.5-24.8C28.5 6.9 22.5 1 15 1z" fill="'+c+'" stroke="#fff" stroke-width="2.6"/>';
+  let inner;
+  if(n>1){ const lbl=n>9?'9+':String(n); inner='<text x="15" y="18.6" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="'+(lbl.length>1?11:13)+'" font-weight="700" fill="#fff">'+lbl+'</text>'; }
+  else inner='<circle cx="15" cy="14.2" r="4.6" fill="#fff"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">'+head+inner+'</svg>';
+}
 function _mapCluSVG(){return '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2e7e"/><stop offset="1" stop-color="#ff9b3d"/></linearGradient></defs><circle cx="25" cy="25" r="24" fill="#ff2e7e" opacity="0.18"/><circle cx="25" cy="25" r="17" fill="url(#cg)"/></svg>';}
 function _mapIcon(svg,w,h,bottom){return {url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg), scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2, bottom?h:h/2)};}
 function _mapDir(e){const q=(Number.isFinite(e.lat)&&Number.isFinite(e.lng))?e.lat+','+e.lng:encodeURIComponent((e.venue||'')+' '+(e.city||''));return 'https://www.google.com/maps/dir/?api=1&destination='+q;}
@@ -5395,15 +5409,30 @@ function _mapPop(e){
     '<div class="mp-mt">📍 '+escapeHtml(e.venue||'')+((e.time&&e.time!=='TBA'&&e.time!=='null')?' · '+e.time:'')+'</div>'+
     '<div class="mp-row">'+tickets+'<a class="mp-dir" href="'+_mapDir(e)+'" target="_blank" rel="noopener">'+(t('dir')||'Directions').replace('→ ','')+'</a></div></div>';
 }
+// Several events at one venue (identical coords) → list them in the popup,
+// since zoom can never separate same-location markers.
+function _mapVenuePop(list){
+  const rows=list.map(e=>(
+    '<div class="mpv-row" onclick="om(\''+e.id+'\')">'+
+    '<span class="mpv-dot" style="background:'+(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0')+'"></span>'+
+    '<span class="mpv-t">'+escapeHtml(e.name||'')+'</span>'+
+    '<span class="mpv-time">'+((e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:'')+'</span></div>'
+  )).join('');
+  return '<div class="mpv"><div class="mpv-h">'+list.length+' '+t('mapEvents')+' · '+escapeHtml(list[0].venue||'')+'</div><div class="mpv-list">'+rows+'</div></div>';
+}
 function renderMapMarkers(){
   if(!gMapReady||!gmap) return;
   gMarkers.forEach(m=>m.setMap(null)); gMarkers=[];
   if(gCluster){ gCluster.clearMarkers(); gCluster=null; }
   const pts=(filtered||[]).filter(e=>Number.isFinite(e.lat)&&Number.isFinite(e.lng));
+  // Group by venue location (identical coords = same venue → one pin with a count).
+  const groups=new Map();
+  for(const e of pts){ const k=e.lat.toFixed(5)+','+e.lng.toFixed(5); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(e); }
   const bounds=new google.maps.LatLngBounds();
-  gMarkers=pts.map(e=>{
-    const m=new google.maps.Marker({position:{lat:e.lat,lng:e.lng}, icon:_mapIcon(_mapPinSVG(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0'),30,40,true), title:e.name});
-    m.addListener('click',()=>{ gInfo.setContent(_mapPop(e)); gInfo.open(gmap,m); });
+  gMarkers=[...groups.values()].map(list=>{
+    const e=list[0], n=list.length, color=MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0';
+    const m=new google.maps.Marker({position:{lat:e.lat,lng:e.lng}, icon:_mapIcon(_mapVenuePinSVG(color,n),30,40,true), title:n>1?(n+' events · '+(e.venue||'')):e.name});
+    m.addListener('click',()=>{ gInfo.setContent(n>1?_mapVenuePop(list):_mapPop(e)); gInfo.open(gmap,m); });
     bounds.extend(m.getPosition());
     return m;
   });
