@@ -3566,12 +3566,31 @@ body.ai-active .cc-trust { display: none; }
 // ──────────────────────────────────────────────────────────────────
 const API_BASE = 'https://shou-backend.vercel.app';
 
-// Google Maps JS API key for the Map view. This is a CLIENT key — safe to ship
-// in the page WHEN it's restricted to your domains (HTTP referrers
-// https://shou.be/* and https://*.shou.be/*) + the Maps JavaScript API in Google
-// Cloud. Leave '' to disable the feature entirely (the List/Map toggle hides
-// itself, so the site is unaffected until you set this).
-window.GOOGLE_MAPS_KEY = 'AIzaSyCwymATIrAMH90Kq7a6sFbsfyYNIf1MOhA';
+// Google Maps JS API key for the Map view. This is a CLIENT key (always visible
+// to the browser when the map loads) — the real protection is its HTTP-referrer
+// + Maps-JavaScript-API restrictions in Google Cloud, NOT secrecy. We no longer
+// hard-code it here; it's fetched at boot from the backend's /api/config (env
+// var GOOGLE_MAPS_KEY) so the literal stays out of this public repo and rotating
+// is just an env-var edit. Starts empty: the List/Map toggle stays hidden until
+// fetchMapsKey() resolves, so the site is unaffected if the key is unset.
+window.GOOGLE_MAPS_KEY = '';
+
+async function fetchMapsKey() {
+  try {
+    const r = await fetch(API_BASE + '/api/config');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d && d.mapsKey) {
+      window.GOOGLE_MAPS_KEY = d.mapsKey;
+      // Reveal the List/Map toggle now that the map can actually load (the
+      // boot-time guard below hides it while the key is still empty).
+      const vt = document.getElementById('viewToggle');
+      if (vt) vt.style.display = '';
+    }
+  } catch (err) {
+    console.warn('fetchMapsKey failed:', err.message);
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────
 // CATEGORY METADATA
@@ -9655,6 +9674,7 @@ updateGoingCount();
 // this a uk/nl/etc. initial lang would show the wrong selector.
 syncLangUI(lang);
 fetchCategories();
+fetchMapsKey();
 fetchEvts();
 fetchTrending();   // country-wide "Most Popular" shelf, independent of `all`
 // Feature-detect Web Speech API support and reveal the mic button on
