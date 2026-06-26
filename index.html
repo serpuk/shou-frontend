@@ -1446,8 +1446,9 @@ body.ai-active .filters { position: static; box-shadow: none; }
   text-transform: uppercase; margin-bottom: 10px;
 }
 /* Category buckets, 5 distinct on-brand hues (kept the same 5 segCls() maps):
-   cm Music = magenta · ca Arts/Theatre/Comedy = violet · cs Sport = coral ·
-   cfa Family = soft pink · cx Cinema/other = teal (matches map + legend). */
+   cm Music/Festival/Carnival = magenta · ca Arts/Theatre/Comedy = violet ·
+   cs Sport = coral · cfa Family = soft pink ·
+   cx Cinema/Misc = teal (matches map + legend). */
 .cm  { background: rgba(255,46,126,0.12);  color: var(--magenta2);  border: 1px solid rgba(255,46,126,0.40); }
 .ca  { background: rgba(139,62,224,0.16);  color: #c79bff;          border: 1px solid rgba(139,62,224,0.45); }
 .cs  { background: rgba(255,153,102,0.12); color: var(--cyan2);     border: 1px solid rgba(255,153,102,0.40); }
@@ -4773,7 +4774,7 @@ function applyI18n(){
 // Matching English substrings against e.seg broke every non-English language
 // (e.g. "Musique".includes('music') is false), leaving Music/Family/etc. in the
 // neutral bucket. Callers pass e.categorySlug.
-function segCls(slug){const s=(slug||'').toLowerCase();if(s==='music')return'cm';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'ca';if(s==='sports'||s==='sport')return'cs';if(s==='family')return'cfa';return'cx';}
+function segCls(slug){const s=(slug||'').toLowerCase();if(s==='music'||s==='festival'||s==='carnival')return'cm';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'ca';if(s==='sports'||s==='sport')return'cs';if(s==='family')return'cfa';return'cx';}
 function segEmoji(slug){const s=(slug||'').toLowerCase();if(s==='music')return'🎵';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'🎭';if(s==='sports'||s==='sport')return'⚽';if(s==='family')return'🎠';return'✨';}
 function segThumb(slug){const s=(slug||'').toLowerCase();if(s==='music')return'tc1';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'tc2';if(s==='sports'||s==='sport')return'tc3';if(s==='family')return'tc4';return'tc5';}
 function fmtD(d){
