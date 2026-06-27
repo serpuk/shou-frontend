@@ -8176,6 +8176,17 @@ async function showAI(q) {
       ...(Array.isArray(data.suggestedEvents) ? data.suggestedEvents : []),
     ];
     if (mergedEvents.length > 0) {
+      // Refresh time fields on events already in `all`: a copy merged earlier
+      // (or from the prefetch cache) may predate endTime, so the card would miss
+      // the end time even though this fresh response carries it.
+      const freshById = new Map();
+      for (const e of mergedEvents) if (e && e.id) freshById.set(e.id, e);
+      for (const e of all) {
+        const f = freshById.get(e.id);
+        if (!f) continue;
+        if (e.endTime == null && f.endTime != null) e.endTime = f.endTime;
+        if ((e.time == null || e.time === 'TBA') && f.time) e.time = f.time;
+      }
       const existingIds = new Set(all.map(e => e.id));
       const newEvents = mergedEvents
         .filter(e => e && e.id && !existingIds.has(e.id))
