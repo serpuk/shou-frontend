@@ -1,0 +1,32 @@
+<svg width="1080" height="1080" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>shou Instagram profile avatar</title>
+<desc>Bright pink-to-coral circular badge with large white equalizer bars and two white sparkles.</desc>
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#ff4d94"/>
+    <stop offset="48%" stop-color="#ff2e7e"/>
+    <stop offset="100%" stop-color="#ff8a4d"/>
+  </linearGradient>
+  <radialGradient id="vio" cx="20%" cy="18%" r="60%">
+    <stop offset="0%" stop-color="#8b3ee0" stop-opacity="0.5"/>
+    <stop offset="100%" stop-color="#8b3ee0" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="hl" cx="50%" cy="28%" r="62%">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+    <stop offset="62%" stop-color="#ffffff" stop-opacity="0"/>
+  </radialGradient>
+  <symbol id="st" viewBox="-1.1 -1.1 2.2 2.2"><path d="M 0,-1 L 0.224,-0.309 L 0.951,-0.309 L 0.363,0.118 L 0.588,0.809 L 0,0.382 L -0.588,0.809 L -0.363,0.118 L -0.951,-0.309 L -0.224,-0.309 Z"/></symbol>
+</defs>
+<rect width="680" height="680" rx="170" fill="url(#g)"/>
+<rect width="680" height="680" rx="170" fill="url(#vio)"/>
+<rect width="680" height="680" rx="170" fill="url(#hl)"/>
+<g fill="#ffffff">
+  <rect x="181" y="325" width="46" height="120" rx="18"/>
+  <rect x="249" y="260" width="46" height="185" rx="18"/>
+  <rect x="317" y="200" width="46" height="245" rx="18"/>
+  <rect x="385" y="280" width="46" height="165" rx="18"/>
+  <rect x="453" y="335" width="46" height="110" rx="18"/>
+</g>
+<use href="#st" x="468" y="150" width="62" height="62" fill="#ffffff"/>
+<use href="#st" x="168" y="184" width="38" height="38" fill="#ffffff" opacity="0.9"/>
+</svg>
