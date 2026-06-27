@@ -4859,6 +4859,14 @@ function fmtD(d){
   try { return new Date(d).toLocaleDateString(loc, {weekday:'short', day:'numeric', month:'short', year:'numeric'}); }
   catch { return d; }
 }
+// Time display: "16:00 – 20:00" when an end time exists, else "16:00", else ''.
+// Used everywhere a start time is shown so the end time rides along with it.
+function fmtTime(e){
+  const ok=v=>v && v!=='TBA' && v!=='null';
+  const s=ok(e&&e.time)?e.time:null, en=ok(e&&e.endTime)?e.endTime:null;
+  if(s&&en&&en!==s) return s+' – '+en;
+  return s||'';
+}
 // Small badge shown next to event titles when the served content is NOT in
 // the user's selected language. Indicates the title/description is shown
 // in its original language (e.g. "NL" or "EN") because a translation for the
@@ -4911,6 +4919,7 @@ function shapeCatalogEvent(e){
       recurrenceEndDate:e.recurrenceEndDate||null,
       recurrenceSchedule:e.recurrenceSchedule||null,
       time:e.time||'TBA',
+      endTime:e.endTime||null,
       img:e.img,
       url:e.url||'#',
       // Prices arrive in EUROS — localizeEvent in api/events.js already
@@ -5496,8 +5505,8 @@ function _mapPop(e){
   const hasTime=(e.time&&e.time!=='TBA'&&e.time!=='null');
   return '<div class="mp"><div class="mp-cat">'+escapeHtml(e.seg||'')+'</div>'+
     '<div class="mp-ti" onclick="om(\''+e.id+'\')">'+escapeHtml(e.name||'')+'</div>'+
-    '<div class="mp-mt">📍 '+escapeHtml(e.venue||'')+((!e.date&&hasTime)?' · '+e.time:'')+'</div>'+
-    (e.date?'<div class="mp-mt">📅 '+escapeHtml(_mapShortDate(e.date))+(hasTime?' · '+e.time:'')+'</div>':'')+
+    '<div class="mp-mt">📍 '+escapeHtml(e.venue||'')+((!e.date&&fmtTime(e))?' · '+fmtTime(e):'')+'</div>'+
+    (e.date?'<div class="mp-mt">📅 '+escapeHtml(_mapShortDate(e.date))+(fmtTime(e)?' · '+fmtTime(e):'')+'</div>':'')+
     '<div class="mp-row">'+tickets+'<a class="mp-dir" href="'+_mapDir(e)+'" target="_blank" rel="noopener">'+(t('dir')||'Directions').replace('→ ','')+'</a></div></div>';
 }
 // Several events at one venue (identical coords) → list them in the popup,
@@ -5522,7 +5531,7 @@ function _mapVenuePop(list){
     html+='<div class="mpv-row" onclick="om(\''+e.id+'\')">'+
       '<span class="mpv-dot" style="background:'+(MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0')+'"></span>'+
       '<span class="mpv-t">'+escapeHtml(e.name||'')+'</span>'+
-      '<span class="mpv-time">'+((e.time&&e.time!=='TBA'&&e.time!=='null')?e.time:'')+'</span></div>';
+      '<span class="mpv-time">'+escapeHtml(fmtTime(e))+'</span></div>';
   }
   return '<div class="mpv"><div class="mpv-h">'+list.length+' '+t('mapEvents')+' · '+escapeHtml(list[0].venue||'')+'</div><div class="mpv-list">'+html+'</div></div>';
 }
@@ -6313,7 +6322,7 @@ function bigCard(e){
       <p class="feat-desc">${e.desc}</p>
       <div class="feat-meta">
         <span class="feat-meta-item"><span class="mi">📍</span>${e.venue}, ${e.city}</span>
-        <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${e.time && e.time !== 'TBA' && e.time !== 'null' ? ' · '+e.time : ''}</span>
+        <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</span>
         ${hasRealPrice?`<span class="feat-meta-item"><span class="mi">🎫</span>${priceText}</span>`:''}
       </div>
       <div class="feat-actions">
@@ -6748,7 +6757,7 @@ function buildShareIntro(e) {
   if (e.city && e.city !== e.venue) locParts.push(e.city);
   if (locParts.length) parts.push('📍 ' + locParts.join(', '));
   if (e.date) {
-    const timeStr = (e.time && e.time !== 'TBA' && e.time !== 'null') ? ' · ' + e.time : '';
+    const timeStr = fmtTime(e) ? ' · ' + fmtTime(e) : '';
     parts.push('📅 ' + fmtD(e.date) + timeStr);
   }
   return parts.join(' · ');
@@ -7007,7 +7016,7 @@ function buildEventCardHTML(e) {
 <div class="mdet">
 <div><div class="dk">Venue</div><div class="dv">${e.venue}${directionsUrl(e) ? `<a class="dir-link" href="${directionsUrl(e)}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div>
 <div><div class="dk">City</div><div class="dv">${e.city}</div></div>
-<div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${e.time && e.time !== 'TBA' && e.time !== 'null' ? ' · '+e.time : ''}</div></div>
+<div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</div></div>
 <div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
 </div>
 ${mRecurrenceHtml(e)}
