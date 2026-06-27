@@ -6,6 +6,10 @@
       "destination": "/privacy.html"
     },
     {
+      "source": "/whats-new",
+      "destination": "/whats-new.html"
+    },
+    {
       "source": "/",
       "has": [
         { "type": "query", "key": "event", "value": "(?<eventId>.+)" },

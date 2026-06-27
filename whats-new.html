@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What's New · shou</title>
+<meta name="description" content="A plain-language summary of what changed and improved on shou.be this week.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c0910;
+    --ink-2:#15101b;
+    --panel:rgba(255,255,255,0.03);
+    --panel-bd:rgba(255,255,255,0.08);
+    --text:#ece7f0;
+    --text-soft:#b3a9bf;
+    --text-dim:#8a8094;
+    --pink:#ff3d8b;
+    --orange:#ff9b3d;
+    --cyan:#46e0d2;
+    --grad:linear-gradient(100deg,var(--pink),var(--orange));
+    --maxw:820px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    font-weight:300;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(900px 600px at 12% -5%, rgba(255,61,139,0.14), transparent 60%),
+      radial-gradient(800px 600px at 100% 8%, rgba(255,155,61,0.10), transparent 55%),
+      radial-gradient(700px 700px at 50% 110%, rgba(70,224,210,0.06), transparent 60%);
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ── Header ───────────────────────────────────────────── */
+  header{padding:64px 0 40px}
+  .brand{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:-0.01em;
+    background:var(--grad);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    display:inline-block;
+    text-decoration:none;
+  }
+  .back{
+    display:inline-flex;align-items:center;gap:7px;
+    color:var(--text-dim);text-decoration:none;font-size:14px;
+    margin-bottom:28px;transition:color .2s;
+  }
+  .back:hover{color:var(--text)}
+  .eyebrow{
+    font-family:'Inter',sans-serif;font-weight:600;
+    font-size:12.5px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--cyan);margin-top:20px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(36px,6.5vw,58px);
+    line-height:1.04;
+    letter-spacing:-0.02em;
+    margin:10px 0 12px;
+  }
+  h1 em{font-style:italic;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .updated{
+    color:var(--text-dim);font-size:14px;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .updated::before{
+    content:'';width:6px;height:6px;border-radius:50%;
+    background:var(--grad);display:inline-block;
+  }
+  .lede{
+    color:var(--text-soft);font-size:18px;line-height:1.7;
+    margin-top:26px;padding-top:26px;
+    border-top:1px solid var(--panel-bd);
+    font-weight:300;
+  }
+
+  /* Highlights chips */
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .chip{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--panel);border:1px solid var(--panel-bd);
+    border-radius:999px;padding:9px 16px;font-size:14px;color:var(--text-soft);
+  }
+  .chip strong{color:var(--text);font-weight:600}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--grad);flex:none}
+  .chip .dot.c{background:var(--cyan)}
+  .chip .dot.o{background:var(--orange)}
+
+  /* ── Sections ─────────────────────────────────────────── */
+  main{padding-bottom:40px}
+  section{
+    padding:30px 0;
+    border-top:1px solid var(--panel-bd);
+  }
+  h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:25px;
+    letter-spacing:-0.01em;
+    margin-bottom:8px;
+    color:var(--text);
+    display:flex;align-items:baseline;gap:12px;
+  }
+  h2 .num{
+    font-family:'Inter',sans-serif;
+    font-weight:600;font-size:13px;
+    color:var(--pink);
+    background:rgba(255,61,139,0.12);
+    border:1px solid rgba(255,61,139,0.25);
+    border-radius:7px;
+    padding:3px 9px;
+    line-height:1;
+    flex:none;
+    transform:translateY(-2px);
+  }
+  .sub{color:var(--text-dim);font-size:15px;margin:0 0 16px 0}
+  p{margin-bottom:14px;color:var(--text-soft)}
+  strong{color:var(--text);font-weight:600}
+  a{color:var(--orange);text-decoration:none;border-bottom:1px solid rgba(255,155,61,0.35);transition:border-color .2s}
+  a:hover{border-color:var(--orange)}
+
+  ul{list-style:none;margin:0 0 4px;padding:0}
+  ul li{
+    position:relative;padding-left:24px;margin-bottom:13px;
+    color:var(--text-soft);
+  }
+  ul li::before{
+    content:'';position:absolute;left:2px;top:11px;
+    width:7px;height:7px;border-radius:2px;
+    background:var(--grad);
+  }
+  ul li strong{color:var(--text);font-weight:600}
+
+  .tag{
+    display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--cyan);
+    background:rgba(70,224,210,0.10);border:1px solid rgba(70,224,210,0.22);
+    border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle;
+    transform:translateY(-1px);
+  }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  footer{
+    border-top:1px solid var(--panel-bd);
+    padding:36px 0 70px;
+    color:var(--text-dim);font-size:14px;
+  }
+  footer .brand-sm{
+    font-family:'Fraunces',serif;font-weight:600;font-size:17px;color:var(--text);
+  }
+  footer p{color:var(--text-dim);margin-bottom:6px}
+
+  header,section,footer{
+    opacity:0;transform:translateY(14px);
+    animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  header{animation-delay:.02s}
+  section:nth-of-type(1){animation-delay:.08s}
+  section:nth-of-type(2){animation-delay:.12s}
+  section:nth-of-type(3){animation-delay:.16s}
+  section:nth-of-type(n+4){animation-delay:.20s}
+  footer{animation-delay:.24s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){
+    header,section,footer{animation:none;opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <a class="back" href="/">← Back to shou</a>
+    <div><a class="brand" href="/">shou</a></div>
+    <div class="eyebrow">What's New</div>
+    <h1>A big week for <em>shou.be</em></h1>
+    <span class="updated">Week of 21–27 June 2026</span>
+    <p class="lede">
+      This week we made shou easier to explore, more accurate, and prettier to look at — plus we
+      switched on a brand-new <strong>map view</strong> and started <strong>posting to Instagram
+      automatically</strong>. Here's everything that changed, in plain language, grouped by area.
+    </p>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span> <strong>Map view</strong> is live</span>
+      <span class="chip"><span class="dot c"></span> Smarter <strong>search &amp; “Surprise me”</strong></span>
+      <span class="chip"><span class="dot o"></span> Automated <strong>Instagram</strong> posts</span>
+      <span class="chip"><span class="dot"></span> Cleaner listings in <strong>7 languages</strong></span>
+    </div>
+  </header>
+
+  <main>
+
+    <section>
+      <h2><span class="num">1</span> Finding what's on</h2>
+      <p class="sub">Search and recommendations that actually understand “tonight”.</p>
+      <ul>
+        <li><strong>New “Surprise me” button</strong> — one tap serves a hand-picked event for tonight, leaning toward things happening this evening and soon, with honest wording about timing.</li>
+        <li><strong>Repeating events finally behave.</strong> Weekly club nights and recurring shows now turn up for any date they actually run on — not just their first date — both in search and in “Surprise me”.</li>
+        <li><strong>Type an event's name, get that event.</strong> Exact-title searches now reliably surface the right result.</li>
+        <li><strong>Tidier results</strong> — duplicate listings are removed, and simple “category + date” searches give consistent, sensible answers.</li>
+        <li>We stopped the app from claiming results were “for your dates” when you hadn't actually picked any.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">2</span> New map view <span class="tag">New</span></h2>
+      <p class="sub">See what's happening around you, on a real map.</p>
+      <ul>
+        <li><strong>A List / Map toggle</strong> on the home page lets you browse events on a Google map.</li>
+        <li><strong>One pin per venue</strong>, showing how many events are on there. Tap a pin to see them grouped by date and ordered by start time.</li>
+        <li>Fixed a handful of pins that were appearing in the wrong place (outside Belgium) due to bad location data.</li>
+        <li>Map pin colours now match the category legend, so it all reads consistently.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">3</span> Cleaner, more accurate listings</h2>
+      <p class="sub">Less clutter, better detail, no “zombie” events.</p>
+      <ul>
+        <li><strong>Duplicates merged.</strong> The same event listed by different sources — and ticket-tier variants like “VIP” or “Terrace” — are now folded into one clean listing.</li>
+        <li><strong>Duplicate venues merged</strong> where bilingual names or town mergers had split one place into several.</li>
+        <li><strong>Start and end times shown everywhere</strong> — on cards, in the pop-up, and in lists — including club-night door and closing times.</li>
+        <li><strong>Recurring events now show their run dates</strong>, a weekly timetable, and the next upcoming dates.</li>
+        <li><strong>Past events are hidden</strong> from browse, recommendations, and trending.</li>
+        <li>Always-open venues and services (not really “events”) are no longer mixed into discovery.</li>
+        <li>Filled in missing venue locations so more events appear on the map, and added a “real photo only” check so placeholder images don't show.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">4</span> Your language, done right</h2>
+      <p class="sub">shou speaks 7 languages — this week it got noticeably better at it.</p>
+      <ul>
+        <li><strong>Smarter title translation</strong> — descriptive words get translated while real names and brands are kept as-is.</li>
+        <li>Fixed events that were wrongly shown untranslated, and made the app respect each event's original language.</li>
+        <li>Cleared a large translation backlog and stopped wasted effort (e.g. “translating Dutch into Dutch”), so more events now appear in your language.</li>
+        <li>Opening a shared link in a specific language now shows the right language and selector straight away.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">5</span> A more polished home page</h2>
+      <p class="sub">Small touches that make the app feel calmer and clearer.</p>
+      <ul>
+        <li><strong>Redesigned hero</strong> with an AI-concierge feel.</li>
+        <li><strong>“My events”</strong> — your liked and going lists are now one simple section, with a friendlier empty state.</li>
+        <li><strong>Simpler cards &amp; pop-ups</strong> — a single share button, one tidy action row, and a clean “venue · city · distance” line.</li>
+        <li><strong>Event counts on the filter tabs</strong> and an accurate “Live” count.</li>
+        <li>The trust bar now reads <strong>“Updated daily”</strong> with a live <strong>“~N on tonight”</strong> figure, in a neat pill.</li>
+        <li>“Load more” now hides itself when there's nothing left, and we added an Instagram link in the footer.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">6</span> Automated Instagram <span class="tag">New</span></h2>
+      <p class="sub">shou now promotes itself, on a weekly rhythm.</p>
+      <ul>
+        <li><strong>Posts go out automatically</strong> — feed carousels and stories on a set weekly schedule.</li>
+        <li><strong>Three themes</strong>: concerts, nightlife, and now <strong>art &amp; exhibitions</strong> (added this week — feed on Wednesdays, story on Saturdays).</li>
+        <li><strong>Beautiful auto-made graphics</strong> with short AI summaries and “what to expect” highlights, matching the in-app cards.</li>
+        <li>Each post tags the venues and adds relevant hashtags in the first comment.</li>
+        <li>Fixed an issue where certain photo formats weren't showing up on the generated cards.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="num">7</span> Behind the scenes</h2>
+      <p class="sub">Reliability and quality work you won't see — but will feel.</p>
+      <ul>
+        <li>Fixed loading errors caused by caching, and made the site more dependable across devices.</li>
+        <li>Shared links open the right event reliably, even at the moment of sign-in.</li>
+        <li>Error monitoring now runs only on the live site, keeping things clean.</li>
+        <li>A weekly “Top 5 exhibitions” section was added to the This Week page, grouped by city.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p class="brand-sm">shou</p>
+    <p>After-dark events across Brussels &amp; Belgium.</p>
+    <p>© 2026 ABSS Analytics · <a href="/">shou.be</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
