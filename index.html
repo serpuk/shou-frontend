@@ -6347,7 +6347,7 @@ function smCard(e){
   const priceText = pStr(e);
   const hasRealPrice = priceText !== t('see');
   // Time formatting: append "· HH:MM" when we have a real time, skip 'TBA'.
-  const timeStr = (e.time && e.time !== 'TBA' && e.time !== 'null') ? ' · ' + e.time : '';
+  const timeStr = fmtTime(e) ? ' · ' + fmtTime(e) : '';
   const goingN = e.going_count || 0;
   return`<div class="card" onclick="om('${e.id}')">
 <div style="position:relative">${th(e,false)}${liveBadgeHTML(e)}${isG ? '<span class="going-chip">'+t('goingChip')+'</span>' : ''}<div class="srcpill s-tm" style="bottom:10px;left:10px;">TM</div></div>
