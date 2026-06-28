@@ -4347,22 +4347,6 @@ function updateForYouMaxScore() {
   forYouMaxScore = max > 0 ? max : 1;
 }
 
-// "Recommended for you" SELECTION (home grid shows ONLY For-You picks) should
-// only kick in when enough of those picks are still UPCOMING — otherwise the
-// hide-past-events filter can collapse the grid to one or two cards (e.g. when
-// get_recommendations returns mostly past events). Below the threshold we fall
-// back to the full feed, where eventScore() still re-ranks by recommendation so
-// the picks stay near the top.
-const RECO_SELECT_MIN = 6;
-function recoSelectionActive() {
-  if (!currentSession || forYouIds.size === 0) return false;
-  let n = 0;
-  for (const e of all) {
-    if (forYouIds.has(e.id) && !hasPassed(e) && ++n >= RECO_SELECT_MIN) return true;
-  }
-  return false;
-}
-
 // User geo (from Vercel edge headers via /api/geo). Used by the "Near me" city
 // option to sort events into distance bands (20km → 50km → rest).
 //
@@ -6038,18 +6022,18 @@ function applyF(){
   // region. We therefore bypass the client-side cm filter during AI — the
   // backend is the source of truth, and re-filtering here would zero-out
   // any cross-area suggestions the AI legitimately wants to show.
-  // "Recommended for you" is a SELECTION, not just a re-rank: when the user
-  // qualifies, the home grid shows get_recommendations' actual picks (hydrated
-  // into `all` by fetchForYou), ordered by the unified eventScore below — so a
-  // strongly-recommended event surfaces even if it's outside the popular pool.
-  const personalizedSel = actF === 'all' && !aiQ && recoSelectionActive();
+  // "Recommended for you" is a RE-RANK, not a selection: the home grid shows
+  // ALL upcoming events, ordered by the unified eventScore below (which folds in
+  // the recommendation signal for forYouIds). get_recommendations' picks are
+  // hydrated into `all` by fetchForYou so any strong pick outside the popular
+  // pool is present and floats to the top — but membership is never restricted,
+  // so the grid never collapses to just the handful of RPC picks.
   filtered=all.filter(e=>{
     // Hide events that already happened (started >4h ago) from browse /
     // recommended / category views. Kept for "Live now" (its own ±4h window),
     // "My events" (the user's saved set), and AI search (count + scope owned by
     // the backend, so re-filtering here would desync the "N events found").
     if (actF !== 'live' && actF !== 'mine' && !aiQ && hasPassed(e)) return false;
-    if (personalizedSel) return forYouIds.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
@@ -6167,7 +6151,8 @@ function renderAll(){
   const personalizedBrowse = (
     !isNarrowOrPersonal &&
     !aiQ &&
-    recoSelectionActive()
+    currentSession &&
+    forYouIds.size > 0
   );
   const trendingHeader = document.getElementById('trendingHeader');
   const allHeader      = document.getElementById('allHeader');
