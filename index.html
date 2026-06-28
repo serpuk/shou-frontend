@@ -2076,6 +2076,44 @@ body.ai-active .filters { position: static; box-shadow: none; }
 }
 .mph span { filter: drop-shadow(0 0 20px rgba(255,153,102,0.3)); }
 
+/* ── Redesigned modal: hero overlay + details card + static venue map ── */
+.mhero { position: relative; }
+.mhero-scrim {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 58%;
+  pointer-events: none; border-radius: 0;
+  background: linear-gradient(to top, rgba(11,8,16,0.94), rgba(11,8,16,0));
+}
+.mhero-cal {
+  position: absolute; left: 20px; bottom: 16px;
+  display: flex; flex-direction: column; align-items: center; line-height: 1;
+  background: rgba(20,16,26,0.72); backdrop-filter: blur(7px);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 13px;
+  padding: 8px 14px; min-width: 58px;
+}
+.mhero-cal .cal-wd { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--cyan); }
+.mhero-cal .cal-d { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; color: var(--bone); margin: 3px 0; }
+.mhero-cal .cal-m { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--bone2); }
+.mhero-pill { position: absolute; right: 18px; bottom: 18px; margin: 0 !important; }
+.mvenue-sub { font-size: 14px; color: var(--bone2); margin: -4px 0 2px; }
+.mcard {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 4px 16px; margin: 4px 0;
+  display: flex; flex-direction: column;
+}
+.mrow { display: flex; align-items: flex-start; gap: 14px; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.mrow:last-child { border-bottom: none; }
+.mrow-ic { flex: none; width: 22px; height: 22px; color: var(--cyan); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.mrow-tx { min-width: 0; }
+.mdist { color: var(--cyan); font-weight: 600; font-size: 12.5px; margin-left: 4px; white-space: nowrap; }
+.mmap { display: block; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); margin: 4px 0 2px; }
+.mmap-img { display: block; width: 100%; height: auto; }
+.mmap-cta {
+  position: absolute; right: 10px; bottom: 10px;
+  background: rgba(20,16,26,0.82); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.14); color: var(--cyan);
+  font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+}
+
 /* Modal body */
 .mb {
   padding: 28px 32px 32px;
@@ -7005,6 +7043,39 @@ let modalPushedHistory = false;
 // these side-by-side in a horizontal track — the prev card peeks in from
 // the left when the user drags right, the next card peeks from the right
 // when they drag left. No more black void during swipe.
+// Small inline icons for the modal detail rows (inherit currentColor → cyan).
+const IC_CAL='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
+const IC_PIN='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+const IC_CITY='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l6-3 6 3v14M9 21v-4h2v4M8 10h.01M14 10h.01"/></svg>';
+const IC_PRICE='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5V7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v1.5a2 2 0 0 0 0 4V17a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4.5a2 2 0 0 0 0-4z"/></svg>';
+
+// Hero calendar chip (weekday / day / month) from the event date.
+function mHeroCal(e){
+  const s=(e.date||'').slice(0,10);
+  const d=/^\d{4}-\d{2}-\d{2}$/.test(s)?new Date(s+'T00:00:00'):new Date(e.date);
+  if(!d||isNaN(d.getTime()))return '';
+  const wd=d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase();
+  const m=d.toLocaleDateString(undefined,{month:'short'}).toUpperCase();
+  return `<div class="mhero-cal"><span class="cal-wd">${wd}</span><span class="cal-d">${d.getDate()}</span><span class="cal-m">${m}</span></div>`;
+}
+
+// Google Static Maps thumbnail (dark-styled, pink marker). Null unless we have
+// the browser Maps key AND venue coords. Needs the Static Maps API enabled on
+// the key; if not, the <img> 404s and we hide the map block (onerror).
+function staticMapUrl(e){
+  const key=window.GOOGLE_MAPS_KEY;
+  if(!key||!Number.isFinite(e.lat)||!Number.isFinite(e.lng))return null;
+  const c=e.lat+','+e.lng;
+  const styles=['feature:all|element:geometry|color:0x14111c','feature:all|element:labels.text.fill|color:0x8a8094','feature:all|element:labels.text.stroke|color:0x0b0810','feature:water|element:geometry|color:0x0b0810','feature:road|element:geometry|color:0x2a2533','feature:poi|element:geometry|color:0x1a1622'].map(s=>'&style='+encodeURIComponent(s)).join('');
+  return 'https://maps.googleapis.com/maps/api/staticmap?center='+c+'&zoom=14&size=640x220&scale=2&markers='+encodeURIComponent('color:0xff3d8b|'+c)+styles+'&key='+encodeURIComponent(key);
+}
+function mStaticMapHtml(e){
+  const url=staticMapUrl(e);if(!url)return '';
+  const dir=directionsUrl(e);
+  const img=`<img class="mmap-img" src="${url}" alt="" loading="lazy" onerror="var m=this.closest('.mmap'); if(m) m.style.display='none'">`;
+  return dir?`<a class="mmap" href="${dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','map')">${img}<span class="mmap-cta">${t('dir')} ↗</span></a>`:`<div class="mmap">${img}</div>`;
+}
+
 function buildEventCardHTML(e) {
   if (!e) return '';
   const cl=segCls(e.categorySlug);
@@ -7014,19 +7085,23 @@ function buildEventCardHTML(e) {
   const bigTh=e.img
     ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.categorySlug)}','${segEmoji(e.categorySlug)}')">`
     : `<div class="mph ${segThumb(e.categorySlug)}"><span>${segEmoji(e.categorySlug)}</span></div>`;
-  return `${bigTh}
+  const _dir = directionsUrl(e);
+  const _dist = (typeof eventDistanceLabel === 'function') ? eventDistanceLabel(e) : null;
+  const _genre = (e.genre && e.genre.toLowerCase() !== (e.seg||'').toLowerCase()) ? ' · ' + e.genre : '';
+  return `<div class="mhero">${bigTh}<div class="mhero-scrim"></div>${mHeroCal(e)}<span class="cpill ${cl} mhero-pill">${e.seg}${_genre}</span></div>
 <div class="mb">
-<span class="cpill ${cl}">${e.seg}${e.genre && e.genre.toLowerCase()!==(e.seg||'').toLowerCase()?' · '+e.genre:''}</span>
 <div class="mtitle">${e.name}</div>
-<p class="mdesc">${e.desc}</p>
-<div class="mdet">
-<div><div class="dk">Venue</div><div class="dv">${e.venue}${directionsUrl(e) ? `<a class="dir-link" href="${directionsUrl(e)}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div>
-<div><div class="dk">City</div><div class="dv">${e.city}</div></div>
-<div><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</div></div>
-<div><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div>
+<div class="mvenue-sub">${[e.venue, e.city].filter(Boolean).join(' · ')}</div>
+<div class="mcard">
+<div class="mrow"><span class="mrow-ic">${IC_CAL}</span><div class="mrow-tx"><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</div></div></div>
+<div class="mrow"><span class="mrow-ic">${IC_PIN}</span><div class="mrow-tx"><div class="dk">Venue</div><div class="dv">${e.venue||'TBA'}${_dist ? ` <span class="mdist">${_dist} away</span>` : ''}${_dir ? `<a class="dir-link" href="${_dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div></div>
+<div class="mrow"><span class="mrow-ic">${IC_CITY}</span><div class="mrow-tx"><div class="dk">City</div><div class="dv">${e.city||'—'}</div></div></div>
+<div class="mrow"><span class="mrow-ic">${IC_PRICE}</span><div class="mrow-tx"><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div></div>
 </div>
 ${mRecurrenceHtml(e)}
 ${mOccurrenceDatesHtml(e)}
+${e.desc ? `<p class="mdesc">${e.desc}</p>` : ''}
+${mStaticMapHtml(e)}
 ${mSourcesRow(e)}
 <div class="mact-primary">
 <div class="mact-secondary">
