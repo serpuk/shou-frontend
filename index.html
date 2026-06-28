@@ -2113,6 +2113,13 @@ body.ai-active .filters { position: static; box-shadow: none; }
   border: 1px solid rgba(255,255,255,0.14); color: var(--cyan);
   font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
 }
+.mdesc-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+.mdesc.clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mdesc-toggle {
+  background: none; border: none; cursor: pointer; padding: 6px 0 0;
+  color: var(--cyan); font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.mdesc-toggle:hover { text-decoration: underline; }
 
 /* Modal body */
 .mb {
@@ -7069,6 +7076,22 @@ function staticMapUrl(e){
   const styles=['feature:all|element:geometry|color:0x14111c','feature:all|element:labels.text.fill|color:0x8a8094','feature:all|element:labels.text.stroke|color:0x0b0810','feature:water|element:geometry|color:0x0b0810','feature:road|element:geometry|color:0x2a2533','feature:poi|element:geometry|color:0x1a1622'].map(s=>'&style='+encodeURIComponent(s)).join('');
   return 'https://maps.googleapis.com/maps/api/staticmap?center='+c+'&zoom=14&size=640x220&scale=2&markers='+encodeURIComponent('color:0xff3d8b|'+c)+styles+'&key='+encodeURIComponent(key);
 }
+// Description block. Long text (FB-style) is clamped to a few lines with a
+// "See more" toggle; short text renders in full with no button. Length-based
+// heuristic so it works during innerHTML render + swipe re-renders without any
+// post-render measurement.
+function mDescHtml(e){
+  const d=e.desc||'';
+  if(!d) return '';
+  if(d.length<=220) return `<p class="mdesc">${d}</p>`;
+  return `<div class="mdesc-wrap"><p class="mdesc clamped">${d}</p><button class="mdesc-toggle" onclick="event.stopPropagation();toggleDesc(this)">See more</button></div>`;
+}
+function toggleDesc(btn){
+  const p=btn.previousElementSibling; if(!p) return;
+  const stillClamped=p.classList.toggle('clamped');
+  btn.textContent=stillClamped?'See more':'See less';
+}
+
 function mStaticMapHtml(e){
   const url=staticMapUrl(e);if(!url)return '';
   const dir=directionsUrl(e);
@@ -7095,12 +7118,11 @@ function buildEventCardHTML(e) {
 <div class="mcard">
 <div class="mrow"><span class="mrow-ic">${IC_CAL}</span><div class="mrow-tx"><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</div></div></div>
 <div class="mrow"><span class="mrow-ic">${IC_PIN}</span><div class="mrow-tx"><div class="dk">Venue</div><div class="dv">${e.venue||'TBA'}${_dist ? ` <span class="mdist">${_dist} away</span>` : ''}${_dir ? `<a class="dir-link" href="${_dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div></div>
-<div class="mrow"><span class="mrow-ic">${IC_CITY}</span><div class="mrow-tx"><div class="dk">City</div><div class="dv">${e.city||'—'}</div></div></div>
 <div class="mrow"><span class="mrow-ic">${IC_PRICE}</span><div class="mrow-tx"><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div></div>
 </div>
 ${mRecurrenceHtml(e)}
 ${mOccurrenceDatesHtml(e)}
-${e.desc ? `<p class="mdesc">${e.desc}</p>` : ''}
+${mDescHtml(e)}
 ${mStaticMapHtml(e)}
 ${mSourcesRow(e)}
 <div class="mact-primary">
