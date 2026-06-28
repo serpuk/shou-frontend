@@ -1912,7 +1912,11 @@ body.ai-active .filters { position: static; box-shadow: none; }
 /* ── MODAL ── */
 .mov {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.8); backdrop-filter: blur(14px);
+  /* Solid scrim (no backdrop-filter): a full-viewport backdrop blur is GPU-
+     expensive to compute on every open — it blurs the entire grid (and the
+     Google map when open), which visibly stalls the modal appearing. A plain
+     dark scrim opens instantly and reads just as clearly. */
+  background: rgba(6,4,12,0.88);
   display: none; align-items: center; justify-content: center;
   padding: 30px 20px;
 }
@@ -2105,8 +2109,8 @@ body.ai-active .filters { position: static; box-shadow: none; }
 .mrow-ic { flex: none; width: 22px; height: 22px; color: var(--cyan); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
 .mrow-tx { min-width: 0; }
 .mdist { color: var(--cyan); font-weight: 600; font-size: 12.5px; margin-left: 4px; white-space: nowrap; }
-.mmap { display: block; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); margin: 4px 0 2px; }
-.mmap-img { display: block; width: 100%; height: auto; }
+.mmap { display: block; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); margin: 4px 0 2px; aspect-ratio: 640 / 220; background: linear-gradient(135deg,var(--violet,#9b5cff),var(--pink,#ff3d8b)); }
+.mmap-img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .mmap-cta {
   position: absolute; right: 10px; bottom: 10px;
   background: rgba(20,16,26,0.82); backdrop-filter: blur(6px);
@@ -7097,7 +7101,7 @@ function toggleDesc(btn){
 function mStaticMapHtml(e){
   const url=staticMapUrl(e);if(!url)return '';
   const dir=directionsUrl(e);
-  const img=`<img class="mmap-img" src="${url}" alt="" loading="lazy" onerror="var m=this.closest('.mmap'); if(m) m.style.display='none'">`;
+  const img=`<img class="mmap-img" src="${url}" alt="" loading="lazy" decoding="async" onerror="var m=this.closest('.mmap'); if(m) m.style.display='none'">`;
   return dir?`<a class="mmap" href="${dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','map')">${img}<span class="mmap-cta">${t('dir')} ↗</span></a>`:`<div class="mmap">${img}</div>`;
 }
 
