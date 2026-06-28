@@ -4080,16 +4080,17 @@ function findEv(id){ return all.find(x => x.id === id) || trendingAll.find(x => 
 // server tables for the two that have counts (likes/going) and updates counts
 // optimistically, exactly like the old tl()/tg().
 function setRsvp(id, target){
-  const wasLk=lk.has(id), wasGn=gn.has(id);
+  const wasLk=lk.has(id), wasGn=gn.has(id), wasNi=ni.has(id);
   const cur=rsvpState(id);
   if(target===cur) target=null;                 // re-selecting the active state clears it
   lk.delete(id); gn.delete(id); ni.delete(id);
   if(target==='interested') lk.add(id);
   else if(target==='going') gn.add(id);
   else if(target==='notint') ni.add(id);
-  const nowLk=lk.has(id), nowGn=gn.has(id);
+  const nowLk=lk.has(id), nowGn=gn.has(id), nowNi=ni.has(id);
   if(nowLk!==wasLk){ syncLikeToServer(id, nowLk); track(id, nowLk?'like':'unlike'); }
   if(nowGn!==wasGn){ syncGoingToServer(id, nowGn); }
+  if(nowNi!==wasNi){ syncNotIntToServer(id, nowNi); }
   saveLikes(lk); saveGoing(gn); saveNI(ni);
   const e=findEv(id);
   if(e && currentSession){
@@ -6724,6 +6725,51 @@ async function refreshGoingFromServer() {
   }
 }
 
+// Push a single not-interested toggle to user_not_interested. No-op signed out.
+// Mirror of syncLikeToServer — lets the recommender exclude/demote it server-side
+// (and sync the signal across devices) instead of it being browser-only.
+function syncNotIntToServer(eventId, isNowNi) {
+  if (!currentSession) return;
+  const userId = currentSession.user.id;
+  if (isNowNi) {
+    sb.from('user_not_interested')
+      .upsert({ user_id: userId, event_id: eventId }, { onConflict: 'user_id,event_id', ignoreDuplicates: true })
+      .then(({ error }) => { if (error) console.warn('user_not_interested insert failed:', error.message); });
+  } else {
+    sb.from('user_not_interested')
+      .delete().eq('user_id', userId).eq('event_id', eventId)
+      .then(({ error }) => { if (error) console.warn('user_not_interested delete failed:', error.message); });
+  }
+}
+
+// Pull not-interested from user_not_interested on sign-in. Mirror of
+// refreshGoingFromServer, incl. the one-time push-up of any local-only rows.
+async function refreshNotIntFromServer() {
+  if (!currentSession) return;
+  try {
+    const { data, error } = await sb
+      .from('user_not_interested')
+      .select('event_id')
+      .eq('user_id', currentSession.user.id);
+    if (error) { console.warn('refreshNotIntFromServer failed:', error.message); return; }
+    const serverSet = new Set((data || []).map(r => r.event_id));
+    if (serverSet.size === 0 && ni.size > 0) {
+      const userId = currentSession.user.id;
+      const inserts = Array.from(ni).map(eventId => ({ user_id: userId, event_id: eventId }));
+      const { error: insErr } = await sb.from('user_not_interested')
+        .upsert(inserts, { onConflict: 'user_id,event_id', ignoreDuplicates: true });
+      if (insErr) console.warn('user_not_interested migration insert failed:', insErr.message);
+      renderAll();
+      return;
+    }
+    ni = serverSet;
+    saveNI(ni);
+    renderAll();
+  } catch (err) {
+    console.warn('refreshNotIntFromServer error:', err);
+  }
+}
+
 // Batch fetch going-counts for a list of event IDs in one RPC call. Called
 // after fetchEvts() resolves so cards can show the "🎟 N" count. Returns
 // a Map<eventId, count>. Events without going users are omitted by the
@@ -8921,6 +8967,9 @@ async function handleAuthStateChange(event, session) {
 
     withTimeout(refreshGoingFromServer(), 8000, 'refreshGoingFromServer')
       .catch(err => console.warn('refreshGoingFromServer:', err.message));
+
+    withTimeout(refreshNotIntFromServer(), 8000, 'refreshNotIntFromServer')
+      .catch(err => console.warn('refreshNotIntFromServer:', err.message));
 
     withTimeout(fetchProfile(), 8000, 'fetchProfile')
       .then(() => {
