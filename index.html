@@ -5371,11 +5371,17 @@ async function hydrateEventsByIds(eventIds) {
   const missing = (eventIds || []).filter(id => id && !existing.has(id));
   if (missing.length === 0) return;
   try {
-    const p = new URLSearchParams({ lang, ids: missing.slice(0, 100).join(',') });
-    const r = await fetch(API_BASE + '/api/events?' + p);
-    if (!r.ok) { console.warn('hydrateEventsByIds HTTP', r.status); return; }
-    const d = await r.json();
-    const newEvents = (d.events || []).filter(e => !existing.has(e.id)).map(shapeAIEvent);
+    // Chunk to 100 ids/request — PostgREST's .in() silently no-ops past ~100
+    // UUIDs (URL length), so a single big request would drop most of them.
+    const chunks = [];
+    for (let i = 0; i < missing.length; i += 100) chunks.push(missing.slice(i, i + 100));
+    const results = await Promise.all(chunks.map(async ch => {
+      const p = new URLSearchParams({ lang, ids: ch.join(',') });
+      const r = await fetch(API_BASE + '/api/events?' + p);
+      if (!r.ok) { console.warn('hydrateEventsByIds HTTP', r.status); return []; }
+      return (await r.json()).events || [];
+    }));
+    const newEvents = results.flat().filter(e => !existing.has(e.id)).map(shapeAIEvent);
     if (newEvents.length === 0) return;
     all = all.concat(newEvents);
     (async () => {
@@ -5405,13 +5411,13 @@ async function fetchForYou() {
     const haveGeo = userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null;
     let { data, error } = await sb.rpc('get_recommendations',
       haveGeo
-        ? { p_user_id: currentSession.user.id, p_limit: 48, p_lat: userGeo.latitude, p_lng: userGeo.longitude }
-        : { p_user_id: currentSession.user.id, p_limit: 48 });
+        ? { p_user_id: currentSession.user.id, p_limit: 200, p_lat: userGeo.latitude, p_lng: userGeo.longitude }
+        : { p_user_id: currentSession.user.id, p_limit: 200 });
     // Backward-compat: a pre-migration get_recommendations lacks p_lat/p_lng and
     // errors on the signature — retry without coords so recs still work (distance
     // just won't factor until the SQL migration is applied).
     if (error && haveGeo) {
-      ({ data, error } = await sb.rpc('get_recommendations', { p_user_id: currentSession.user.id, p_limit: 48 }));
+      ({ data, error } = await sb.rpc('get_recommendations', { p_user_id: currentSession.user.id, p_limit: 200 }));
     }
     if (error) {
       console.warn('get_recommendations failed:', error.message);
@@ -6022,18 +6028,16 @@ function applyF(){
   // region. We therefore bypass the client-side cm filter during AI — the
   // backend is the source of truth, and re-filtering here would zero-out
   // any cross-area suggestions the AI legitimately wants to show.
-  // "Recommended for you" is a RE-RANK, not a selection: the home grid shows
-  // ALL upcoming events, ordered by the unified eventScore below (which folds in
-  // the recommendation signal for forYouIds). get_recommendations' picks are
-  // hydrated into `all` by fetchForYou so any strong pick outside the popular
-  // pool is present and floats to the top — but membership is never restricted,
-  // so the grid never collapses to just the handful of RPC picks.
+  // "Recommended for you" IS the get_recommendations ranking: that RPC scores
+  // every upcoming event (popularity + taste + freshness + distance), already
+  // limits to start_date >= today and drops liked events, and returns them
+  // rec_score-ordered. We request a deep page (p_limit 200), hydrate them into
+  // `all`, then the grid shows exactly that scored set, sorted by rec_score in
+  // the sort phase. hasPassed below only trims today's already-finished events.
+  const personalizedSel = actF === 'all' && !aiQ && currentSession && forYouIds.size > 0;
   filtered=all.filter(e=>{
-    // Hide events that already happened (started >4h ago) from browse /
-    // recommended / category views. Kept for "Live now" (its own ±4h window),
-    // "My events" (the user's saved set), and AI search (count + scope owned by
-    // the backend, so re-filtering here would desync the "N events found").
     if (actF !== 'live' && actF !== 'mine' && !aiQ && hasPassed(e)) return false;
+    if (personalizedSel) return forYouIds.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
@@ -6083,6 +6087,9 @@ function applyF(){
       if (d !== 0) return d;
       return String(a.time || '').localeCompare(String(b.time || ''));
     };
+  } else if (personalizedSel) {
+    // Recommended-for-you: honor get_recommendations' own rec_score ordering.
+    comparator = (a, b) => (forYouIds.get(b.id) || 0) - (forYouIds.get(a.id) || 0);
   } else {
     // Default home or broad category filter: unified score combining
     // popularity + recommendation + proximity. Higher score wins.
