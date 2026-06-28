@@ -5083,6 +5083,8 @@ async function fetchEvts(){
     // Has to run AFTER the catalog populates, since om() looks up the event
     // in the `all` array. Safe to call when no param is present (no-op).
     maybeOpenEventFromUrl();
+    // Same point in the load: if ?surprise is present, fire the surprise flow.
+    maybeSurpriseFromUrl();
   }catch(ex){
     document.getElementById('err').textContent='Live data unavailable: '+ex.message+'. Showing sample events.';
     document.getElementById('err').classList.add('on');
@@ -7419,6 +7421,27 @@ async function maybeOpenEventFromUrl() {
   // (geo/lang/refresh) retries.
   document.documentElement.classList.remove('deeplink');
   deepLinkHandled = false;
+}
+
+// On initial page load: if the URL has ?surprise (e.g. the "Surprise me" button
+// on shou.be/this-week links to /?surprise=1), run the same surprise flow the
+// in-app chip triggers. Runs AFTER the catalog loads (same place as the deep-
+// link handler). Idempotent: the param is stripped on first run so the several
+// fetchEvts() calls on load (initial + geo flip + lang) — and a manual refresh —
+// don't re-fire it, and the URL is left clean.
+let surpriseHandled = false;
+function maybeSurpriseFromUrl() {
+  if (surpriseHandled) return;
+  let has = false;
+  try { has = new URLSearchParams(location.search).has('surprise'); } catch (_) {}
+  if (!has) return;
+  surpriseHandled = true;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('surprise');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (_) {}
+  surpriseMe();
 }
 
 // ──────────────────────────────────────────────────────────────────────
