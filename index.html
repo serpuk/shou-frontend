@@ -5554,7 +5554,8 @@ function _mapDir(e){const q=(Number.isFinite(e.lat)&&Number.isFinite(e.lng))?e.l
 function _mapPop(e){
   const tickets=e.url?'<a class="mp-go" href="'+e.url+'" target="_blank" rel="noopener">'+t('tk')+' ↗</a>':'';
   const hasTime=(e.time&&e.time!=='TBA'&&e.time!=='null');
-  return '<div class="mp"><div class="mp-cat">'+escapeHtml(e.seg||'')+'</div>'+
+  const catColor=MAP_CAT_COLOR[segCls(e.categorySlug)]||'#9b8fb0';
+  return '<div class="mp"><div class="mp-cat" style="color:'+catColor+'">'+escapeHtml(e.seg||'')+'</div>'+
     '<div class="mp-ti" onclick="om(\''+e.id+'\')">'+escapeHtml(e.name||'')+'</div>'+
     '<div class="mp-mt">📍 '+escapeHtml(e.venue||'')+((!e.date&&fmtTime(e))?' · '+fmtTime(e):'')+'</div>'+
     (e.date?'<div class="mp-mt">📅 '+escapeHtml(_mapShortDate(e.date))+(fmtTime(e)?' · '+fmtTime(e):'')+'</div>':'')+
