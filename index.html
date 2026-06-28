@@ -7073,8 +7073,9 @@ function staticMapUrl(e){
   const key=window.GOOGLE_MAPS_KEY;
   if(!key||!Number.isFinite(e.lat)||!Number.isFinite(e.lng))return null;
   const c=e.lat+','+e.lng;
-  const styles=['feature:all|element:geometry|color:0x14111c','feature:all|element:labels.text.fill|color:0x8a8094','feature:all|element:labels.text.stroke|color:0x0b0810','feature:water|element:geometry|color:0x0b0810','feature:road|element:geometry|color:0x2a2533','feature:poi|element:geometry|color:0x1a1622'].map(s=>'&style='+encodeURIComponent(s)).join('');
-  return 'https://maps.googleapis.com/maps/api/staticmap?center='+c+'&zoom=14&size=640x220&scale=2&markers='+encodeURIComponent('color:0xff3d8b|'+c)+styles+'&key='+encodeURIComponent(key);
+  // No inline style= params: Google now 403s URL-based styling on Static Maps
+  // for newer keys. Default map style (like Facebook's) with a pink marker.
+  return 'https://maps.googleapis.com/maps/api/staticmap?center='+c+'&zoom=15&size=640x220&scale=2&markers='+encodeURIComponent('color:0xff3d8b|'+c)+'&key='+encodeURIComponent(key);
 }
 // Description block. Long text (FB-style) is clamped to a few lines with a
 // "See more" toggle; short text renders in full with no button. Length-based
