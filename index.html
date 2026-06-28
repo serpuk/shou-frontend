@@ -5411,13 +5411,13 @@ async function fetchForYou() {
     const haveGeo = userGeo && userGeo.available && userGeo.latitude != null && userGeo.longitude != null;
     let { data, error } = await sb.rpc('get_recommendations',
       haveGeo
-        ? { p_user_id: currentSession.user.id, p_limit: 200, p_lat: userGeo.latitude, p_lng: userGeo.longitude }
-        : { p_user_id: currentSession.user.id, p_limit: 200 });
+        ? { p_user_id: currentSession.user.id, p_limit: 100, p_lat: userGeo.latitude, p_lng: userGeo.longitude }
+        : { p_user_id: currentSession.user.id, p_limit: 100 });
     // Backward-compat: a pre-migration get_recommendations lacks p_lat/p_lng and
     // errors on the signature — retry without coords so recs still work (distance
     // just won't factor until the SQL migration is applied).
     if (error && haveGeo) {
-      ({ data, error } = await sb.rpc('get_recommendations', { p_user_id: currentSession.user.id, p_limit: 200 }));
+      ({ data, error } = await sb.rpc('get_recommendations', { p_user_id: currentSession.user.id, p_limit: 100 }));
     }
     if (error) {
       console.warn('get_recommendations failed:', error.message);
@@ -6031,7 +6031,7 @@ function applyF(){
   // "Recommended for you" IS the get_recommendations ranking: that RPC scores
   // every upcoming event (popularity + taste + freshness + distance), already
   // limits to start_date >= today and drops liked events, and returns them
-  // rec_score-ordered. We request a deep page (p_limit 200), hydrate them into
+  // rec_score-ordered. We request the top 100, hydrate them into
   // `all`, then the grid shows exactly that scored set, sorted by rec_score in
   // the sort phase. hasPassed below only trims today's already-finished events.
   const personalizedSel = actF === 'all' && !aiQ && currentSession && forYouIds.size > 0;
