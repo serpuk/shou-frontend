@@ -7112,19 +7112,21 @@ function buildEventCardHTML(e) {
   const _dir = directionsUrl(e);
   const _dist = (typeof eventDistanceLabel === 'function') ? eventDistanceLabel(e) : null;
   const _genre = (e.genre && e.genre.toLowerCase() !== (e.seg||'').toLowerCase()) ? ' · ' + e.genre : '';
+  const _map = mStaticMapHtml(e);
+  const _hasMap = !!_map;
   return `<div class="mhero">${bigTh}<div class="mhero-scrim"></div>${mHeroCal(e)}<span class="cpill ${cl} mhero-pill">${e.seg}${_genre}</span></div>
 <div class="mb">
 <div class="mtitle">${e.name}</div>
 <div class="mvenue-sub">${[e.venue, e.city].filter(Boolean).join(' · ')}</div>
 <div class="mcard">
 <div class="mrow"><span class="mrow-ic">${IC_CAL}</span><div class="mrow-tx"><div class="dk">Date</div><div class="dv">${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</div></div></div>
-<div class="mrow"><span class="mrow-ic">${IC_PIN}</span><div class="mrow-tx"><div class="dk">Venue</div><div class="dv">${e.venue||'TBA'}${_dist ? ` <span class="mdist">${_dist} away</span>` : ''}${_dir ? `<a class="dir-link" href="${_dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div></div>
+<div class="mrow"><span class="mrow-ic">${IC_PIN}</span><div class="mrow-tx"><div class="dk">Venue</div><div class="dv">${e.venue||'TBA'}${_dist ? ` <span class="mdist">${_dist} away</span>` : ''}${(!_hasMap && _dir) ? `<a class="dir-link" href="${_dir}" target="_blank" rel="noopener" onclick="event.stopPropagation();track('${e.id}','directions')">${t('dir')}</a>` : ''}</div></div></div>
 <div class="mrow"><span class="mrow-ic">${IC_PRICE}</span><div class="mrow-tx"><div class="dk">Price</div><div class="dv">${mPriceHtml(e)}</div></div></div>
 </div>
 ${mRecurrenceHtml(e)}
 ${mOccurrenceDatesHtml(e)}
+${_map}
 ${mDescHtml(e)}
-${mStaticMapHtml(e)}
 ${mSourcesRow(e)}
 <div class="mact-primary">
 <div class="mact-secondary">
