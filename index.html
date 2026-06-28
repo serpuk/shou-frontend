@@ -6036,8 +6036,13 @@ function applyF(){
   // the sort phase. hasPassed below only trims today's already-finished events.
   const personalizedSel = actF === 'all' && !aiQ && currentSession && forYouIds.size > 0;
   filtered=all.filter(e=>{
-    if (actF !== 'live' && actF !== 'mine' && !aiQ && hasPassed(e)) return false;
-    if (personalizedSel) return forYouIds.has(e.id);
+    // Hide past events and anything the user marked "Not interested" from
+    // browse/recommended (kept in Live/My-events/AI which own their own scope).
+    if (actF !== 'live' && actF !== 'mine' && !aiQ && (hasPassed(e) || ni.has(e.id))) return false;
+    // Recommended is discovery: drop events you're already Going to (Interested
+    // is already excluded server-side by get_recommendations). They live in "My
+    // events", so re-recommending them is noise.
+    if (personalizedSel) return forYouIds.has(e.id) && !gn.has(e.id);
     // Category match. 'all' matches everything (the home feed shows everything,
     // possibly re-ranked by For You — that ranking happens in the sort phase).
     const sm = actF==='all'
