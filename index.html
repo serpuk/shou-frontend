@@ -3219,6 +3219,10 @@ body.ai-active .cc-trust { display: none; }
      surprise breakages. The anon key is safe to expose: it's the public role,
      RLS scopes all access on the server side. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49/dist/umd/supabase.min.js"></script>
+<!-- CDN fallback: if jsdelivr is down or blocked (ad/script blocker, network),
+     synchronously load the same bundle from unpkg before the app init runs.
+     Classic document.write fallback — only fires when the primary failed. -->
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.49/dist/umd/supabase.min.js"><\/script>')</script>
 <script>try{if(new URLSearchParams(location.search).has('event')){document.documentElement.classList.add('deeplink');setTimeout(function(){document.documentElement.classList.remove('deeplink');},8000);}}catch(e){}</script>
 </head>
 <body>
@@ -3819,6 +3823,23 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // The supabase-js UMD bundle exposes a global `supabase` namespace.
 // We rename our client to `sb` to avoid collision with that namespace.
+// If BOTH the primary and fallback CDNs failed (e.g. an aggressive content
+// blocker, or an offline load), window.supabase is undefined and calling
+// .createClient would throw a cryptic "Cannot read properties of undefined"
+// that white-screens the app. Show a clear, actionable message instead.
+if (!(window.supabase && window.supabase.createClient)) {
+  const showLoadError = () => {
+    document.body.innerHTML = '<div style="max-width:520px;margin:16vh auto;padding:0 24px;text-align:center;font:500 16px/1.6 Inter,system-ui,sans-serif;color:#cfc7d6">'
+      + '<p style="font-size:22px;font-weight:700;margin-bottom:10px">Couldn’t load shou</p>'
+      + '<p>A required component was blocked from loading. Please reload, and allow this site in any ad/script blocker.</p>'
+      + '<p style="margin-top:18px"><button onclick="location.reload()" style="padding:10px 20px;border:0;border-radius:999px;background:linear-gradient(120deg,#ff2d7a,#ff9b66);color:#1a0f1f;font-weight:700;font-size:15px;cursor:pointer">Reload</button></p>'
+      + '</div>';
+  };
+  if (document.body) showLoadError(); else document.addEventListener('DOMContentLoaded', showLoadError);
+  // Halt init here — a descriptive error is far more useful in logs than the
+  // downstream undefined-createClient TypeError, and avoids a blank page.
+  throw new Error('supabase-js failed to load (CDN blocked or offline)');
+}
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     autoRefreshToken: true,
