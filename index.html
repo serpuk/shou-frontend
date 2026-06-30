@@ -3176,6 +3176,7 @@ body.ai-active .cc-trust { display: none; }
 .mine-tab{border:none;background:none;color:var(--bone2);font:600 12.5px 'Inter';padding:7px 16px;border-radius:100px;cursor:pointer;transition:.18s}
 .mine-tab:hover{color:var(--bone)}
 .mine-tab.on{background:linear-gradient(120deg,var(--magenta),var(--coral));color:var(--ink)}
+.mine-tab-n{margin-left:5px;opacity:.7;font-weight:600}
 #allHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap}
 #allHeader .ahead-l{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
 #allHeader .ahead-l .sc{align-self:flex-start}
@@ -3410,8 +3411,8 @@ body.ai-active .cc-trust { display: none; }
   <!-- My events sub-filter: Upcoming (default) vs Past. Visible only on the My
        events view; toggled/synced by updateMineToggleUI(). -->
   <div class="mine-toggle" id="mineToggle" hidden role="tablist" aria-label="Upcoming or past events">
-    <button class="mine-tab on" data-mv="upcoming" role="tab" onclick="setMineView('upcoming')" data-k="mineUpcoming">Upcoming</button>
-    <button class="mine-tab" data-mv="past" role="tab" onclick="setMineView('past')" data-k="minePast">Past</button>
+    <button class="mine-tab on" data-mv="upcoming" role="tab" onclick="setMineView('upcoming')"><span data-k="mineUpcoming">Upcoming</span><span class="mine-tab-n" id="mineNUp"></span></button>
+    <button class="mine-tab" data-mv="past" role="tab" onclick="setMineView('past')"><span data-k="minePast">Past</span><span class="mine-tab-n" id="mineNPast"></span></button>
   </div>
   <!-- Guest nudge banner: visible only to anonymous users on personal filters
        (liked/going) when they have saved items. Dismissable; remembered for 30
@@ -4518,8 +4519,19 @@ function setMineView(v) {
 function updateMineToggleUI() {
   const el = document.getElementById('mineToggle');
   if (!el) return;
-  el.hidden = actF !== 'mine';
+  const show = actF === 'mine';
+  el.hidden = !show;
+  if (!show) return;
   el.querySelectorAll('.mine-tab').forEach(b => b.classList.toggle('on', b.dataset.mv === mineView));
+  // Per-tab counts, deduped the same way the grid is, so they match the
+  // "N events found" line. The saved set is small, so this is cheap.
+  const members = all.filter(e => lk.has(e.id) || gn.has(e.id));
+  const upN   = dedupeByContent(members.filter(e => !isPastEvent(e))).length;
+  const pastN = dedupeByContent(members.filter(e =>  isPastEvent(e))).length;
+  const up = document.getElementById('mineNUp');
+  const past = document.getElementById('mineNPast');
+  if (up)   up.textContent   = ' (' + upN + ')';
+  if (past) past.textContent = ' (' + pastN + ')';
 }
 
 // Render a live badge if the event is currently in the ±4h "happening now-ish"
