@@ -3737,6 +3737,15 @@ async function fetchCategories() {
       window.GOOGLE_MAPS_KEY = d.mapsKey;
       const vt = document.getElementById('viewToggle');
       if (vt) vt.style.display = '';   // reveal the List/Map toggle
+      // Deep-link race: a /?event=<id> open (e.g. tapped from the This Week
+      // page or a share link) can render the modal BEFORE this key arrives, so
+      // staticMapUrl() returned null and the venue static map was omitted (the
+      // "Get directions" fallback showed instead). Now that the key is here,
+      // re-render any open modal so the map appears — matching an in-app open.
+      if (typeof omCurrentId !== 'undefined' && omCurrentId
+          && document.getElementById('mov')?.classList.contains('on')) {
+        om(omCurrentId, { fromUrl: true, skipScrollReset: true, singleEvent: omSingleEvent });
+      }
     }
     // "~N tonight" trust-band stat (events still on tonight, ≥17:00 Belgium).
     // Only show it when there's actually something on, so it never reads "~0".
