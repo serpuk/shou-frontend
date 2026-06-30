@@ -1135,6 +1135,25 @@ body.ai-active .filters { position: static; box-shadow: none; }
   }
   .geo-prompt-accept { padding: 8px 14px; font-size: 12px; }
 }
+
+/* Persistent "use my location" chip — shown until we have precise geolocation,
+   so users (esp. on a phone, whose permission is separate from desktop) can opt
+   in and see venue distances. */
+.useloc-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 2px 0 18px; padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(70, 224, 210, 0.35);
+  background: rgba(70, 224, 210, 0.08);
+  color: var(--cyan); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s, transform .15s;
+}
+.useloc-btn:hover { background: rgba(70, 224, 210, 0.16); transform: translateY(-1px); }
+.useloc-btn:active { transform: translateY(0); }
+.useloc-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.useloc-btn[hidden] { display: none; }
+.useloc-hint { margin: -10px 0 18px; font-size: 12.5px; color: var(--bone3); max-width: 520px; }
+.useloc-hint[hidden] { display: none; }
 .gn-icon {
   flex-shrink: 0;
   width: 38px; height: 38px;
@@ -3396,6 +3415,15 @@ body.ai-active .cc-trust { display: none; }
     <button class="gn-cta" onclick="openSignInModal()" data-k="signIn">Sign in</button>
     <button class="gn-close" onclick="dismissGuestNudge()" aria-label="Dismiss">✕</button>
   </div>
+  <!-- Persistent "use my location" chip. Shown whenever we lack PRECISE browser
+       geolocation (so venue distances can't be shown); tapping requests it and
+       it hides once granted. Rescues users who dismissed the one-time banner or
+       are on a second device (e.g. their phone) whose permission is separate. -->
+  <button class="useloc-btn" id="useLocBtn" hidden onclick="requestPreciseFromUI()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    <span data-k="geoPromptAccept">Use my location</span>
+  </button>
+  <div class="useloc-hint" id="useLocHint" hidden></div>
   <div class="grid" id="eg"></div>
   <div class="empty" id="emp"><p style="font-size:40px;margin-bottom:12px">🎭</p><p data-k="ne">No events found.</p></div>
   <div class="lmw"><button class="lmb" onclick="loadMore()" data-k="lm">Load more events</button></div>
@@ -4523,6 +4551,7 @@ async function upgradeToPreciseLocation() {
     syncGeoState();
     // If the home grid is showing, re-sort so closer events float up.
     if (typeof applyF === 'function') applyF();
+    updateUseLocBtn();   // now precise → hide the "use my location" chip
     return true;
   } catch (err) {
     // Common errors: user denied (PERMISSION_DENIED=1), device couldn't get
@@ -4591,6 +4620,58 @@ function dismissGeoPrompt() {
   geoPromptDismissedThisSession = true;
   const el = document.getElementById('geoPrompt');
   if (el) el.hidden = true;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// PERSISTENT "Use my location" affordance
+//
+// The one-time geo banner only appears when permission is null (never asked).
+// Users who dismissed it, or who are on a second device (e.g. their phone,
+// whose permission is independent of desktop), have no in-app way back to
+// precise location — so venue distances never show. This chip is always
+// available whenever we DON'T have precise coords, and tapping it requests
+// them. It hides itself once precise location is active.
+// ──────────────────────────────────────────────────────────────────────
+const GEO_BLOCKED_HINT = {
+  en: 'Location is blocked for this site. Enable it in your browser settings, then tap again.',
+  fr: 'La localisation est bloquée pour ce site. Activez-la dans les réglages du navigateur, puis réessayez.',
+  nl: 'Locatie is geblokkeerd voor deze site. Schakel het in via je browserinstellingen en probeer opnieuw.',
+  de: 'Standort ist für diese Seite blockiert. Aktiviere ihn in den Browsereinstellungen und tippe erneut.',
+  es: 'La ubicación está bloqueada para este sitio. Actívala en los ajustes del navegador e inténtalo de nuevo.',
+  it: 'La posizione è bloccata per questo sito. Abilitala nelle impostazioni del browser e riprova.',
+  uk: 'Геолокацію заблоковано для цього сайту. Увімкніть її в налаштуваннях браузера та спробуйте знову.',
+};
+
+// Show the chip only when geolocation is supported AND we don't already have
+// precise coords. Safe to call any time (no-ops if the element isn't present).
+function updateUseLocBtn() {
+  const btn = document.getElementById('useLocBtn');
+  if (!btn) return;
+  const supported = typeof navigator !== 'undefined' && !!navigator.geolocation;
+  const precise = !!(userGeo && userGeo.precision === 'precise');
+  btn.hidden = !supported || precise;
+  if (!btn.hidden) {
+    const hint = document.getElementById('useLocHint');
+    if (hint) hint.hidden = true;   // reset any prior "blocked" message
+  }
+}
+
+// Tap handler. Requests precise location (gesture-driven → iOS-safe). On success
+// upgradeToPreciseLocation re-renders and we hide the chip; on failure (denied /
+// timeout / in-app browser) we surface a localized hint instead of failing silently.
+async function requestPreciseFromUI() {
+  const btn = document.getElementById('useLocBtn');
+  const hint = document.getElementById('useLocHint');
+  if (hint) hint.hidden = true;
+  if (btn) btn.disabled = true;
+  const ok = await upgradeToPreciseLocation();
+  if (btn) btn.disabled = false;
+  if (ok) {
+    updateUseLocBtn();   // now precise → hides the chip
+  } else if (hint) {
+    hint.textContent = GEO_BLOCKED_HINT[lang] || GEO_BLOCKED_HINT.en;
+    hint.hidden = false;
+  }
 }
 
 // Fetch user geo from the backend. Resolves with the geo object or null on error.
@@ -10060,8 +10141,10 @@ initVoiceInput();
 //   - 'granted' → silently call browser geo (no prompt; cached permission)
 //   - null      → show soft banner inviting user to enable precise location
 //   - 'denied'  → respect the choice, keep IP fallback, no banner
+updateUseLocBtn();   // show the chip right away (no precise coords yet on load)
 fetchUserGeo().then(() => {
   syncGeoState();
+  updateUseLocBtn();   // reflect whether we ended up with precise coords or not
   const perm = loadGeoPermission();
   if (perm === 'granted') {
     // Permission persists across sessions in the browser. Silent re-upgrade.
