@@ -3170,6 +3170,12 @@ body.ai-active .cc-trust { display: none; }
 .viewtoggle{display:inline-flex;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px}
 .viewtoggle button{border:none;background:none;color:var(--bone2);font:600 12.5px 'Inter';padding:7px 14px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.18s}
 .viewtoggle button.on{background:linear-gradient(120deg,var(--magenta),var(--coral));color:var(--ink)}
+/* My events Upcoming/Past sub-filter — segmented pill, mirrors .viewtoggle. */
+.mine-toggle{display:inline-flex;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:3px;margin:0 0 20px}
+.mine-toggle[hidden]{display:none}
+.mine-tab{border:none;background:none;color:var(--bone2);font:600 12.5px 'Inter';padding:7px 16px;border-radius:100px;cursor:pointer;transition:.18s}
+.mine-tab:hover{color:var(--bone)}
+.mine-tab.on{background:linear-gradient(120deg,var(--magenta),var(--coral));color:var(--ink)}
 #allHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap}
 #allHeader .ahead-l{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
 #allHeader .ahead-l .sc{align-self:flex-start}
@@ -3400,6 +3406,12 @@ body.ai-active .cc-trust { display: none; }
       <button class="on" data-v="list" onclick="setViewMode('list')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg> <span data-k="vList">List</span></button>
       <button data-v="map" onclick="setViewMode('map')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg> <span data-k="vMap">Map</span></button>
     </div>
+  </div>
+  <!-- My events sub-filter: Upcoming (default) vs Past. Visible only on the My
+       events view; toggled/synced by updateMineToggleUI(). -->
+  <div class="mine-toggle" id="mineToggle" hidden role="tablist" aria-label="Upcoming or past events">
+    <button class="mine-tab on" data-mv="upcoming" role="tab" onclick="setMineView('upcoming')" data-k="mineUpcoming">Upcoming</button>
+    <button class="mine-tab" data-mv="past" role="tab" onclick="setMineView('past')" data-k="minePast">Past</button>
   </div>
   <!-- Guest nudge banner: visible only to anonymous users on personal filters
        (liked/going) when they have saved items. Dismissable; remembered for 30
@@ -3919,6 +3931,35 @@ const T={
   uk:{ey:'наживо ввечері · бельгія · просто зараз',h1a:'які',h1b:'шоу',h1c:'у Бельгії',h1d:'сьогодні?',sub:'Скажи Shou, чого тобі хочеться. Він знайде найкращі вечори в Бельгії — твоєю мовою.',ab:'запитати ↗',c1:'техно сьогодні',c2:'концерти наживо',c3:'клубні ночі',c4:'фестивалі',c5:'безкоштовний вхід',aih:'пропозиції шоу',s1:'Подій',s2:'Міст',s3:'Джерел',s4:'Локацій',fl:'Фільтр:',fa:'Усі',fm:'Музика',fci:'Кіно',fth:'Мистецтво і театр',fsp:'Спорт',ffa:'Сім\'я',ffy:'Для тебе',fliked:'Уподобані',fgoing:'Іду',flive:'Зараз',atLive:'🔴 Триває зараз',neLive:'Подій зараз немає. Зайди трохи пізніше.',ca:'Усі міста',cNear:'📍 Поруч',ft:'🔥 У тренді',at:'Усі події',atMusic:'Музичні події',atCinema:'Кіно',atTheatre:'Мистецтво і театр',atSports:'Спортивні події',atFamily:'Сімейні події',atFY:'Рекомендовано для тебе',atL:'Твої уподобані події',atG:'Ти йдеш на',ne:'Подій не знайдено.',neFY:'Постав ♥ кільком подіям, щоб отримати персональні рекомендації.',neFYSub:'Що більше подобається, то кращі будуть рекомендації.',neL:'Натисни ♥ на події, щоб зберегти їх тут.',neG:'Натисни ○ на події, щоб позначити, що йдеш.',neLSignIn:'Увійди, щоб зберегти їх на всіх своїх пристроях.',nudgeGuestT:'Ти переглядаєш як гість',nudgeGuestB:'Увійди, щоб зберігати події на всіх пристроях',lm:'Завантажити ще',ld:'Завантаження шоу…',tk:'Купити квитки',vi:'Оригінал',xs:'Поділитися в X',fb2:'Поділитися у Facebook',cp:'Копіювати посилання',ne2:n=>`знайдено ${n} ${n===1?'подію':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,see:'Див. сайт',dir:'→ Маршрут',find:'Знайти квитки',search:'Шукати онлайн',descFallback:(n,v)=>`${n} у ${v}. Не пропусти цю захоплюючу подію!`,gdprT:'Коротка примітка про те, що ми зберігаємо',gdprB:'Шоу зберігає твої уподобані події, пошуки та події, які ти відкриваєш — щоб робити рекомендації релевантними і покращувати каталог. Анонімно, якщо ти не увійшов(-ла) в акаунт. Ми також використовуємо твоє приблизне місцезнаходження (за IP), щоб показувати події поруч. Ніколи не продаємо й не передаємо.',gdprY:'Зрозуміло',gdprN:'Дізнатися більше',signIn:'Увійти',signOut:'Вийти',siT:'Увійти в шоу',siS:'Ми надішлемо magic-посилання на email. Без пароля — клікни на посилання і ти всередині.',siP:'ти@приклад.com',siB:'Надіслати посилання',siSending:'Надсилання…',siCT:'Перевір пошту',siCB:'Ми надіслали посилання для входу на',siCH:'Відкрий посилання на цьому пристрої, щоб увійти. Посилання дійсне 1 годину.',siErrInvalidEmail:'Введи дійсну email-адресу.',siErrFailed:'Не вдалося надіслати посилання. Спробуй ще раз.',resultsFor:(q,n)=>`Результати для "${q}" · ${n} ${n===1?'подія':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'події':'подій'}`,noMatchesFor:q=>`Немає результатів для "${q}"`,clearSearchBtn:'Очистити пошук ✕',askThinking:'Шукаю в каталозі Бельгії…',sectionResultsFor:q=>`Результати для "${q}"`,liveLabel:'НАЖИВО',nearMeLabel:'Поруч з тобою',showing:'Показую',going:'Іду',goingChip:'ЙДУ',goingTo:'Йде на',noGoersYet:'Поки ніхто не позначив, що йде.',share:"Поділитися",save:"Зберегти",saved:"Збережено",signInToGo:"Увійди, щоб відстежувати події, на які ти йдеш",voiceListening:"Слухаю…",geoPromptTitle:"Знайди події ближче до тебе",geoPromptBody:"Дозволь доступ до місцезнаходження, щоб ми могли показати, що справді поруч — не лише в твоєму IP-регіоні.",geoPromptAccept:"Використати моє місцезнаходження",geoPromptDismiss:"Не зараз",trust:"Улюблене серед любителів нічного життя по всій Бельгії",trustEvents:"подій",trustFresh:"Оновлюється щодня",tonight:"сьогодні ввечері",tt:"Розклад",closed:"Зачинено",upDates:"Найближчі дати",surprise:"Здивуй мене сьогодні",myEv:"Мої події",orbT:"Шоу слухає",orbS:"запитуй будь-якою мовою · на основі ШІ",caw:"безкоштовний afterwork",askPh1:"Запитай Shou про що завгодно…",askPh2:"«камерний джаз в Антверпені цієї п'ятниці»",neMineT:"Поки немає збережених подій.",neMine:"Познач події «Цікаво» або «Іду», щоб зберегти їх тут.",vList:"Список",vMap:"Карта",mapEvents:"подій"}
 };
 
+// "My events" Upcoming/Past sub-filter labels — injected into every language
+// object so the existing data-k / applyI18n machinery translates them on
+// language change (avoids hand-editing the long T lines above).
+(function(){
+  const L = {
+    en:['Upcoming','Past'], fr:['À venir','Passés'], nl:['Aankomend','Voorbij'],
+    de:['Bevorstehend','Vergangen'], es:['Próximos','Pasados'],
+    it:['In arrivo','Passati'], uk:['Майбутні','Минулі'],
+  };
+  // Empty-state lines when the user HAS saved events but none in the current
+  // sub-view ([noUpcoming, noPast]).
+  const E = {
+    en:['No upcoming events — switch to Past to see ones you’ve been to.','No past events yet.'],
+    fr:['Aucun événement à venir — passez à « Passés » pour voir ceux que vous avez faits.','Aucun événement passé pour le moment.'],
+    nl:['Geen aankomende events — schakel naar Voorbij voor wat je hebt bijgewoond.','Nog geen voorbije events.'],
+    de:['Keine bevorstehenden Events — wechsle zu Vergangen für Besuchtes.','Noch keine vergangenen Events.'],
+    es:['No hay próximos eventos — cambia a Pasados para ver los que ya viste.','Aún no hay eventos pasados.'],
+    it:['Nessun evento in arrivo — passa a Passati per vedere quelli a cui sei stato.','Ancora nessun evento passato.'],
+    uk:['Немає майбутніх подій — перемкніться на «Минулі», щоб побачити відвідані.','Минулих подій ще немає.'],
+  };
+  Object.keys(T).forEach(l => {
+    const m = L[l] || L.en, e = E[l] || E.en;
+    T[l].mineUpcoming = m[0];
+    T[l].minePast     = m[1];
+    T[l].mineNoUpcoming = e[0];
+    T[l].mineNoPast     = e[1];
+  });
+})();
+
 // Initial language resolution: localStorage (explicit user choice from previous
 // session) > navigator.language (heuristic on first visit) > 'en' (fallback).
 // localStorage covers all 7 supported langs incl. 'en' so an explicit pick of
@@ -4051,6 +4092,7 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing(),ni=loadNI();
+let mineView='upcoming';   // "My events" sub-view: 'upcoming' (default) | 'past'
 let rsvpMenuId=null;   // event id the shared RSVP popover currently targets
 // Trending shelf source — kept SEPARATE from `all`. `all` is proximity-/
 // recommendation-selected (near-me, For You), but Trending must stay
@@ -4442,6 +4484,42 @@ function hasPassed(e) {
   const start = new Date(`${e.date}T${tm}`);
   if (isNaN(start.getTime())) return false;
   return start.getTime() < Date.now() - 4 * 60 * 60 * 1000;
+}
+
+// Today's local calendar date as YYYY-MM-DD (for date-only comparisons).
+function todayLocalISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Date-aware "is this event in the past?" — used to split the My events view into
+// Upcoming vs Past. Stricter than hasPassed (which only fires when a START TIME
+// exists): a past calendar DAY counts as past even with no/odd time, today is
+// judged by time (4h grace via hasPassed), future days are upcoming. Unknown
+// date → treated as upcoming so we never hide an event we can't place.
+function isPastEvent(e) {
+  if (!e.date) return false;
+  const today = todayLocalISO();
+  if (e.date < today) return true;
+  if (e.date > today) return false;
+  return hasPassed(e);   // same day → ended (>4h ago) counts as past
+}
+
+// Switch the My events sub-view and re-render.
+function setMineView(v) {
+  if (v !== 'upcoming' && v !== 'past') return;
+  if (mineView === v) return;
+  mineView = v;
+  updateMineToggleUI();
+  applyF();
+}
+
+// Reflect actF + mineView in the Upcoming/Past toggle (visible only on My events).
+function updateMineToggleUI() {
+  const el = document.getElementById('mineToggle');
+  if (!el) return;
+  el.hidden = actF !== 'mine';
+  el.querySelectorAll('.mine-tab').forEach(b => b.classList.toggle('on', b.dataset.mv === mineView));
 }
 
 // Render a live badge if the event is currently in the ±4h "happening now-ish"
@@ -6110,6 +6188,7 @@ function dedupeByContent(list){
 
 function applyF(){
   reconcileRsvp();   // collapse any legacy Interested+Going overlap to one state
+  updateMineToggleUI();   // show/sync the Upcoming/Past toggle on the My events view
   // When AI search is active, only events in aiResultIds pass the filter.
   // aiResultIds is set by the /api/search response. While a search is in
   // flight, we don't render the old results (the skeleton UI takes over).
@@ -6132,6 +6211,12 @@ function applyF(){
     // Hide past events and anything the user marked "Not interested" from
     // browse/recommended (kept in Live/My-events/AI which own their own scope).
     if (actF !== 'live' && actF !== 'mine' && !aiQ && (hasPassed(e) || ni.has(e.id))) return false;
+    // "My events" splits into Upcoming (default) vs Past. Membership = Interested
+    // or Going; then keep only the side matching the active sub-view.
+    if (actF === 'mine') {
+      if (!(lk.has(e.id) || gn.has(e.id))) return false;
+      return mineView === 'past' ? isPastEvent(e) : !isPastEvent(e);
+    }
     // Recommended is discovery: drop events you're already Going to (Interested
     // is already excluded server-side by get_recommendations). They live in "My
     // events", so re-recommending them is noise.
@@ -6180,10 +6265,12 @@ function applyF(){
     comparator = (a, b) => (aiRank.get(a.id) ?? 9999) - (aiRank.get(b.id) ?? 9999);
   } else if (isLive || isMine) {
     // Time-based filters: chronological. Tiebreak by time within same date.
+    // Past "My events" reads newest-first (most recently-ended at the top).
+    const dir = (isMine && mineView === 'past') ? -1 : 1;
     comparator = (a, b) => {
       const d = String(a.date || '').localeCompare(String(b.date || ''));
-      if (d !== 0) return d;
-      return String(a.time || '').localeCompare(String(b.time || ''));
+      const c = d !== 0 ? d : String(a.time || '').localeCompare(String(b.time || ''));
+      return c * dir;
     };
   } else if (personalizedSel) {
     // Recommended-for-you: honor get_recommendations' own rec_score ordering.
@@ -6345,13 +6432,21 @@ function renderAll(){
       empMsg.textContent = t('neLive');
       empMsg.dataset.k = 'neLive';
     } else if (isMine) {
-      // Friendly, localized empty state: headline + how-to-save hint, plus a
-      // sign-in line for guests (their saves live in this browser only).
-      const signin = !currentSession
-        ? `<span style="color:var(--bone3);font-size:13px;display:block;margin-top:6px">${t('neLSignIn')}</span>`
-        : '';
-      empMsg.innerHTML = `${t('neMineT')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neMine')}</span>${signin}`;
-      empMsg.dataset.k = '';
+      if ((lk.size + gn.size) > 0) {
+        // They DO have saved events — just none in the current sub-view. Point
+        // them at the other tab instead of the "you haven't saved anything" copy.
+        const key = mineView === 'past' ? 'mineNoPast' : 'mineNoUpcoming';
+        empMsg.textContent = t(key);
+        empMsg.dataset.k = key;   // exists in T → re-translates on language change
+      } else {
+        // Friendly, localized empty state: headline + how-to-save hint, plus a
+        // sign-in line for guests (their saves live in this browser only).
+        const signin = !currentSession
+          ? `<span style="color:var(--bone3);font-size:13px;display:block;margin-top:6px">${t('neLSignIn')}</span>`
+          : '';
+        empMsg.innerHTML = `${t('neMineT')}<br><span style="color:var(--bone3);font-size:13px;display:inline-block;margin-top:8px">${t('neMine')}</span>${signin}`;
+        empMsg.dataset.k = '';
+      }
     } else {
       empMsg.textContent = t('ne');
       empMsg.dataset.k = 'ne';
