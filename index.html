@@ -8130,12 +8130,17 @@ function mRecurrenceHtml(e){
   // 2024-01-01 was a Monday → index 0..6 = Mon..Sun for localized weekday names.
   const dayName=i=>{ try{ return new Date(2024,0,1+i).toLocaleDateString(loc,{weekday:'long'}); }catch{ return order[i]; } };
   const hhmm=s=>String(s||'').slice(0,5);
+  // A day's hours can be a single {start,end} OR an array of slots (e.g. a venue
+  // open 10:00–12:00 AND 14:00–16:00). Reading hours.start alone dropped the
+  // array form, so multi-slot days rendered as "Closed". Handle both, joining slots.
+  const slots=h=>{const a=Array.isArray(h)?h:(h?[h]:[]);return a.filter(x=>x&&x.start).map(x=>hhmm(x.start)+' – '+hhmm(x.end)).join(', ');};
   let any=false;
   const rows=order.map((d,i)=>{
     const info=days[d];
-    const open=!!(info && info.is_open && info.hours && info.hours.start);
+    const hrsText=(info && info.is_open)?slots(info.hours):'';
+    const open=!!hrsText;
     if(open) any=true;
-    const hrs=open?(hhmm(info.hours.start)+' – '+hhmm(info.hours.end)):t('closed');
+    const hrs=open?hrsText:t('closed');
     return `<div class="rt-row${open?'':' rt-closed'}"><span class="rt-day">${dayName(i)}</span><span class="rt-hrs">${hrs}</span></div>`;
   }).join('');
   if(!any) return '';
