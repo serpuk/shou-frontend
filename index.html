@@ -9130,6 +9130,17 @@ const SAMPLE=[
   {id:'s7',name:'Kompass Klub · Resident Night',seg:'Music',genre:'Electronic',city:'Ghent',venue:'Kompass Klub',date:'2025-05-03',time:'23:00',img:null,url:'https://www.kompassklub.com',mn:15,mx:22,desc:'Ghent\'s underground techno cathedral. Industrial space, uncompromising sound, a 12-hour journey through the deepest electronic currents.',pop:87,likes:1876},
   {id:'s8',name:'Brussels Jazz Marathon',seg:'Music',genre:'Jazz',city:'Brussels',venue:'Multiple Venues',date:'2025-05-23',time:'all day',img:null,url:'https://www.brusselsjazzmarathon.be',mn:0,mx:0,desc:"100+ concerts across 20+ stages celebrating every jazz style from traditional to contemporary fusion.",pop:80,likes:1654},
 ];
+// Sample events are the offline fallback (shown only when the live catalog
+// fetch fails). Their dates were hardcoded to fixed 2025 days, which went stale
+// — by 2026 every sample was in the past, so hasPassed() filtered them out and
+// the "Showing sample events" fallback rendered a near-empty grid. Assign dates
+// relative to load time instead (spread across the coming weeks, popularity
+// order preserved) so the fallback always shows a full, plausible set.
+SAMPLE.forEach((e, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + 2 + i * 5);   // +2, +7, +12 … days out
+  e.date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+});
 
 // --------------------------------------------------------------------------
 // GDPR / CONSENT BANNER
