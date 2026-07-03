@@ -6179,6 +6179,56 @@ function betterDup(a,b){
   return (a.pop||0)>=(b.pop||0)?a:b;
 }
 function hasRealTime(t){ return !!(t&&t!=='TBA'&&t!=='null'); }
+// Trending-shelf series collapse: per-day listings of the same festival/run
+// ("Rock Werchter 2026 | Thursday/Friday/…" — one Ticketmaster event per day
+// ticket) all chart together during festival week and flood the 8-slot shelf
+// with near-identical cards. Collapse each series to ONE card — the EARLIEST
+// still-upcoming day (callers pre-filter passed events, so the shown day
+// auto-advances as the festival runs) — ranked by the series' most popular
+// day so it doesn't sink. Deliberately conservative: only a trailing day-ish
+// segment (weekday EN/NL/FR/DE, "Day N", "Weekend N", optionally combined)
+// after a |/– separator is stripped, and rows must share a venue — so
+// "Artist | Support Act" never merges. SHELF ONLY: the main grid and search
+// keep per-day cards (there, picking the exact day is the point).
+const _WD_FULL = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag';
+const _WD_ABBR = '(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(?:\\s*\\/\\s*(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun))?';
+const _TIER    = '(?:\\d+\\s*[-\\u2013]?\\s*)?day\\s*(?:tickets?|pass(?:es)?)|weekend\\s*(?:pass(?:es)?|tickets?)|combi\\s*tickets?|vip(?:\\s*packages?)?|early\\s*bird|pass(?:es)?|tickets?';
+// One trailing "- X" segment: a weekday (full or FRI/SAT-style abbrev pair), a
+// "Day N"/"Weekend N" marker, or a Ticketmaster ticket-tier token ("DAY
+// TICKET", "2-DAY PASS FRI/SAT"). Stripped REPEATEDLY by seriesBase() so
+// "… - DAY TICKET - DAY TICKET" collapses too (mirrors the backend's
+// surpriseBaseTitle tier-strip).
+const _SERIES_SEG = new RegExp(
+  '\\s*[|\\u2013\\u2014-]\\s*(?:' +
+    '(?:' + _TIER + ')(?:\\s+' + _WD_ABBR + ')?' +
+    '|(?:weekend|week-?end)\\s*\\d+(?:\\s*[|\\u2013\\u2014-]?\\s*(?:' + _WD_FULL + '|' + _WD_ABBR + '))?' +
+    '|(?:' + _WD_FULL + ')' +
+    '|' + _WD_ABBR +
+    '|(?:day|dag|jour|tag)\\s*\\d+' +
+  ')\\s*$', 'i');
+function seriesBase(name){
+  let s = String(name || ''), prev;
+  do { prev = s; s = s.replace(_SERIES_SEG, ''); } while (s !== prev);
+  return s;
+}
+function collapseDaySeries(list){
+  const groups=new Map(), order=[];
+  for(const e of (list||[])){
+    const name=String(e.name||'');
+    const base=seriesBase(name);
+    const isSeries = base!==name && normTitleForDedupe(base).length>=4;
+    const key = isSeries
+      ? 's|'+normTitleForDedupe(base)+'|'+String(e.venue||'').toLowerCase().trim()
+      : 'e|'+e.id;
+    const g=groups.get(key);
+    if(!g){ groups.set(key,{ev:e,maxPop:e.pop||0}); order.push(key); }
+    else{
+      g.maxPop=Math.max(g.maxPop,e.pop||0);
+      if(String(e.date||'9999')<String(g.ev.date||'9999')) g.ev=e;   // earliest upcoming day wins
+    }
+  }
+  return order.map(k=>groups.get(k)).sort((a,b)=>b.maxPop-a.maxPop).map(g=>g.ev);
+}
 function dedupeByContent(list){
   const best=new Map(), order=[];
   for(const e of (list||[])){
@@ -6536,7 +6586,10 @@ function renderAll(){
     const trendingSrc = trendingAll.length ? trendingAll : filtered;
     // Drop already-passed events here too (the shelf draws from the popular
     // pool, not `filtered`, so it doesn't inherit applyF's past-event guard).
-    const trendingPool = [...trendingSrc].filter(e => !hasPassed(e)).sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    // Then collapse per-day festival listings (Rock Werchter Thu/Fri/Sat/Sun)
+    // to one card each — earliest upcoming day, ranked by the series' best
+    // popularity — so a festival week can't flood the shelf's few slots.
+    const trendingPool = collapseDaySeries([...trendingSrc].filter(e => !hasPassed(e)));
     const trending = trendingPool.slice(0, TRENDING_SHELF_SIZE);
     // Preserve the horizontal scroll across re-render: a like/going toggle
     // calls renderAll(), which rebuilds this shelf — without this the strip
