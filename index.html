@@ -4390,8 +4390,25 @@ function pushToSearchHistory(query) {
 // Without normalization, `${e.time}` in templates renders the literal
 // string "null". This mirrors the same defaults fetchEvts applies for
 // catalog events so AI-merged events look identical in the UI.
+// SECURITY (stored-XSS defense): card/modal builders interpolate these display
+// fields into innerHTML template literals (`${e.name}` etc.). Ingest sources are
+// partly community-published (UiTdatabank), so a raw '<img src=x onerror=...>' in
+// a title would execute in every visitor's browser — with a live auth session to
+// steal. Escaping at the two shapers — the single choke point where API/ingest
+// data enters `all[]` — neutralizes every current AND future render site at once.
+// Free-text externally-sourced fields only; category slugs (used for filtering)
+// stay raw. Non-HTML consumers (document.title text, encodeURIComponent URLs)
+// tolerate the entities harmlessly. Bonus: legit titles like "<Breaking Waves>"
+// previously rendered as an invisible unknown element — now they show correctly.
+function escEventFields(o) {
+  for (const k of ['name', 'desc', 'venue', 'city', 'rawCity', 'genre']) {
+    if (typeof o[k] === 'string') o[k] = escapeHtml(o[k]);
+  }
+  return o;
+}
+
 function shapeAIEvent(e) {
-  return {
+  return escEventFields({
     ...e,
     // API ships canonical city in `e.city` (canonical_city from venues table,
     // populated by trigger). Falls back to raw rawCity then 'Belgium' if
@@ -4413,7 +4430,7 @@ function shapeAIEvent(e) {
     desc:    e.desc || (typeof t === 'function' && typeof t('descFallback') === 'function'
               ? t('descFallback')(e.name || 'This event', e.venue || 'Belgium')
               : `Live at ${e.venue || 'Belgium'}.`),
-  };
+  });
 }
 let aiHistory = loadSearchHistory();
 
@@ -5158,7 +5175,7 @@ function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'
 // the cents→euros price conversion and sources normalization that
 // shapeAIEvent does NOT do.
 function shapeCatalogEvent(e){
-  return {
+  return escEventFields({
       id:e.id,
       name:e.name||e.title||'Untitled',
       // Fallback chain for the localized category label shown in the pill:
@@ -5213,7 +5230,7 @@ function shapeCatalogEvent(e){
       isTranslated:e.isTranslated,
       availableLangs:e.availableLangs||[],
       going_count: 0   // populated by fetchGoingCounts() below
-  };
+  });
 }
 
 // Country-wide "Most Popular" for the Trending shelf. Deliberately sends NO
