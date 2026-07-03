@@ -5295,6 +5295,16 @@ async function fetchEvts(){
     if (totals.categories && typeof totals.categories === 'object') {
       for (const [slug, n] of Object.entries(totals.categories)) slugTotals.set(slug, Number(n) || 0);
     }
+    // Re-hydrate the recommendation set. fetchEvts REPLACES `all` with the top
+    // popular events, but it runs several times per load (initial + geo flip +
+    // lang switch). A re-run AFTER fetchForYou has hydrated the recs would drop
+    // every recommended event that isn't also in the popular set — collapsing
+    // "Recommended for you" to just the handful of popular overlaps (e.g. the
+    // 4 Ticketmaster concerts that happen to rank in both). Re-add them here,
+    // in the current language, before applyF so the personalized grid stays full.
+    if (forYouIds && forYouIds.size > 0) {
+      try { await hydrateEventsByIds([...forYouIds.keys()]); } catch (_) {}
+    }
     applyF();
     renderTabCounts();
     // If the page was loaded with ?event=<id>, auto-open that event's modal.
