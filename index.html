@@ -6192,7 +6192,7 @@ function hasRealTime(t){ return !!(t&&t!=='TBA'&&t!=='null'); }
 // keep per-day cards (there, picking the exact day is the point).
 const _WD_FULL = 'monday|tuesday|wednesday|thursday|friday|saturday|sunday|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag';
 const _WD_ABBR = '(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(?:\\s*\\/\\s*(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun))?';
-const _TIER    = '(?:\\d+\\s*[-\\u2013]?\\s*)?day\\s*(?:tickets?|pass(?:es)?)|weekend\\s*(?:pass(?:es)?|tickets?)|combi\\s*tickets?|vip(?:\\s*packages?)?|early\\s*bird|pass(?:es)?|tickets?';
+const _TIER    = '(?:\\d+\\s*[-\\u2013]?\\s*)?day\\s*(?:tickets?|pass(?:es)?)|weekend\\s*(?:pass(?:es)?|tickets?)|combi\\s*tickets?|vip(?:\\s*packages?)?|early\\s*bird|terras|terrace|hospitality|premium\\s*packages?|pass(?:es)?|tickets?';
 // One trailing "- X" segment: a weekday (full or FRI/SAT-style abbrev pair), a
 // "Day N"/"Weekend N" marker, or a Ticketmaster ticket-tier token ("DAY
 // TICKET", "2-DAY PASS FRI/SAT"). Stripped REPEATEDLY by seriesBase() so
@@ -6202,7 +6202,7 @@ const _SERIES_SEG = new RegExp(
   '\\s*[|\\u2013\\u2014-]\\s*(?:' +
     '(?:' + _TIER + ')(?:\\s+' + _WD_ABBR + ')?' +
     '|(?:weekend|week-?end)\\s*\\d+(?:\\s*[|\\u2013\\u2014-]?\\s*(?:' + _WD_FULL + '|' + _WD_ABBR + '))?' +
-    '|(?:' + _WD_FULL + ')' +
+    '|(?:' + _WD_FULL + ')(?:\\s+(?:' + _TIER + '))?' +
     '|' + _WD_ABBR +
     '|(?:day|dag|jour|tag)\\s*\\d+' +
   ')\\s*$', 'i');
