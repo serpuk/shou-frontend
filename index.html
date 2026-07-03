@@ -5585,7 +5585,14 @@ async function hydrateEventsByIds(eventIds) {
       if (!r.ok) { console.warn('hydrateEventsByIds HTTP', r.status); return []; }
       return (await r.json()).events || [];
     }));
-    const newEvents = results.flat().filter(e => !existing.has(e.id)).map(shapeAIEvent);
+    // Re-snapshot the guard AFTER the awaits: `existing` above was captured
+    // before the network wait, and another writer (e.g. an AI-search response
+    // merge) may have appended some of these ids to `all` in the meantime.
+    // Filtering against the stale set appended them AGAIN — duplicate ids in
+    // `all` → the same event rendered twice in search results (seen live:
+    // Surprise-me showing BTS Afterparty / Expat Cinema twice).
+    const fresh = new Set(all.map(e => e.id));
+    const newEvents = results.flat().filter(e => e && e.id && !fresh.has(e.id)).map(shapeAIEvent);
     if (newEvents.length === 0) return;
     all = all.concat(newEvents);
     (async () => {
@@ -6322,6 +6329,14 @@ function applyF(){
   // search results: /api/search already deduped them by stable SOURCE titles, so
   // re-deduping here on the TRANSLATED titles would vary the count per language.
   if (!aiQ) filtered = dedupeByContent(filtered);
+  // AI mode still gets an ID-level dedupe (language-stable, so the per-language
+  // count concern doesn't apply): if a concurrent writer ever slips the same id
+  // into `all` twice (the hydrateEventsByIds stale-guard race), the grid must
+  // not render twin cards for one event.
+  else {
+    const _seenIds = new Set();
+    filtered = filtered.filter(e => _seenIds.has(e.id) ? false : (_seenIds.add(e.id), true));
+  }
 
   // SORT LOGIC
   // ---------------------------------------------------------------------
@@ -7678,7 +7693,11 @@ async function maybeOpenEventFromUrl() {
       const d = await r.json();
       const ev = (d.events || []).find(x => x.id === eventId);
       if (ev) {
-        all.push(shapeCatalogEvent(ev));
+        // Re-check AFTER the await: the catalog fetch may have landed (and
+        // included this event) while we were fetching — pushing blindly would
+        // put the same id in `all` twice (same stale-guard race as
+        // hydrateEventsByIds).
+        if (!all.some(x => x.id === eventId)) all.push(shapeCatalogEvent(ev));
         om(eventId, { fromUrl: true, singleEvent: true });
         return;
       }
