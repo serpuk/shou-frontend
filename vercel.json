@@ -6,6 +6,10 @@
       "destination": "/privacy.html"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/",
       "has": [
         { "type": "query", "key": "event", "value": "(?<eventId>.+)" },
