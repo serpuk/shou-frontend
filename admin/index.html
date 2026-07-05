@@ -425,6 +425,31 @@
     <div class="panel-head"><div class="panel-title">Recent searches</div><div class="panel-meta">with result counts</div></div>
     <div id="tbl-search-detail" class="loading">loading…</div>
   </div>
+
+  <div class="sec-head"><div class="sec-title">Concierge (hotel demo)</div><div class="sec-meta">sample page usage · app.shou.be/hotels/sample</div></div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Searches</div><div class="stat-value loading" id="cc-searches">—</div></div>
+    <div class="stat"><div class="stat-label">Click-throughs</div><div class="stat-value loading" id="cc-opens">—</div></div>
+    <div class="stat"><div class="stat-label">Tickets clicks</div><div class="stat-value loading" id="cc-tickets">—</div></div>
+    <div class="stat"><div class="stat-label">Unique visitors</div><div class="stat-value loading" id="cc-visitors">—</div></div>
+  </div>
+
+  <div class="two-col" style="margin-bottom: 12px;">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Top queries</div><div class="panel-meta">what guests ask</div></div>
+      <div id="cc-queries" class="loading">loading…</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Top clicked events</div><div class="panel-meta">opens + tickets</div></div>
+      <div id="cc-events" class="loading">loading…</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">By source (per hotel page)</div><div class="panel-meta">separates automatically as hotels are added</div></div>
+    <div id="cc-sources" class="loading">loading…</div>
+  </div>
 </main>
 
 <footer>shou admin · v1 · data via supabase</footer>
@@ -1261,12 +1286,47 @@ async function loadSearchDetail() {
   }).join('')}</tbody></table>`;
 }
 
+async function loadConcierge() {
+  if (!sb) return;
+  let d;
+  try {
+    const res = await sb.rpc('admin_sample_usage', { p_since: rangeStartISO() });
+    if (res.error) throw res.error;
+    d = res.data || {};
+  } catch (e) {
+    // RPC not created yet (or error) — hint instead of breaking the dashboard.
+    ['cc-searches','cc-opens','cc-tickets','cc-visitors'].forEach(id => { const el=document.getElementById(id); if(el){el.classList.remove('loading');el.textContent='—';} });
+    document.getElementById('cc-queries').innerHTML = '<div class="empty">admin_sample_usage RPC not found — run schema-sample-analytics.sql in Supabase</div>';
+    document.getElementById('cc-events').innerHTML = '<div class="empty">—</div>';
+    document.getElementById('cc-sources').innerHTML = '<div class="empty">—</div>';
+    return;
+  }
+  const t = d.totals || {};
+  const setStat = (id, v) => { const el = document.getElementById(id); el.classList.remove('loading'); el.textContent = fmt(v || 0); };
+  setStat('cc-searches', t.searches); setStat('cc-opens', t.opens); setStat('cc-tickets', t.tickets); setStat('cc-visitors', t.visitors);
+
+  const q = d.top_queries || [];
+  document.getElementById('cc-queries').innerHTML = q.length
+    ? `<table><thead><tr><th>Query</th><th class="num">Times</th><th class="num">Visitors</th></tr></thead><tbody>${q.map(x => `<tr><td>${escapeHtml(x.query)}</td><td class="num">${x.times}</td><td class="num muted">${x.visitors}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">no searches yet</div>';
+
+  const ev = d.top_events || [];
+  document.getElementById('cc-events').innerHTML = ev.length
+    ? `<table><thead><tr><th>Event</th><th class="num">Opens</th><th class="num">Tickets</th></tr></thead><tbody>${ev.map(x => `<tr><td>${escapeHtml(x.title)}</td><td class="num">${x.opens}</td><td class="num muted">${x.tickets}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">no click-throughs yet</div>';
+
+  const src = d.by_source || [];
+  document.getElementById('cc-sources').innerHTML = src.length
+    ? `<table><thead><tr><th>Source</th><th class="num">Searches</th><th class="num">Opens</th><th class="num">Tickets</th><th class="num">Visitors</th></tr></thead><tbody>${src.map(x => `<tr><td>${escapeHtml(x.source)}</td><td class="num">${x.searches}</td><td class="num">${x.opens}</td><td class="num">${x.tickets}</td><td class="num muted">${x.visitors}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">no activity yet</div>';
+}
+
 async function reloadAll() {
   if (!sb) return;
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
