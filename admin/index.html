@@ -450,6 +450,19 @@
     <div class="panel-head"><div class="panel-title">By source (per hotel page)</div><div class="panel-meta">separates automatically as hotels are added</div></div>
     <div id="cc-sources" class="loading">loading…</div>
   </div>
+
+  <div class="sec-head"><div class="sec-title">Hotel applications</div><div class="sec-meta">pilot sign-ups · shou.be/hotels/apply</div></div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Total applications</div><div class="stat-value loading" id="ha-total">—</div></div>
+    <div class="stat"><div class="stat-label">Last 7 days</div><div class="stat-value loading" id="ha-week">—</div></div>
+    <div class="stat"><div class="stat-label">Last 30 days</div><div class="stat-value loading" id="ha-month">—</div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Recent applications</div><div class="panel-meta">most recent 200 · newest first · not date-filtered</div></div>
+    <div id="ha-list" class="loading">loading…</div>
+  </div>
 </main>
 
 <footer>shou admin · v1 · data via supabase</footer>
@@ -1321,12 +1334,39 @@ async function loadConcierge() {
     : '<div class="empty">no activity yet</div>';
 }
 
+async function loadApplications() {
+  if (!sb) return;
+  let rows;
+  try {
+    const res = await sb.rpc('admin_hotel_applications');
+    if (res.error) throw res.error;
+    rows = res.data || [];
+  } catch (e) {
+    ['ha-total','ha-week','ha-month'].forEach(id => { const el=document.getElementById(id); if(el){el.classList.remove('loading');el.textContent='—';} });
+    document.getElementById('ha-list').innerHTML = '<div class="empty">admin_hotel_applications RPC not found — run schema-hotel-applications.sql in Supabase</div>';
+    return;
+  }
+  const now = Date.now();
+  const within = days => rows.filter(r => (now - new Date(r.created_at).getTime()) <= days * 86400000).length;
+  const setStat = (id, v) => { const el = document.getElementById(id); el.classList.remove('loading'); el.textContent = fmt(v); };
+  setStat('ha-total', rows.length); setStat('ha-week', within(7)); setStat('ha-month', within(30));
+
+  document.getElementById('ha-list').innerHTML = rows.length
+    ? `<table><thead><tr><th>When</th><th>Hotel</th><th>Contact</th><th>Type</th><th class="num">Rooms</th></tr></thead><tbody>${rows.map(r => {
+        const when = new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        const site = r.website ? ` <a href="${escapeHtml(r.website)}" target="_blank" rel="noopener" title="${escapeHtml(r.website)}" style="text-decoration:none">↗</a>` : '';
+        const msg  = r.message ? ` title="${escapeHtml(r.message)}"` : '';
+        return `<tr${msg}><td class="muted">${when}</td><td><b>${escapeHtml(r.hotel_name)}</b>${site}</td><td>${escapeHtml(r.contact_name || '')} · <a href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a></td><td class="muted">${escapeHtml(r.hotel_type || '—')}</td><td class="num">${r.rooms == null ? '—' : fmt(r.rooms)}</td></tr>`;
+      }).join('')}</tbody></table>`
+    : '<div class="empty">no applications yet</div>';
+}
+
 async function reloadAll() {
   if (!sb) return;
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
