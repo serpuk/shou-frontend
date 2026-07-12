@@ -3220,11 +3220,14 @@ body.ai-active .cc-trust { display: none; }
      RLS, ensure_profile RPC). Loaded from jsDelivr, version pinned to avoid
      surprise breakages. The anon key is safe to expose: it's the public role,
      RLS scopes all access on the server side. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49/dist/umd/supabase.min.js"></script>
-<!-- CDN fallback: if jsdelivr is down or blocked (ad/script blocker, network),
-     synchronously load the same bundle from unpkg before the app init runs.
-     Classic document.write fallback — only fires when the primary failed. -->
-<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.49/dist/umd/supabase.min.js"><\/script>')</script>
+<!-- Self-hosted, same-origin: supabase-js is a critical dependency, so it's
+     served from our own domain (vendor/) rather than a public CDN. This
+     removes the whole class of "app won't load" failures — CDN outages, and
+     ad/privacy blockers or slow mobile connections blocking jsdelivr/unpkg
+     (which broke the app for real deep-link visitors; the old document.write
+     CDN fallback was itself unreliable on mobile). To update: replace the
+     file with the same @supabase/supabase-js UMD bundle at the new version. -->
+<script src="/vendor/supabase-js.min.js"></script>
 <script>try{if(new URLSearchParams(location.search).has('event')){document.documentElement.classList.add('deeplink');setTimeout(function(){document.documentElement.classList.remove('deeplink');},8000);}}catch(e){}</script>
 </head>
 <body>
