@@ -5727,7 +5727,7 @@ function updateCityPillLabel() {
 function goHome() {
   const mov = document.getElementById('mov');
   if (mov?.classList.contains('on')) {
-    cm2();
+    cm2(true);   // force home — never history.back() out of the app
   }
   // Filter tabs were removed in the concierge redesign, so .fb[data-c="all"]
   // no longer exists — sf() tolerates a null button and just resets actF.
@@ -7627,7 +7627,11 @@ function om(id, _opts){
 
 function cm(e){if(e.target===document.getElementById('mov'))cm2();}
 
-function cm2(){
+// forceHome=true (the logo / "go home") always lands on the app home with a
+// clean URL. Without it (× button, backdrop, swipe-down) the modal "returns
+// whence you came" via history.back() — right for closing, wrong for Home,
+// because a deep-linked visitor's "back" isn't the home screen.
+function cm2(forceHome){
   document.getElementById('mov').classList.remove('on');
   // Reset the swipe track to center and clear neighbor previews so a reopen
   // starts clean (no leftover transform or stale neighbor content).
@@ -7658,16 +7662,19 @@ function cm2(){
   const currentParams = new URLSearchParams(window.location.search);
   if (currentParams.has('event') && !urlRoutingSelfDriven) {
     const cameFromShou = /^https:\/\/([a-z0-9-]+\.)?shou\.be\//i.test(document.referrer);
-    if (modalPushedHistory) {
+    if (!forceHome && modalPushedHistory) {
       modalPushedHistory = false;
       // popstate fires after back(); the handler sees no ?event and the
       // modal is already closed, so it only resets the title — idempotent.
       history.back();
-    } else if (cameFromShou && history.length > 1) {
+    } else if (!forceHome && cameFromShou && history.length > 1) {
       // Deep-linked from our own site (this-week page, landing, etc.) —
       // return there directly.
       history.back();
     } else {
+      // forceHome (logo), or a deep link with no useful back target: drop
+      // ?event in place so we stay in the app on the home screen.
+      modalPushedHistory = false;
       urlRoutingSelfDriven = true;
       history.replaceState({}, '', window.location.pathname);
       document.title = 'shou — live tonight';
