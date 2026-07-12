@@ -2098,10 +2098,12 @@ html.deeplink .dl-cover {
    getting cropped at the brow. Standard pattern for thumbnails with people. */
 .mth {
   width: 100%; height: 320px;
-  /* Bias the crop toward the top: faces / poster headlines sit in the upper
-     part of most event images, and center 30% was still cutting heads on tall
-     portraits (cropping the window down to nose level). 20% keeps the subject. */
-  object-fit: cover; object-position: center 20%;
+  /* Near-center crop (a hair above middle). The old top-bias (20%) suited
+     face-at-top portraits but revealed the top of COMPOSITE images — festival
+     banners / ticket headers stacked above the still — and the sky/ceiling of
+     landscape shots. 45% shows the subject of composites & landscapes cleanly
+     while staying kind to portraits whose subject sits slightly high. */
+  object-fit: cover; object-position: center 45%;
   display: block;
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--ink);

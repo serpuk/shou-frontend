@@ -6,6 +6,10 @@
       "destination": "/privacy.html"
     },
     {
+      "source": "/e/:id",
+      "destination": "https://shou-backend.vercel.app/api/share?id=:id"
+    },
+    {
       "source": "/",
       "has": [
         {
