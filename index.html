@@ -5,6 +5,11 @@
 <meta name='impact-site-verification' value='d33b6a84-79b3-43e9-bf61-b54dd6bc105d' />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Canonical: the app is a SPA at "/" with query-param state (?event=…&lang=…),
+     so every deep-link serves the same shell. Point them all at the base app URL
+     so Google consolidates them instead of flagging "duplicate without canonical".
+     Event SEO lives on shou.be's place-answer pages, not here. -->
+<link rel="canonical" href="https://app.shou.be/">
 <!-- Error monitoring (Sentry). Loaded early so it catches errors during app
      init. Errors-only config (no tracing/replay) to stay within the free tier;
      beforeSend drops common noise so a bad day can't exhaust the 5K/mo quota.
