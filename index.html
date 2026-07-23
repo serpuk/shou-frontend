@@ -33,12 +33,18 @@
       replaysOnErrorSampleRate: 0,
       beforeSend: function (event, hint) {
         // Drop noise that wastes quota and isn't actionable: browser-extension
-        // errors, and the generic ResizeObserver loop warning.
+        // errors, the generic ResizeObserver loop warning, and the bridge code
+        // Instagram/Meta's in-app browser injects into the page (sendDataToNative
+        // / window.webkit.messageHandlers) which throws in some webview states —
+        // not our code and not fixable from here.
         var msg = (hint && hint.originalException && hint.originalException.message) || '';
-        if (typeof msg === 'string' && msg.indexOf('ResizeObserver loop') !== -1) return null;
+        if (typeof msg === 'string' &&
+            (msg.indexOf('ResizeObserver loop') !== -1 || msg.indexOf('messageHandlers') !== -1)) return null;
         var frames = (((event.exception || {}).values || [])[0] || {}).stacktrace;
         if (frames && frames.frames && frames.frames.some(function (f) {
-          return /extensions?\//i.test(f.filename || '') || /^chrome-extension:|^moz-extension:/.test(f.filename || '');
+          return /extensions?\//i.test(f.filename || '') ||
+                 /^chrome-extension:|^moz-extension:/.test(f.filename || '') ||
+                 /sendDataToNative|sendPageHideMessage/.test(f.function || '');
         })) return null;
         return event;
       },
