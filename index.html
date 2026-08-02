@@ -5261,7 +5261,7 @@ async function fetchTrending(){
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok) return;
     const d=await r.json();
-    trendingAll=dedupeByContent((d.events||[]).map(shapeCatalogEvent)).sort((a,b)=>(b.pop||0)-(a.pop||0));
+    trendingAll=collapseSeries(dedupeByContent((d.events||[]).map(shapeCatalogEvent))).sort((a,b)=>(b.pop||0)-(a.pop||0));
     renderAll();
   }catch(e){ console.warn('fetchTrending failed:', e && e.message); }
 }
@@ -6321,6 +6321,35 @@ function dedupeByContent(list){
   return drop.size ? result.filter(e=>!drop.has(e.id)) : result;
 }
 
+// Collapse an EXPLODED recurring series — the same production stored as one row
+// per date (e.g. NTGent's "EOL" as four rows for four nights, from a source
+// that doesn't send occurrence_dates) — into a single card showing the soonest
+// upcoming date. dedupeByContent can't do this: its key includes the date on
+// purpose (so it catches same-date cross-source dupes), which means different
+// dates of one series survive as separate cards. This mirrors the server-side
+// collapseRepeats / content_picks, so the app browse feed matches the this-week
+// pages and the daily card. Read-only display grouping — no data is lost, and
+// the full run is on the event page's schedule.
+function collapseSeries(list){
+  const rep=new Map(), order=[], today=todayLocalISO();
+  const up=e=>(e.date||'')>=today;
+  for(const e of (list||[])){
+    const key=normTitleForDedupe(e.name)+'|'+(e.venue||'').toLowerCase().trim();
+    const prev=rep.get(key);
+    if(!prev){ rep.set(key,e); order.push(key); continue; }
+    // Representative: the soonest UPCOMING occurrence; if none is upcoming, the
+    // latest past one. Carry the highest popularity across the run.
+    let keep;
+    if(up(e)&&up(prev)) keep = e.date<prev.date ? e : prev;
+    else if(up(e))      keep = e;
+    else if(up(prev))   keep = prev;
+    else                keep = e.date>prev.date ? e : prev;
+    keep.pop = Math.max(prev.pop||0, e.pop||0);
+    rep.set(key, keep);
+  }
+  return order.map(k=>rep.get(k));
+}
+
 function applyF(){
   reconcileRsvp();   // collapse any legacy Interested+Going overlap to one state
   updateMineToggleUI();   // show/sync the Upcoming/Past toggle on the My events view
@@ -6373,7 +6402,7 @@ function applyF(){
   // Drop cross-source duplicate rows before ranking/rendering. Skipped for AI
   // search results: /api/search already deduped them by stable SOURCE titles, so
   // re-deduping here on the TRANSLATED titles would vary the count per language.
-  if (!aiQ) filtered = dedupeByContent(filtered);
+  if (!aiQ) filtered = collapseSeries(dedupeByContent(filtered));
   // AI mode still gets an ID-level dedupe (language-stable, so the per-language
   // count concern doesn't apply): if a concurrent writer ever slips the same id
   // into `all` twice (the hydrateEventsByIds stale-guard race), the grid must
