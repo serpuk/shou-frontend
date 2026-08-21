@@ -463,6 +463,13 @@
     <div class="panel-head"><div class="panel-title">Recent applications</div><div class="panel-meta">most recent 200 · newest first · not date-filtered</div></div>
     <div id="ha-list" class="loading">loading…</div>
   </div>
+
+  <div class="sec-head"><div class="sec-title">Affiliate revenue</div><div class="sec-meta">Tiqets bookings by property · live via the Reporting API</div></div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Tiqets — revenue by property</div><div class="panel-meta" id="tiq-meta">—</div></div>
+    <div id="tbl-tiqets" class="loading">loading…</div>
+  </div>
 </main>
 
 <footer>shou admin · v1 · data via supabase</footer>
@@ -1366,11 +1373,52 @@ async function reloadAll() {
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
   finally { document.getElementById('refreshBtn').textContent = '⟲ Refresh'; }
+}
+
+const TIQ_BACKEND = 'https://shou-backend.vercel.app/api';
+function connectTiqets() {
+  const i = document.getElementById('tiq-token');
+  if (i && i.value.trim()) { sessionStorage.setItem('shou-bk-token', i.value.trim()); loadTiqetsRevenue(); }
+}
+async function loadTiqetsRevenue() {
+  const el = document.getElementById('tbl-tiqets');
+  const meta = document.getElementById('tiq-meta');
+  if (!el) return;
+  const days = (RANGE_DAYS === 'all') ? 180 : RANGE_DAYS;
+  const tok = sessionStorage.getItem('shou-bk-token') || '';
+  if (!tok) {
+    el.classList.remove('loading'); if (meta) meta.textContent = 'not connected';
+    el.innerHTML = '<div style="padding:4px 0;font-size:13px">Paste your backend <b>ADMIN_TOKEN</b> to load revenue <span style="opacity:.55">(kept only in this browser tab, never stored in the page)</span>.'
+      + '<div style="margin-top:10px;display:flex;gap:8px;max-width:460px">'
+      + '<input id="tiq-token" type="password" placeholder="ADMIN_TOKEN" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-soft);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\')connectTiqets()">'
+      + '<button class="refresh-btn" onclick="connectTiqets()">Connect</button></div></div>';
+    return;
+  }
+  el.classList.add('loading'); el.innerHTML = 'loading…';
+  if (meta) meta.textContent = 'last ' + days + ' days';
+  try {
+    const r = await fetch(TIQ_BACKEND + '/tiqets', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': tok }, body: JSON.stringify({ action: 'report', days }) });
+    const d = await r.json().catch(() => ({}));
+    el.classList.remove('loading');
+    if (r.status === 401 || d.error === 'unauthorized') { sessionStorage.removeItem('shou-bk-token'); loadTiqetsRevenue(); return; }
+    if (d.error) { el.innerHTML = '<div class="empty">Tiqets error: ' + escapeHtml(String(d.error)) + '</div>'; return; }
+    const rows = d.byProperty || [];
+    const cur = (rows[0] && rows[0].currency) || 'EUR';
+    const sym = cur === 'EUR' ? '€' : cur + ' ';
+    if (!rows.length) { el.innerHTML = '<div class="empty">No Tiqets bookings yet in the last ' + (d.days || days) + ' days.</div>'; return; }
+    const t = d.totals || { orders: 0, revenue: 0, commission: 0 };
+    el.innerHTML = '<table><thead><tr><th>Property (campaign)</th><th class="num">Orders</th><th class="num">Revenue</th><th class="num">Commission</th></tr></thead><tbody>'
+      + rows.map(x => '<tr><td>' + escapeHtml(x.campaign) + '</td><td class="num">' + fmt(x.orders) + '</td><td class="num">' + sym + x.revenue.toFixed(2) + '</td><td class="num">' + sym + x.commission.toFixed(2) + '</td></tr>').join('')
+      + '</tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>' + fmt(t.orders) + '</b></td><td class="num"><b>' + sym + t.revenue.toFixed(2) + '</b></td><td class="num"><b>' + sym + t.commission.toFixed(2) + '</b></td></tr></tfoot></table>';
+  } catch (e) {
+    el.classList.remove('loading');
+    el.innerHTML = '<div class="empty">Couldn\'t reach backend: ' + escapeHtml(e.message) + '</div>';
+  }
 }
 
 function boot() {
