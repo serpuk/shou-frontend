@@ -470,6 +470,11 @@
     <div class="panel-head"><div class="panel-title">Tiqets — revenue by property</div><div class="panel-meta" id="tiq-meta">—</div></div>
     <div id="tbl-tiqets" class="loading">loading…</div>
   </div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Viator — bookings by property</div><div class="panel-meta" id="via-meta">—</div></div>
+    <div id="tbl-viator" class="loading">loading…</div>
+  </div>
 </main>
 
 <footer>shou admin · v1 · data via supabase</footer>
@@ -1373,7 +1378,7 @@ async function reloadAll() {
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
@@ -1383,7 +1388,39 @@ async function reloadAll() {
 const TIQ_BACKEND = 'https://shou-backend.vercel.app/api';
 function connectTiqets() {
   const i = document.getElementById('tiq-token');
-  if (i && i.value.trim()) { sessionStorage.setItem('shou-bk-token', i.value.trim()); loadTiqetsRevenue(); }
+  if (i && i.value.trim()) { sessionStorage.setItem('shou-bk-token', i.value.trim()); loadTiqetsRevenue(); loadViatorRevenue(); }
+}
+async function loadViatorRevenue() {
+  const el = document.getElementById('tbl-viator');
+  const meta = document.getElementById('via-meta');
+  if (!el) return;
+  const days = (RANGE_DAYS === 'all') ? 365 : RANGE_DAYS;
+  const tok = sessionStorage.getItem('shou-bk-token') || '';
+  if (!tok) {
+    el.classList.remove('loading'); if (meta) meta.textContent = 'not connected';
+    el.innerHTML = '<div class="empty">Connect with your ADMIN_TOKEN in the Tiqets panel above — it loads Viator too.</div>';
+    return;
+  }
+  el.classList.add('loading'); el.innerHTML = 'loading…';
+  if (meta) meta.textContent = 'last ' + days + ' days · sale value (Viator API exposes no commission field)';
+  try {
+    const r = await fetch(TIQ_BACKEND + '/viator', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': tok }, body: JSON.stringify({ action: 'report', days }) });
+    const d = await r.json().catch(() => ({}));
+    el.classList.remove('loading');
+    if (r.status === 401 || d.error === 'unauthorized') { sessionStorage.removeItem('shou-bk-token'); loadTiqetsRevenue(); loadViatorRevenue(); return; }
+    if (d.error) { el.innerHTML = '<div class="empty">Viator error: ' + escapeHtml(String(d.error)) + '</div>'; return; }
+    const rows = d.byProperty || [];
+    const cur = (rows[0] && rows[0].currency) || 'EUR';
+    const sym = cur === 'EUR' ? '€' : cur + ' ';
+    if (!rows.length) { el.innerHTML = '<div class="empty">No Viator bookings yet in the last ' + (d.days || days) + ' days.</div>'; return; }
+    const t = d.totals || { bookings: 0, sales: 0 };
+    el.innerHTML = '<table><thead><tr><th>Property (campaign)</th><th class="num">Bookings</th><th class="num">Sale value</th></tr></thead><tbody>'
+      + rows.map(x => '<tr><td>' + escapeHtml(x.campaign) + '</td><td class="num">' + fmt(x.bookings) + '</td><td class="num">' + sym + x.sales.toFixed(2) + '</td></tr>').join('')
+      + '</tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>' + fmt(t.bookings) + '</b></td><td class="num"><b>' + sym + t.sales.toFixed(2) + '</b></td></tr></tfoot></table>';
+  } catch (e) {
+    el.classList.remove('loading');
+    el.innerHTML = '<div class="empty">Couldn\'t reach backend: ' + escapeHtml(e.message) + '</div>';
+  }
 }
 async function loadTiqetsRevenue() {
   const el = document.getElementById('tbl-tiqets');
