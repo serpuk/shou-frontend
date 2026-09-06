@@ -5257,7 +5257,7 @@ function shapeCatalogEvent(e){
 // Fetched once on load; the shelf re-renders from trendingAll on every render.
 async function fetchTrending(){
   try{
-    const p=new URLSearchParams({lang,limit:24,sort:'popularity'});
+    const p=new URLSearchParams({lang,limit:100,sort:'popularity'});   // wider pool so the shelf can diversify across venues
     const r=await fetch(API_BASE+'/api/events?'+p);
     if(!r.ok) return;
     const d=await r.json();
@@ -6679,7 +6679,26 @@ function renderAll(){
     // to one card each — earliest upcoming day, ranked by the series' best
     // popularity — so a festival week can't flood the shelf's few slots.
     const trendingPool = collapseDaySeries([...trendingSrc].filter(e => !hasPassed(e)));
-    const trending = trendingPool.slice(0, TRENDING_SHELF_SIZE);
+    // Diversify by venue, then order chronologically. Popularity picks WHICH
+    // events make the shelf (walking the pop-desc pool, at most 2 per venue so
+    // one busy room — e.g. Cirque Royal — can't fill all 8 slots); the chosen
+    // set is then sorted soonest-first, so near-identical popularity scores no
+    // longer scramble the dates (a 4 Oct show ahead of a 6 Sept one).
+    const TRENDING_PER_VENUE = 2;
+    const _vcount = {}, _picked = [];
+    for (const e of trendingPool) {
+      const vk = String(e.venue || '').trim().toLowerCase() || ('_' + e.id);
+      if ((_vcount[vk] = (_vcount[vk] || 0) + 1) > TRENDING_PER_VENUE) continue;
+      _picked.push(e);
+      if (_picked.length >= TRENDING_SHELF_SIZE) break;
+    }
+    const _startTs = e => {
+      const s = String(e.date || '');
+      const tm = (e.time && e.time !== 'TBA' && e.time !== 'null') ? e.time : '00:00';
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T' + tm) : new Date(s);
+      return isNaN(d.getTime()) ? Infinity : d.getTime();
+    };
+    const trending = _picked.sort((a, b) => _startTs(a) - _startTs(b));
     // Preserve the horizontal scroll across re-render: a like/going toggle
     // calls renderAll(), which rebuilds this shelf — without this the strip
     // would jump back to the start on every button click.
