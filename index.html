@@ -6189,7 +6189,7 @@ function matchesAIQuery(e,c){
 // "mozart eclat de jeunesse / ..." compare on equal footing.
 function normTitleForDedupe(s){
   return (s||'')
-    .toLowerCase()
+    .toLowerCase().replace(/\s*\((?:en|fr|nl|de|es|it|pt|uk|ru|pl|ar|zh|ja|multi)(?:\s*[\/,&+-]\s*(?:en|fr|nl|de|es|it|pt|uk|ru|pl|ar|zh|ja|multi))*\)\s*$/i,'')
     .normalize('NFD').replace(/[̀-ͯ]/g,'')
     .replace(/[^a-z0-9]+/g,' ')
     .trim();
