@@ -6678,12 +6678,28 @@ function renderAll(){
     // Then collapse per-day festival listings (Rock Werchter Thu/Fri/Sat/Sun)
     // to one card each — earliest upcoming day, ranked by the series' best
     // popularity — so a festival week can't flood the shelf's few slots.
-    const trendingPool = collapseDaySeries([...trendingSrc].filter(e => !hasPassed(e)));
-    // Diversify by venue, then order chronologically. Popularity picks WHICH
-    // events make the shelf (walking the pop-desc pool, at most 2 per venue so
-    // one busy room — e.g. Cirque Royal — can't fill all 8 slots); the chosen
-    // set is then sorted soonest-first, so near-identical popularity scores no
-    // longer scramble the dates (a 4 Oct show ahead of a 6 Sept one).
+    const _startTs = e => {
+      const s = String(e.date || '');
+      const tm = (e.time && e.time !== 'TBA' && e.time !== 'null') ? e.time : '00:00';
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T' + tm) : new Date(s);
+      return isNaN(d.getTime()) ? Infinity : d.getTime();
+    };
+    // "Trending NOW" should feel current, so blend popularity with recency rather
+    // than a hard date cutoff: a sooner show earns a bonus (up to +15 for ~today)
+    // that tapers linearly to 0 by ~4 months out. Near-term headliners float to
+    // the top and far-future outliers (a May-next-year arena show) drop off on
+    // their own — but a genuinely huge far-dated show can still surface if its raw
+    // popularity beats the near-term field. No cliff.
+    const RECENCY_BONUS_MAX = 15, RECENCY_HORIZON_DAYS = 120;
+    const _effScore = e => {
+      const days = Math.max(0, (_startTs(e) - Date.now()) / 86400000);
+      return (e.pop || 0) + RECENCY_BONUS_MAX * Math.max(0, 1 - days / RECENCY_HORIZON_DAYS);
+    };
+    const trendingPool = collapseDaySeries([...trendingSrc].filter(e => !hasPassed(e)))
+      .sort((a, b) => _effScore(b) - _effScore(a));   // popularity + recency
+    // Diversify by venue (at most 2 per room so one busy venue can't fill all 8
+    // slots), walking the popularity+recency order; then show the chosen set
+    // soonest-first so the dates read in order.
     const TRENDING_PER_VENUE = 2;
     const _vcount = {}, _picked = [];
     for (const e of trendingPool) {
@@ -6692,12 +6708,6 @@ function renderAll(){
       _picked.push(e);
       if (_picked.length >= TRENDING_SHELF_SIZE) break;
     }
-    const _startTs = e => {
-      const s = String(e.date || '');
-      const tm = (e.time && e.time !== 'TBA' && e.time !== 'null') ? e.time : '00:00';
-      const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T' + tm) : new Date(s);
-      return isNaN(d.getTime()) ? Infinity : d.getTime();
-    };
     const trending = _picked.sort((a, b) => _startTs(a) - _startTs(b));
     // Preserve the horizontal scroll across re-render: a like/going toggle
     // calls renderAll(), which rebuilds this shelf — without this the strip
