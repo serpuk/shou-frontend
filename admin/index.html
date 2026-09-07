@@ -476,7 +476,7 @@
     <div id="tbl-viator" class="loading">loading…</div>
   </div>
 
-  <div class="sec-head"><div class="sec-title">Apartments usage</div><div class="sec-meta">guest-companion engagement · internal · excludes the demo page</div></div>
+  <div class="sec-head"><div class="sec-title">Apartments usage</div><div class="sec-meta">guest-companion engagement · internal <label style="margin-left:8px;cursor:pointer;font-weight:600"><input type="checkbox" id="apt-demo" style="vertical-align:middle;margin-right:3px">include demo page</label></div></div>
   <div class="panel" style="margin-bottom: 12px;">
     <div class="panel-head"><div class="panel-title">Funnel</div><div class="panel-meta">distinct sessions · open → tab → ask → convert</div></div>
     <div id="apt-funnel" class="loading">loading…</div>
@@ -1490,7 +1490,10 @@ async function loadTiqetsRevenue() {
 
 async function loadAptUsage(){
   if(!sb) return;
-  const res = await safeQuery('apt usage', () => sb.rpc('admin_apt_usage', { p_since: rangeStartISO() }));
+  var _dc=document.getElementById('apt-demo');
+  if(_dc && !_dc._wired){ _dc._wired=1; _dc.onchange=function(){ loadAptUsage(); }; }
+  var inc=!!(_dc && _dc.checked);
+  const res = await safeQuery('apt usage', () => sb.rpc('admin_apt_usage', { p_since: rangeStartISO(), p_include_sample: inc }));
   const d = res.data || {};
   const setH=(id,h)=>{const el=document.getElementById(id); if(el){el.classList.remove('loading'); el.innerHTML=h;}};
   const none='<div style="color:#80868b;font-size:13px">no data yet</div>';
