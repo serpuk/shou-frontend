@@ -1514,7 +1514,7 @@ async function loadAptUsage(){
         +'<div class="mono" style="width:96px;text-align:right">'+fmt(v)+' · '+pct+'%</div></div>';
     }).join('') : none);
   setH('apt-tabs', bar(d.tabs,r=>r.tab,r=>r.n));
-  const rl={addon_request:'Extras request',book_direct:'Book-direct',service_click:'Service click',pick_click:'Pick click',plan_generate:'Plan generated',issue_report:'Issue report'};
+  const rl={addon_request:'Extras request',book_direct:'Book-direct',service_click:'Service click',exp_click:'Experience click',tiqets_click:'Tickets click',pick_click:'Pick click',plan_generate:'Plan generated',issue_report:'Issue report'};
   setH('apt-revenue', bar(d.revenue,r=>rl[r.event]||r.event,r=>r.n));
   setH('apt-units', (d.units&&d.units.length)?
     ('<table style="width:100%;font-size:13px;border-collapse:collapse">'
