@@ -475,6 +475,36 @@
     <div class="panel-head"><div class="panel-title">Viator — bookings by property</div><div class="panel-meta" id="via-meta">—</div></div>
     <div id="tbl-viator" class="loading">loading…</div>
   </div>
+
+  <div class="sec-head"><div class="sec-title">Apartments usage</div><div class="sec-meta">guest-companion engagement · internal · excludes the demo page</div></div>
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Funnel</div><div class="panel-meta">distinct sessions · open → tab → ask → convert</div></div>
+    <div id="apt-funnel" class="loading">loading…</div>
+  </div>
+  <div class="two-col" style="margin-bottom: 12px;">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Tab reach</div><div class="panel-meta">tab views</div></div>
+      <div id="apt-tabs" class="loading">loading…</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Revenue clicks</div><div class="panel-meta">requests &amp; click-outs</div></div>
+      <div id="apt-revenue" class="loading">loading…</div>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Top apartments</div><div class="panel-meta">by sessions</div></div>
+    <div id="apt-units" class="loading">loading…</div>
+  </div>
+  <div class="two-col" style="margin-bottom: 12px;">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">By language</div><div class="panel-meta">events</div></div>
+      <div id="apt-langs" class="loading">loading…</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">By device &amp; country</div><div class="panel-meta">events</div></div>
+      <div id="apt-geo" class="loading">loading…</div>
+    </div>
+  </div>
 </main>
 
 <footer>shou admin · v1 · data via supabase</footer>
@@ -1378,7 +1408,7 @@ async function reloadAll() {
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue(), loadAptUsage()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
@@ -1456,6 +1486,47 @@ async function loadTiqetsRevenue() {
     el.classList.remove('loading');
     el.innerHTML = '<div class="empty">Couldn\'t reach backend: ' + escapeHtml(e.message) + '</div>';
   }
+}
+
+async function loadAptUsage(){
+  if(!sb) return;
+  const res = await safeQuery('apt usage', () => sb.rpc('admin_apt_usage', { p_since: rangeStartISO() }));
+  const d = res.data || {};
+  const setH=(id,h)=>{const el=document.getElementById(id); if(el){el.classList.remove('loading'); el.innerHTML=h;}};
+  const none='<div style="color:#80868b;font-size:13px">no data yet</div>';
+  const bar=(rows,lab,val)=>{
+    if(!rows||!rows.length) return none;
+    const mx=Math.max.apply(null,rows.map(val).concat([1]));
+    return rows.map(r=>{const v=val(r)||0,w=Math.round(v/mx*100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px">'
+        +'<div style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(String(lab(r)))+'">'+escapeHtml(String(lab(r)))+'</div>'
+        +'<div style="flex:1;background:#eef1f5;border-radius:5px;overflow:hidden;height:16px"><div style="width:'+w+'%;height:100%;background:#1a73e8"></div></div>'
+        +'<div class="mono" style="width:56px;text-align:right">'+fmt(v)+'</div></div>';
+    }).join('');
+  };
+  const f=d.funnel||{};
+  const base=(f.sessions||f.opened||0)||1;
+  const stg=[['Sessions',f.sessions],['Opened',f.opened],['Reached a tab',f.tabbed],['Asked concierge',f.asked],['Converted',f.converted]];
+  setH('apt-funnel', f.sessions ? stg.map(s=>{const v=s[1]||0,pct=Math.round(v/base*100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px">'
+        +'<div style="width:140px">'+s[0]+'</div>'
+        +'<div style="flex:1;background:#eef1f5;border-radius:5px;overflow:hidden;height:18px"><div style="width:'+Math.min(100,pct)+'%;height:100%;background:#1a73e8"></div></div>'
+        +'<div class="mono" style="width:96px;text-align:right">'+fmt(v)+' · '+pct+'%</div></div>';
+    }).join('') : none);
+  setH('apt-tabs', bar(d.tabs,r=>r.tab,r=>r.n));
+  const rl={addon_request:'Extras request',book_direct:'Book-direct',service_click:'Service click',pick_click:'Pick click',plan_generate:'Plan generated',issue_report:'Issue report'};
+  setH('apt-revenue', bar(d.revenue,r=>rl[r.event]||r.event,r=>r.n));
+  setH('apt-units', (d.units&&d.units.length)?
+    ('<table style="width:100%;font-size:13px;border-collapse:collapse">'
+     +'<tr style="text-align:left;color:#5f6368"><th style="padding:3px 0">Apartment</th><th style="text-align:right">Sess</th><th style="text-align:right">Events</th><th style="text-align:right">Asks</th><th style="text-align:right">Rev</th></tr>'
+     +d.units.map(u=>'<tr><td style="padding:3px 0">'+escapeHtml(u.name||u.slug||'—')+'</td>'
+        +'<td class="mono" style="text-align:right">'+fmt(u.sessions)+'</td>'
+        +'<td class="mono" style="text-align:right">'+fmt(u.events)+'</td>'
+        +'<td class="mono" style="text-align:right">'+fmt(u.asks)+'</td>'
+        +'<td class="mono" style="text-align:right">'+fmt(u.revenue)+'</td></tr>').join('')+'</table>') : none);
+  setH('apt-langs', bar(d.langs,r=>r.k,r=>r.n));
+  setH('apt-geo', '<div style="font-weight:600;font-size:12px;margin:0 0 4px">Device</div>'+bar(d.devices,r=>r.k,r=>r.n)
+    +'<div style="font-weight:600;font-size:12px;margin:10px 0 4px">Country</div>'+bar(d.countries,r=>r.k,r=>r.n));
 }
 
 function boot() {
