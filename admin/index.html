@@ -273,9 +273,9 @@
 <div id="gate">
   <div class="gate-card">
     <h1 class="gate-title">shou admin</h1>
-    <p class="gate-sub">access required</p>
+    <p class="gate-sub">admin token required</p>
     <input id="gateInput" class="gate-input" type="password" autocomplete="off"
-           placeholder="password" onkeydown="if(event.key==='Enter')tryGate()">
+           placeholder="ADMIN_TOKEN" onkeydown="if(event.key==='Enter')tryGate()">
   </div>
 </div>
 
@@ -512,14 +512,10 @@
 <script>
 const SUPABASE_URL  = 'https://mpbrfnlmtdxnipyarsss.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wYnJmbmxtdGR4bmlweWFyc3NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTU4MDMsImV4cCI6MjA5MjA3MTgwM30.r2QJY9QBfWpo8ItIJ06nTt4Wk38g2mD52AXPJmaPN_o';
-const PASSWORD_HASH = '8122cba12b897aa5546baf90b6c82c9f646f976b3555033cbc5e0b72d4f7a5bc'; // SHA-256 of the admin gate password
 
 const configIssues = [];
 if (!SUPABASE_ANON || SUPABASE_ANON === 'PASTE_YOUR_ANON_KEY_HERE') {
   configIssues.push('<b>SUPABASE_ANON</b> key is not set. All queries will fail. Find <code>SUPABASE_ANON</code> at the top of the &lt;script&gt; tag in admin.html and paste your anon key (same one used by main site).');
-}
-if (!PASSWORD_HASH || PASSWORD_HASH === 'PASTE_YOUR_PASSWORD_HASH_HERE') {
-  configIssues.push('<b>PASSWORD_HASH</b> is not set. Compute the SHA-256 hash of your chosen password: open browser console and run <code>crypto.subtle.digest(\'SHA-256\', new TextEncoder().encode(\'YOUR-PASSWORD\')).then(b=&gt;console.log([...new Uint8Array(b)].map(x=&gt;x.toString(16).padStart(2,\'0\')).join(\'\')))</code> then paste the result.');
 }
 if (configIssues.length) {
   const diag = document.getElementById('diag');
@@ -538,15 +534,40 @@ let RANGE_DAYS = 7;
 let charts = {};
 let lastReload = null;
 
-async function sha256(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+// The admin_* database functions are NOT callable with the anon key (they expose
+// hotel applicants' contact details, user searches, internal stats). They run via
+// the backend's /api/admin-rpc with the ADMIN_TOKEN, checked server-side. The same
+// token (sessionStorage, this tab only) also unlocks the Tiqets/Viator panels.
+const ADMIN_RPC = 'https://shou-backend.vercel.app/api/admin-rpc';
+const adminToken = () => sessionStorage.getItem('shou-bk-token') || '';
+function showGate() {
+  sessionStorage.removeItem('shou-bk-token');
+  document.getElementById('gate').classList.remove('gone');
+  setTimeout(() => document.getElementById('gateInput')?.focus(), 100);
+}
+// Same { data, error } shape as sb.rpc(), so the panels didn't have to change.
+async function adminRpc(fn, args) {
+  const tok = adminToken();
+  if (!tok) { showGate(); return { data: null, error: { message: 'not signed in' } }; }
+  try {
+    const r = await fetch(ADMIN_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': tok }, body: JSON.stringify({ fn, args: args || {} }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401) { showGate(); return { data: null, error: { message: 'unauthorized' } }; }
+    if (!r.ok || d.error) return { data: null, error: d.error || { message: 'HTTP ' + r.status } };
+    return { data: d.data, error: null };
+  } catch (e) { return { data: null, error: { message: e.message } }; }
 }
 async function tryGate() {
   const input = document.getElementById('gateInput');
-  const v = input.value; if (!v) return;
-  if (await sha256(v) === PASSWORD_HASH) {
-    sessionStorage.setItem('shou-admin-ok', '1');
+  const v = input.value.trim(); if (!v) return;
+  let ok = false;
+  try {
+    const r = await fetch(ADMIN_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': v }, body: JSON.stringify({ fn: 'admin_ingestion_latest' }) });
+    ok = r.status !== 401;
+  } catch (_) {}
+  if (ok) {
+    sessionStorage.setItem('shou-bk-token', v);
+    input.value = '';
     document.getElementById('gate').classList.add('gone');
     boot();
   } else {
@@ -555,7 +576,7 @@ async function tryGate() {
     input.select();
   }
 }
-if (sessionStorage.getItem('shou-admin-ok') === '1') {
+if (adminToken()) {
   document.getElementById('gate').classList.add('gone');
 } else {
   setTimeout(() => document.getElementById('gateInput')?.focus(), 100);
@@ -1012,8 +1033,8 @@ async function loadOverview() {
   const [eventsRes, newRes, searchesRes, actionsRes] = await Promise.all([
     safeQuery('events live', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('start_date', today)),
     safeQuery('new events', () => sb.from('events').select('created_at').gte('created_at', sinceISO).limit(50000)),
-    safeQuery('searches', () => sb.rpc('admin_user_searches_timestamps', { p_since: sinceISO })),
-    safeQuery('user actions', () => sb.rpc('admin_user_events_window', { p_since: sinceISO })),
+    safeQuery('searches', () => adminRpc('admin_user_searches_timestamps', { p_since: sinceISO })),
+    safeQuery('user actions', () => adminRpc('admin_user_events_window', { p_since: sinceISO })),
   ]);
 
   setStat('stat-events', fmt(eventsRes.count ?? 0));
@@ -1048,14 +1069,14 @@ async function loadOverview() {
 }
 
 async function loadIngestionHealth() {
-  const res = await safeQuery('ingestion latest', () => sb.rpc('admin_ingestion_latest'));
+  const res = await safeQuery('ingestion latest', () => adminRpc('admin_ingestion_latest'));
   const r = res.data?.[0];
   if (!r) { setHealth('hd-ingest', 'warn', 'no runs yet'); return; }
   const status = r.status === 'success' ? 'ok' : (r.status === 'running' ? 'warn' : 'err');
   setHealth('hd-ingest', status, `<span class="mono">${escapeHtml(r.source)}</span> · ${r.status || 'unknown'} · <span class="mono">${ago(r.finished_at || r.started_at)}</span>`);
 }
 async function loadTranslationHealth() {
-  const res = await safeQuery('translation health', () => sb.rpc('admin_translation_jobs_health'));
+  const res = await safeQuery('translation health', () => adminRpc('admin_translation_jobs_health'));
   const row = res.data?.[0] || {};
   const pending = Number(row.pending_count) || 0;
   const oldest = row.oldest_pending_created_at;
@@ -1074,8 +1095,8 @@ async function loadCatalog() {
   // rows, producing wildly wrong proportions on the line chart and category
   // doughnut. See migration_admin_dashboard_rpcs.sql.
   const [perDayRes, byCatRes] = await Promise.all([
-    safeQuery('events per day', () => sb.rpc('admin_events_per_day', { p_since: sinceISO })),
-    safeQuery('events by category', () => sb.rpc('admin_events_by_category', { p_since: sinceISO })),
+    safeQuery('events per day', () => adminRpc('admin_events_per_day', { p_since: sinceISO })),
+    safeQuery('events by category', () => adminRpc('admin_events_by_category', { p_since: sinceISO })),
   ]);
 
   // Day buckets: build a {day -> count} map from the RPC then read in
@@ -1091,7 +1112,7 @@ async function loadCatalog() {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } }, interaction: { mode: 'index', intersect: false } }
   });
 
-  const srcRes = await safeQuery('event sources', () => sb.rpc('admin_source_counts'));
+  const srcRes = await safeQuery('event sources', () => adminRpc('admin_source_counts'));
   // The RPC returns aggregated rows: [{source, unique_events}, ...]
   // We previously fetched raw event_sources rows and counted client-side, but
   // PostgREST's default max_rows=1000 silently truncated the result, making
@@ -1125,7 +1146,7 @@ async function loadCatalog() {
 
 async function loadTopVenues() {
   const today = new Date().toISOString().slice(0, 10);
-  const res = await safeQuery('top venues', () => sb.rpc('admin_top_venues', { p_today: today, p_limit: 12 }));
+  const res = await safeQuery('top venues', () => adminRpc('admin_top_venues', { p_today: today, p_limit: 12 }));
   const top = (res.data || []).map(r => [r.venue_name || 'unknown', Number(r.events) || 0]);
   const el = document.getElementById('tbl-venues');
   if (!top.length) { el.innerHTML = '<div class="empty">no data</div>'; return; }
@@ -1162,7 +1183,7 @@ async function loadCatalogQuality() {
 // from different sources.
 async function loadOtherCandidates() {
   const today = new Date().toISOString().slice(0, 10);
-  const res = await safeQuery('other candidates', () => sb.rpc('admin_other_candidates', { p_today: today, p_limit: 15 }));
+  const res = await safeQuery('other candidates', () => adminRpc('admin_other_candidates', { p_today: today, p_limit: 15 }));
   const rows = (res.data || []).map(r => ({
     source: r.source || 'unknown',
     subcategory: r.subcategory || '',
@@ -1191,7 +1212,7 @@ async function loadTranslations() {
 
   // Server-side aggregation via RPC. The previous raw .select() was capped
   // at 1000 rows by PostgREST, undercounting translation activity.
-  const res = await safeQuery('translations per day', () => sb.rpc('admin_translations_per_day', { p_since: sinceISO }));
+  const res = await safeQuery('translations per day', () => adminRpc('admin_translations_per_day', { p_since: sinceISO }));
   // RPC rows: [{day, language, translations}, ...]
   // Build {language: {day: count}} then flatten to {language: [counts per day]}
   // following the dayLabels order so missing buckets become zero.
@@ -1233,7 +1254,7 @@ async function loadCoverage() {
 
 async function loadTransJobs() {
   const statuses = ['pending','processing','completed','failed'];
-  const res = await safeQuery('jobs counts', () => sb.rpc('admin_translation_jobs_counts'));
+  const res = await safeQuery('jobs counts', () => adminRpc('admin_translation_jobs_counts'));
   const byStatus = Object.fromEntries((res.data || []).map(r => [r.status, Number(r.count) || 0]));
   document.getElementById('tbl-jobs').innerHTML = `<table><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody>${statuses.map(s => {
     const k = s==='completed'?'ok':(s==='failed'?'err':(s==='processing'?'run':'warn'));
@@ -1246,8 +1267,8 @@ async function loadCacheStats() {
   // rows even though the table holds tens of thousands. The RPCs below
   // are SECURITY DEFINER so they bypass RLS for aggregate read access.
   const [statsRes, topRes] = await Promise.all([
-    safeQuery('cache:stats', () => sb.rpc('admin_translation_cache_stats')),
-    safeQuery('cache:top',   () => sb.rpc('admin_translation_cache_top', { p_limit: 8 })),
+    safeQuery('cache:stats', () => adminRpc('admin_translation_cache_stats')),
+    safeQuery('cache:top',   () => adminRpc('admin_translation_cache_top', { p_limit: 8 })),
   ]);
   const stats = (statsRes.data || [])[0] || { cached_strings: 0, total_hits: 0, avg_reuse: 0 };
   const totalRows  = Number(stats.cached_strings) || 0;
@@ -1264,7 +1285,7 @@ async function loadCacheStats() {
 
 async function loadIngestion() {
   if (!sb) return;
-  const res = await safeQuery('ingestion runs', () => sb.rpc('admin_ingestion_runs', { p_limit: 20 }));
+  const res = await safeQuery('ingestion runs', () => adminRpc('admin_ingestion_runs', { p_limit: 20 }));
   const rows = res.data || [];
   const el = document.getElementById('tbl-runs');
   if (!rows.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; return; }
@@ -1305,7 +1326,7 @@ async function loadAudience() {
 }
 
 async function loadTopSearches() {
-  const res = await safeQuery('top searches', () => sb.rpc('admin_user_searches_recent', { p_limit: 200 }));
+  const res = await safeQuery('top searches', () => adminRpc('admin_user_searches_recent', { p_limit: 200 }));
   const counts = {}, latest = {};
   for (const r of (res.data || [])) {
     const q = (r.query || '').trim().toLowerCase(); if (!q) continue;
@@ -1331,7 +1352,7 @@ async function loadTopEventsByAction(rows) {
 }
 
 async function loadSearchDetail() {
-  const res = await safeQuery('search detail', () => sb.rpc('admin_user_searches_recent', { p_limit: 20 }));
+  const res = await safeQuery('search detail', () => adminRpc('admin_user_searches_recent', { p_limit: 20 }));
   const rows = res.data || [];
   const el = document.getElementById('tbl-search-detail');
   if (!rows.length) { el.innerHTML = '<div class="empty">no searches yet</div>'; return; }
@@ -1345,7 +1366,7 @@ async function loadConcierge() {
   if (!sb) return;
   let d;
   try {
-    const res = await sb.rpc('admin_sample_usage', { p_since: rangeStartISO() });
+    const res = await adminRpc('admin_sample_usage', { p_since: rangeStartISO() });
     if (res.error) throw res.error;
     d = res.data || {};
   } catch (e) {
@@ -1380,7 +1401,7 @@ async function loadApplications() {
   if (!sb) return;
   let rows;
   try {
-    const res = await sb.rpc('admin_hotel_applications');
+    const res = await adminRpc('admin_hotel_applications');
     if (res.error) throw res.error;
     rows = res.data || [];
   } catch (e) {
@@ -1493,7 +1514,7 @@ async function loadAptUsage(){
   var _dc=document.getElementById('apt-demo');
   if(_dc && !_dc._wired){ _dc._wired=1; _dc.onchange=function(){ loadAptUsage(); }; }
   var inc=!!(_dc && _dc.checked);
-  const res = await safeQuery('apt usage', () => sb.rpc('admin_apt_usage', { p_since: rangeStartISO(), p_include_sample: inc }));
+  const res = await safeQuery('apt usage', () => adminRpc('admin_apt_usage', { p_since: rangeStartISO(), p_include_sample: inc }));
   const d = res.data || {};
   const setH=(id,h)=>{const el=document.getElementById(id); if(el){el.classList.remove('loading'); el.innerHTML=h;}};
   const none='<div style="color:#80868b;font-size:13px">no data yet</div>';
@@ -1548,7 +1569,7 @@ function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('shou-admin-ok') === '1') boot();
+  if (adminToken()) boot();
 });
 </script>
 </body>
