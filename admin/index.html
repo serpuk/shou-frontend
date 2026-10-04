@@ -1156,21 +1156,18 @@ async function loadTopVenues() {
 async function loadCatalogQuality() {
   const today = new Date().toISOString().slice(0, 10);
   const sevenDaysAgo = new Date(Date.now() - 7*86400000).toISOString();
-  const [missImg, missDesc, noCat, soldOut, canceled, stale] = await Promise.all([
-    safeQuery('q:img', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('image_url',null)),
-    safeQuery('q:desc', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('description',null)),
-    safeQuery('q:cat', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).is('category_slug',null)),
-    safeQuery('q:soldout', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('is_soldout',true).gte('start_date',today)),
-    safeQuery('q:canceled', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('is_canceled',true).gte('start_date',today)),
-    safeQuery('q:stale', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today).lt('last_seen_at',sevenDaysAgo)),
-  ]);
+  // One pass over upcoming events (admin_quality_counts) — six separate count
+  // queries each scanned the 1 GB events table and hit the anon 3 s timeout.
+  const res = await safeQuery('quality', () => adminRpc('admin_quality_counts', { p_today: today, p_stale_before: sevenDaysAgo }));
+  const q = res.data || {};
+  const n = k => res.error ? '—' : fmt(q[k] ?? 0);
   document.getElementById('tbl-quality').innerHTML = `<table><thead><tr><th>Signal</th><th class="num">Count</th></tr></thead><tbody>
-    <tr><td>Events missing image</td><td class="num">${fmt(missImg.count ?? 0)}</td></tr>
-    <tr><td>Events missing description</td><td class="num">${fmt(missDesc.count ?? 0)}</td></tr>
-    <tr><td>Events missing category</td><td class="num">${fmt(noCat.count ?? 0)}</td></tr>
-    <tr><td>Sold out</td><td class="num">${fmt(soldOut.count ?? 0)}</td></tr>
-    <tr><td>Canceled</td><td class="num">${fmt(canceled.count ?? 0)}</td></tr>
-    <tr><td>Stale (last_seen &gt; 7 days)</td><td class="num">${fmt(stale.count ?? 0)}</td></tr>
+    <tr><td>Events missing image</td><td class="num">${n('missing_image')}</td></tr>
+    <tr><td>Events missing description</td><td class="num">${n('missing_description')}</td></tr>
+    <tr><td>Events missing category</td><td class="num">${n('missing_category')}</td></tr>
+    <tr><td>Sold out</td><td class="num">${n('sold_out')}</td></tr>
+    <tr><td>Canceled</td><td class="num">${n('canceled')}</td></tr>
+    <tr><td>Stale (last_seen &gt; 7 days)</td><td class="num">${n('stale')}</td></tr>
   </tbody></table>`;
 }
 
