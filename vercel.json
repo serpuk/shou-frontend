@@ -1,10 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "redirects": [
     {
       "source": "/privacy",
-      "destination": "/privacy.html"
+      "destination": "https://shou.be/privacy",
+      "permanent": true
     },
+    {
+      "source": "/privacy.html",
+      "destination": "https://shou.be/privacy",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
     {
       "source": "/e/:id",
       "destination": "https://shou-backend.vercel.app/api/share?id=:id"
