@@ -476,7 +476,7 @@
     <div id="tbl-viator" class="loading">loading…</div>
   </div>
 
-  <div class="sec-head"><div class="sec-title">Apartments usage</div><div class="sec-meta">guest-companion engagement · internal <label style="margin-left:8px;cursor:pointer;font-weight:600"><input type="checkbox" id="apt-demo" style="vertical-align:middle;margin-right:3px">include demo page</label></div></div>
+  <div class="sec-head"><div class="sec-title">Apartments usage</div><div class="sec-meta">guest-companion engagement · internal <label style="margin-left:8px;cursor:pointer;font-weight:600"><input type="checkbox" id="apt-demo" style="vertical-align:middle;margin-right:3px">include demo page</label><label style="margin-left:12px;cursor:pointer;font-weight:600" title="Hides link-checker sessions: two concierge asks less than 1 second apart, or a desktop page-open-only visit from outside Belgium between 06:00 and 12:00 UTC. Nothing is deleted."><input type="checkbox" id="apt-bots" checked style="vertical-align:middle;margin-right:3px">hide bots</label> <span id="apt-bots-n" style="color:#80868b"></span></div></div>
   <div class="panel" style="margin-bottom: 12px;">
     <div class="panel-head"><div class="panel-title">Funnel</div><div class="panel-meta">distinct sessions · open → tab → ask → convert</div></div>
     <div id="apt-funnel" class="loading">loading…</div>
@@ -1511,8 +1511,14 @@ async function loadAptUsage(){
   var _dc=document.getElementById('apt-demo');
   if(_dc && !_dc._wired){ _dc._wired=1; _dc.onchange=function(){ loadAptUsage(); }; }
   var inc=!!(_dc && _dc.checked);
-  const res = await safeQuery('apt usage', () => adminRpc('admin_apt_usage', { p_since: rangeStartISO(), p_include_sample: inc }));
+  // Bot filter (server-side, schema-apt-usage-rpc.sql): on by default.
+  var _bc=document.getElementById('apt-bots');
+  if(_bc && !_bc._wired){ _bc._wired=1; _bc.onchange=function(){ loadAptUsage(); }; }
+  var hideBots=!_bc || _bc.checked;
+  const res = await safeQuery('apt usage', () => adminRpc('admin_apt_usage', { p_since: rangeStartISO(), p_include_sample: inc, p_exclude_bots: hideBots }));
   const d = res.data || {};
+  var _bn=document.getElementById('apt-bots-n');
+  if(_bn){ var nb=d.bot_sessions||0; _bn.textContent = nb ? '· '+fmt(nb)+' bot session'+(nb===1?'':'s')+(hideBots?' hidden':' included') : ''; }
   const setH=(id,h)=>{const el=document.getElementById(id); if(el){el.classList.remove('loading'); el.innerHTML=h;}};
   const none='<div style="color:#80868b;font-size:13px">no data yet</div>';
   const bar=(rows,lab,val)=>{
