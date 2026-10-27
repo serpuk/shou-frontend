@@ -27,4 +27,7 @@ credentials, or personal data.
 
 - One branch + PR per change; **commit / push / deploy only when the user asks**.
   Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`.
+- Vercel builds (`vercel.json` `ignoreCommand`): branch previews are **never built**, and
+  a `main` commit touching only `*.md` / `*.sql` / `test/` / `docs/` doesn't deploy —
+  verify on production after merging.
 - Preview with `.claude/launch.json`; check at 375 px width and in the browser console.
