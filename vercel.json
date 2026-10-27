@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "[ \"$VERCEL_ENV\" != \"production\" ] && exit 0; git diff --quiet HEAD^ HEAD -- . ':(exclude)*.md' ':(exclude)*.sql' ':(exclude)test/' ':(exclude)docs/' && exit 0 || exit 1",
   "redirects": [
     {
       "source": "/privacy",
