@@ -7470,6 +7470,14 @@ function eventCanonicalUrl(id) {
   return base + '?event=' + encodeURIComponent(id);
 }
 
+// Browser-tab title for an open event. e.name is HTML-escaped (escEventFields),
+// so decode it — otherwise "Dark & Cult" shows as "Dark &amp; Cult".
+function eventDocTitle(e) {
+  const d = document.createElement('textarea');
+  d.innerHTML = (e && e.name) || '';
+  return `${d.value} — shou`;
+}
+
 // Build the share URL passed to X / Facebook / clipboard / Web Share API.
 // Uses the ?event=<id> query-param pattern. The existing vercel.json rewrite
 // in shou-frontend intercepts requests where:
@@ -7722,7 +7730,7 @@ function om(id, _opts){
       history.pushState({ event: id }, '', newUrl);
       modalPushedHistory = true;
       // Update page title for browser tab + share previews
-      document.title = `${e.name} — shou`;
+      document.title = eventDocTitle(e);
       urlRoutingSelfDriven = false;
     }
   }
@@ -7975,9 +7983,9 @@ function swipeToOffset(offset) {
 
     // Update URL via replaceState (don't pollute history with each swipe)
     urlRoutingSelfDriven = true;
-    history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.id));
+    history.replaceState({ event: nextEvent.id }, '', eventCanonicalUrl(nextEvent.slug || nextEvent.id));
     urlRoutingSelfDriven = false;
-    document.title = `${nextEvent.name} — shou`;
+    document.title = eventDocTitle(nextEvent);
 
     // Snap the container to the opposite side (no transition — instant)
     mc.classList.remove(outClass);
@@ -8174,9 +8182,9 @@ function initSwipeNav() {
         // URL/title/arrows via the existing single-event open path, then reset
         // the track to center instantly (no animation) with neighbors cleared.
         urlRoutingSelfDriven = true;
-        history.replaceState({ event: target.id }, '', eventCanonicalUrl(target.id));
+        history.replaceState({ event: target.id }, '', eventCanonicalUrl(target.slug || target.id));
         urlRoutingSelfDriven = false;
-        document.title = `${target.name} — shou`;
+        document.title = eventDocTitle(target);
         om(target.id, { fromUrl: true, skipScrollReset: false });
         // Reset track to center without animating the reset.
         t.classList.remove('mc-track-anim');
