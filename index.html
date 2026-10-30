@@ -1734,33 +1734,63 @@ body.ai-active .filters { position: static; box-shadow: none; }
   margin: 0 0 8px;
 }
 .pv-saved-empty { font-size: 12.5px; color: var(--bone3); line-height: 1.5; }
-.pv-saved-list { display: flex; flex-direction: column; gap: 6px; }
+.pv-saved-list { display: flex; flex-direction: column; gap: 8px; }
+/* Each saved search reads as a tappable card: leading bookmark badge, the
+   query in full weight, a trailing chevron, and a clear hover/press/focus
+   state. Secondary tools (email, remove) sit outside the tap target and are
+   quieter so the main action is obvious. */
 .pv-ss-row {
-  display: flex; align-items: center; gap: 4px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px;
+  display: flex; align-items: stretch;
+  background: rgba(255,153,102,0.05);
+  border: 1px solid rgba(255,153,102,0.22);
+  border-radius: 12px;
+  transition: border-color .15s, background .15s, transform .1s;
 }
+.pv-ss-row:hover { border-color: rgba(255,153,102,0.55); background: rgba(255,153,102,0.09); }
+.pv-ss-row:has(.pv-ss-run:active) { transform: scale(0.99); }
 .pv-ss-run {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  flex: 1; min-width: 0; min-height: 56px;
+  display: flex; align-items: center; gap: 12px;
   background: transparent; border: none; text-align: left; cursor: pointer;
-  padding: 10px 12px; color: var(--bone); font-family: 'Inter', sans-serif;
-  border-radius: 10px;
+  padding: 10px 6px 10px 12px; color: var(--bone); font-family: 'Inter', sans-serif;
+  border-radius: 12px 0 0 12px;
 }
-.pv-ss-run:hover { background: rgba(255,153,102,0.06); }
-.pv-ss-q { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv-ss-scope { font-size: 11.5px; color: var(--bone3); }
+.pv-ss-run:focus-visible, .pv-ss-tool:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.pv-ss-ico {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,153,102,0.16); color: var(--cyan);
+}
+.pv-ss-ico svg { width: 15px; height: 15px; }
+.pv-ss-ico svg path { fill: currentColor; }
+.pv-ss-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv-ss-q { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-ss-scope { font-size: 12px; color: var(--bone3); line-height: 1.4; }
+.pv-ss-scope .paused { color: var(--bone2); }
 .pv-ss-new {
-  align-self: flex-start; margin-top: 2px;
+  flex: none;
   background: var(--cyan); color: #1a0f1f; border-radius: 999px;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.06em; padding: 2px 8px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 9px;
 }
-.pv-ss-del {
-  flex: none; width: 34px; height: 34px; margin-right: 6px;
+.pv-ss-go { flex: none; color: var(--cyan); font-size: 22px; line-height: 1; transition: transform .15s; }
+.pv-ss-row:hover .pv-ss-go { transform: translateX(3px); }
+.pv-ss-tools { flex: none; display: flex; align-items: center; gap: 2px; padding-right: 6px; }
+.pv-ss-tool {
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none; border-radius: 8px; cursor: pointer;
-  color: var(--bone3); font-size: 14px;
+  color: var(--bone3); font-size: 13px;
 }
-.pv-ss-del:hover { color: var(--bone); background: rgba(255,255,255,0.06); }
+.pv-ss-tool:hover { color: var(--bone); background: rgba(255,255,255,0.06); }
+.pv-ss-tool svg { width: 16px; height: 16px; }
+.pv-ss-tool.on { color: var(--cyan); }
+.pv-ss-tool.on svg path:first-child { fill: currentColor; }
+.pv-saved-note { font-size: 11.5px; color: var(--bone3); line-height: 1.5; margin-top: 8px; }
+.pv-saved-msg { font-size: 12.5px; color: var(--bone2); margin-top: 8px; min-height: 0; }
+.pv-saved-msg button {
+  background: none; border: none; padding: 0; margin-left: 6px; cursor: pointer;
+  color: var(--cyan); font: inherit; font-weight: 700; text-decoration: underline;
+}
 
 /* Live badge — appears on event cards whose start time is within ±4 hours
    of now (matches the existing isEventLive() / "Live now" filter window).
@@ -4089,7 +4119,17 @@ const T={
     it:{ssSave:'Salva ricerca',ssSaved:'Salvata',ssNewChip:'Nuovo',ssNewSince:n=>`${n} nuov${n>1?'i':'o'} dalla tua ultima visita`,ssTitle:'Ricerche salvate',ssEmpty:'Salva una ricerca con il segnalibro accanto ai risultati per ritrovarla qui.',ssRecent:'Ricerche recenti',ssRemove:'Rimuovi ricerca salvata',ssAllBe:'Tutto il Belgio',ssLimit:'Puoi salvare fino a 10 ricerche — rimuovine una dal tuo profilo.',ssErr:'Impossibile salvare questa ricerca. Riprova.',signInToSaveSearch:'Accedi per salvare questa ricerca e ritrovarla quando vuoi.'},
     uk:{ssSave:'Зберегти пошук',ssSaved:'Збережено',ssNewChip:'Нове',ssNewSince:n=>`Нових з останнього перегляду: ${n}`,ssTitle:'Збережені пошуки',ssEmpty:'Збережіть пошук закладкою біля результатів, щоб знайти його тут.',ssRecent:'Нещодавні пошуки',ssRemove:'Видалити збережений пошук',ssAllBe:'Уся Бельгія',ssLimit:'Можна зберегти до 10 пошуків — спершу видаліть один у профілі.',ssErr:'Не вдалося зберегти пошук. Спробуйте ще раз.',signInToSaveSearch:'Увійдіть, щоб зберегти цей пошук і повертатися до нього будь-коли.'},
   };
-  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en));
+  // Phase 2: email switch, pause, undo, accessible labels.
+  const S2 = {
+    en:{ssRunLabel:q=>`Search again: ${q}`,ssEmailOn:'Weekly email is on — turn off',ssEmailOff:'Get a weekly email for this search',ssEmailNote:'🔔 Weekly email on Thursdays when there’s something new for that search. Turn it off anytime.',ssEmailStarted:e=>`We’ll email ${e} on Thursdays when there’s something new.`,ssPaused:'Email paused — open this search to resume',ssRemoved:q=>`Removed “${q}”.`,ssUndo:'Undo'},
+    fr:{ssRunLabel:q=>`Relancer la recherche : ${q}`,ssEmailOn:'E-mail hebdomadaire activé — désactiver',ssEmailOff:'Recevoir un e-mail hebdomadaire pour cette recherche',ssEmailNote:'🔔 Un e-mail le jeudi quand il y a du nouveau pour cette recherche. Désactivable à tout moment.',ssEmailStarted:e=>`Nous écrirons à ${e} le jeudi quand il y a du nouveau.`,ssPaused:'E-mails en pause — ouvrez cette recherche pour reprendre',ssRemoved:q=>`« ${q} » supprimée.`,ssUndo:'Annuler'},
+    nl:{ssRunLabel:q=>`Opnieuw zoeken: ${q}`,ssEmailOn:'Wekelijkse e-mail staat aan — uitzetten',ssEmailOff:'Ontvang een wekelijkse e-mail voor deze zoekopdracht',ssEmailNote:'🔔 Op donderdag een e-mail als er iets nieuws is voor die zoekopdracht. Altijd uit te zetten.',ssEmailStarted:e=>`We mailen ${e} op donderdag als er iets nieuws is.`,ssPaused:'E-mail gepauzeerd — open deze zoekopdracht om verder te gaan',ssRemoved:q=>`“${q}” verwijderd.`,ssUndo:'Ongedaan maken'},
+    de:{ssRunLabel:q=>`Erneut suchen: ${q}`,ssEmailOn:'Wöchentliche E-Mail ist an — ausschalten',ssEmailOff:'Wöchentliche E-Mail für diese Suche erhalten',ssEmailNote:'🔔 Donnerstags eine E-Mail, wenn es Neues für diese Suche gibt. Jederzeit abschaltbar.',ssEmailStarted:e=>`Wir schreiben ${e} donnerstags, wenn es Neues gibt.`,ssPaused:'E-Mail pausiert — öffne diese Suche, um fortzufahren',ssRemoved:q=>`„${q}“ entfernt.`,ssUndo:'Rückgängig'},
+    es:{ssRunLabel:q=>`Buscar de nuevo: ${q}`,ssEmailOn:'Correo semanal activado — desactivar',ssEmailOff:'Recibir un correo semanal para esta búsqueda',ssEmailNote:'🔔 Un correo los jueves cuando haya novedades para esa búsqueda. Desactívalo cuando quieras.',ssEmailStarted:e=>`Escribiremos a ${e} los jueves cuando haya novedades.`,ssPaused:'Correo en pausa — abre esta búsqueda para reanudarlo',ssRemoved:q=>`«${q}» eliminada.`,ssUndo:'Deshacer'},
+    it:{ssRunLabel:q=>`Cerca di nuovo: ${q}`,ssEmailOn:'Email settimanale attiva — disattiva',ssEmailOff:'Ricevi un’email settimanale per questa ricerca',ssEmailNote:'🔔 Un’email il giovedì quando c’è qualcosa di nuovo per quella ricerca. Disattivabile in qualsiasi momento.',ssEmailStarted:e=>`Scriveremo a ${e} il giovedì quando c’è qualcosa di nuovo.`,ssPaused:'Email in pausa — apri questa ricerca per riprendere',ssRemoved:q=>`«${q}» rimossa.`,ssUndo:'Annulla'},
+    uk:{ssRunLabel:q=>`Шукати знову: ${q}`,ssEmailOn:'Щотижневий лист увімкнено — вимкнути',ssEmailOff:'Отримувати щотижневий лист для цього пошуку',ssEmailNote:'🔔 Лист у четвер, коли для цього пошуку є щось нове. Можна вимкнути будь-коли.',ssEmailStarted:e=>`Ми писатимемо на ${e} у четвер, коли буде щось нове.`,ssPaused:'Листи призупинено — відкрийте цей пошук, щоб відновити',ssRemoved:q=>`«${q}» видалено.`,ssUndo:'Скасувати'},
+  };
+  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en));
 })();
 
 // Initial language resolution: localStorage (explicit user choice from previous
@@ -4558,9 +4598,21 @@ let savedSearches = [];          // signed-in user's rows, newest first
 let aiNewIds = new Set();        // current results not yet seen for this saved search
 let savedSearchBusy = false;     // guards double-taps on the save toggle
 const SAVED_SEEN_MAX = 300;      // seen_ids cap per saved search (newest first)
-const SAVED_SEARCH_SELECT = 'id, query, area, near_me, seen_ids, new_count, last_opened_at, created_at';
+const SAVED_SEARCH_SELECT = 'id, query, area, near_me, lang, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at';
+const SAVED_PAUSE_AFTER = 3;     // = PAUSE_AFTER in the backend digest
+// Weekly-email switch: hidden until the digest goes live (SS_EMAIL_LIVE), except
+// for testers who opened the app once with ?ssmail=1 (remembered per browser).
+const SS_EMAIL_LIVE = false;
+function ssEmailEnabled() {
+  if (SS_EMAIL_LIVE) return true;
+  try {
+    if (new URLSearchParams(location.search).get('ssmail') === '1') localStorage.setItem('shou_ss_email', '1');
+    return localStorage.getItem('shou_ss_email') === '1';
+  } catch (e) { return false; }
+}
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ICON_BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
+const ICON_BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" fill="none"/></svg>';
 
 function findSavedSearch(q) {
   const k = String(q || '').trim().toLowerCase();
@@ -4582,6 +4634,15 @@ async function loadSavedSearches() {
   if (error) { console.warn('saved searches load failed:', error.message); return; }
   savedSearches = data || [];
   refreshSavedSearchSurfaces();
+  // A search that finished before the list arrived (e.g. opened from a digest
+  // link while the session was still restoring) gets its "New" marks now.
+  if (aiQ && aiResultIds && !aiSearching && !aiNewIds.size && findSavedSearch(aiQ)) {
+    noteSavedSearchResults(aiQ);
+    if (aiNewIds.size) {
+      applyF();
+      renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
+    }
+  }
 }
 
 function refreshSavedSearchSurfaces() {
@@ -4646,8 +4707,16 @@ async function toggleSaveSearch() {
   }
 }
 
+let savedUndo = null;            // { row, timer } — the last removed search, restorable for a few seconds
+
+function setSavedMsg(html) {
+  const m = document.getElementById('pvSavedMsg');
+  if (m) m.innerHTML = html || '';
+}
+
 async function removeSavedSearch(id) {
   const prev = savedSearches;
+  const row = savedSearches.find(s => s.id === id);
   savedSearches = savedSearches.filter(s => s.id !== id);   // optimistic
   refreshSavedSearchSurfaces();
   const { error } = await sb.from('saved_searches').delete().eq('id', id);
@@ -4655,7 +4724,52 @@ async function removeSavedSearch(id) {
     console.warn('remove saved search failed:', error.message);
     savedSearches = prev;
     refreshSavedSearchSurfaces();
+    return;
   }
+  // Undo instead of a confirm dialog: removal is instant, restorable for 8 s.
+  if (row) {
+    if (savedUndo) clearTimeout(savedUndo.timer);
+    savedUndo = { row, timer: setTimeout(() => { savedUndo = null; setSavedMsg(''); }, 8000) };
+    setSavedMsg(`${escapeHtml(t('ssRemoved')(row.query))}<button onclick="undoRemoveSavedSearch()">${escapeHtml(t('ssUndo'))}</button>`);
+  }
+}
+
+async function undoRemoveSavedSearch() {
+  if (!savedUndo || !currentSession) return;
+  const { row, timer } = savedUndo;
+  clearTimeout(timer);
+  savedUndo = null;
+  setSavedMsg('');
+  // Re-insert the same row (same id, seen/pending lists) so nothing is lost.
+  const { id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at } = row;
+  const { data, error } = await sb.from('saved_searches')
+    .insert({ id, user_id: currentSession.user.id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at })
+    .select(SAVED_SEARCH_SELECT).single();
+  if (error) { console.warn('undo remove failed:', error.message); await loadSavedSearches(); return; }
+  savedSearches = [data, ...savedSearches].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  refreshSavedSearchSurfaces();
+}
+
+// Weekly digest opt-in, per saved search. Turning it on also un-pauses it.
+async function toggleSavedSearchEmail(id) {
+  const s = savedSearches.find(x => x.id === id);
+  if (!s || !currentSession) return;
+  const on = !s.notify_email;
+  const prev = { notify_email: s.notify_email, digests_since_open: s.digests_since_open };
+  s.notify_email = on;
+  if (on) s.digests_since_open = 0;
+  renderSavedSearchesSection();
+  const patch = on ? { notify_email: true, digests_since_open: 0 } : { notify_email: false };
+  const { error } = await sb.from('saved_searches').update(patch).eq('id', id);
+  if (error) {
+    console.warn('saved search email toggle failed:', error.message);
+    Object.assign(s, prev);
+    renderSavedSearchesSection();
+    return;
+  }
+  if (on) setSavedMsg(escapeHtml(t('ssEmailStarted')(currentSession.user.email || '')));
+  else setSavedMsg('');
+  try { window.va && window.va('event', { name: on ? 'Saved search email on' : 'Saved search email off' }); } catch (e) {}
 }
 
 // Called when a search's results land, before applyF() so the cards get
@@ -4667,13 +4781,18 @@ function noteSavedSearchResults(q) {
   const ids = Array.from(aiResultIds).filter(id => UUID_RE.test(id));
   const seen = new Set(s.seen_ids || []);
   aiNewIds = new Set(ids.filter(id => !seen.has(id)));
-  // Remember everything shown now; newest first, capped.
-  const merged = [...ids, ...(s.seen_ids || []).filter(id => !aiResultIds.has(id))].slice(0, SAVED_SEEN_MAX);
+  // Remember everything shown now, plus what the daily matcher had queued
+  // (the user has now been here), newest first, capped. Opening the search
+  // also clears the badge and un-pauses its weekly email.
+  const pending = (s.pending_ids || []).filter(id => !aiResultIds.has(id));
+  const merged = [...ids, ...pending, ...(s.seen_ids || []).filter(id => !aiResultIds.has(id) && !pending.includes(id))].slice(0, SAVED_SEEN_MAX);
   s.seen_ids = merged;
+  s.pending_ids = [];
   s.new_count = 0;
+  s.digests_since_open = 0;
   s.last_opened_at = new Date().toISOString();
   sb.from('saved_searches')
-    .update({ seen_ids: merged, new_count: 0, last_opened_at: s.last_opened_at })
+    .update({ seen_ids: merged, pending_ids: [], new_count: 0, digests_since_open: 0, last_opened_at: s.last_opened_at })
     .eq('id', s.id)
     .then(({ error }) => { if (error) console.warn('saved search update failed:', error.message); });
 }
@@ -4695,21 +4814,42 @@ function runSavedSearch(id) {
 function renderSavedSearchesSection() {
   const box = document.getElementById('pvSaved');
   if (!box) return;
+  // Keep the status line (undo / email confirmation) across re-renders.
+  const msgHtml = document.getElementById('pvSavedMsg')?.innerHTML || '';
   const head = `<div class="pv-saved-h">${escapeHtml(t('ssTitle'))}</div>`;
+  const msg = `<div class="pv-saved-msg" id="pvSavedMsg" role="status" aria-live="polite">${msgHtml}</div>`;
   if (!savedSearches.length) {
-    box.innerHTML = head + `<div class="pv-saved-empty">${escapeHtml(t('ssEmpty'))}</div>`;
+    box.innerHTML = head + `<div class="pv-saved-empty">${escapeHtml(t('ssEmpty'))}</div>` + msg;
     return;
   }
+  const emailOn = ssEmailEnabled();
   const rm = escapeHtml(t('ssRemove'));
-  box.innerHTML = head + `<div class="pv-saved-list">${savedSearches.map(s => `
+  box.innerHTML = head + `<div class="pv-saved-list">${savedSearches.map(s => {
+    const paused = s.notify_email && (s.digests_since_open || 0) >= SAVED_PAUSE_AFTER;
+    const scope = escapeHtml(savedScopeLabel(s)) + (emailOn && paused ? ` · <span class="paused">${escapeHtml(t('ssPaused'))}</span>` : '');
+    const mailLabel = escapeHtml(s.notify_email ? t('ssEmailOn') : t('ssEmailOff'));
+    const mailBtn = emailOn
+      ? `<button class="pv-ss-tool${s.notify_email ? ' on' : ''}" onclick="toggleSavedSearchEmail('${s.id}')" aria-pressed="${!!s.notify_email}" aria-label="${mailLabel}" title="${mailLabel}">${ICON_BELL}</button>`
+      : '';
+    return `
     <div class="pv-ss-row">
-      <button class="pv-ss-run" onclick="runSavedSearch('${s.id}')">
-        <span class="pv-ss-q">${escapeHtml(s.query)}</span>
-        <span class="pv-ss-scope">${escapeHtml(savedScopeLabel(s))}</span>
-        ${s.new_count > 0 ? `<span class="pv-ss-new">${escapeHtml(t('ssNewSince')(s.new_count))}</span>` : ''}
+      <button class="pv-ss-run" onclick="runSavedSearch('${s.id}')" aria-label="${escapeHtml(t('ssRunLabel')(s.query))}">
+        <span class="pv-ss-ico">${ICON_BOOKMARK}</span>
+        <span class="pv-ss-txt">
+          <span class="pv-ss-q">${escapeHtml(s.query)}</span>
+          <span class="pv-ss-scope">${scope}</span>
+        </span>
+        ${s.new_count > 0 ? `<span class="pv-ss-new">${escapeHtml(t('ssNewChip'))} · ${s.new_count}</span>` : ''}
+        <span class="pv-ss-go" aria-hidden="true">›</span>
       </button>
-      <button class="pv-ss-del" onclick="removeSavedSearch('${s.id}')" aria-label="${rm}" title="${rm}">✕</button>
-    </div>`).join('')}</div>`;
+      <div class="pv-ss-tools">
+        ${mailBtn}
+        <button class="pv-ss-tool" onclick="removeSavedSearch('${s.id}')" aria-label="${rm}" title="${rm}">✕</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`
+    + (emailOn ? `<div class="pv-saved-note">${escapeHtml(t('ssEmailNote'))}</div>` : '')
+    + msg;
 }
 
 // Location-aware AI search is now derived from the city pill: when the
@@ -5593,6 +5733,8 @@ async function fetchEvts(){
     maybeOpenEventFromUrl();
     // Same point in the load: if ?surprise is present, fire the surprise flow.
     maybeSurpriseFromUrl();
+    // ?q=<search> (saved-search digest links) runs that search.
+    maybeSearchFromUrl();
   }catch(ex){
     document.getElementById('err').textContent='Live data unavailable: '+ex.message+'. Showing sample events.';
     document.getElementById('err').classList.add('on');
@@ -8130,6 +8272,28 @@ function maybeSurpriseFromUrl() {
     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   } catch (_) {}
   surpriseMe();
+}
+
+// ?q=<search>: run that AI search on load (links in the saved-search digest
+// email). The param is removed so a reload doesn't re-run it; an ?event= deep
+// link on the same URL wins.
+let urlSearchHandled = false;
+function maybeSearchFromUrl() {
+  if (urlSearchHandled) return;
+  let q = '';
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.get('event')) return;
+    q = (p.get('q') || '').trim().slice(0, 200);
+  } catch (_) {}
+  if (q.length < 2) return;
+  urlSearchHandled = true;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('q');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (_) {}
+  qAI(q);
 }
 
 // ──────────────────────────────────────────────────────────────────────
