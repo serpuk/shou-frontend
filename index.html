@@ -4205,6 +4205,8 @@ function rsvpIcon(st){ return st==='interested'?ICON_STAR : st==='going'?ICON_CH
 // Trending shelf renders from trendingAll, which can hold events not in `all` —
 // look in both so RSVP updates work on trending-only cards.
 function findEv(id){ return all.find(x => x.id === id) || trendingAll.find(x => x.id === id) || null; }
+// ?event= carries the short slug (or, in older links, the uuid): find by either.
+function findEvByRef(ref){ return findEv(ref) || all.find(x => x.slug === ref) || trendingAll.find(x => x.slug === ref) || null; }
 
 // Apply a new RSVP state (or null to clear). Mutually exclusive; mirrors the
 // server tables for the two that have counts (likes/going) and updates counts
@@ -5206,6 +5208,8 @@ function pStr(e){if(e.mn!=null)return'€'+Math.round(e.mn)+(e.mx&&e.mx!==e.mn?'
 function shapeCatalogEvent(e){
   return escEventFields({
       id:e.id,
+      // Short code (shou.be/e/<slug>) — what the address bar shows: ?event=<slug>.
+      slug:e.slug||null,
       name:e.name||e.title||'Untitled',
       // Fallback chain for the localized category label shown in the pill:
       //   1. e.seg from API (the normal path — always populated by events.js)
@@ -7477,7 +7481,8 @@ function eventCanonicalUrl(id) {
 // returns HTML with per-event OG meta tags. Real users (non-bot UA) hit
 // the SPA as normal, and the ?event= page-load handler opens the modal.
 function eventShareUrl(id) {
-  return eventCanonicalUrl(id);
+  const e = findEv(id);
+  return eventCanonicalUrl((e && e.slug) || id);   // api/og resolves a slug too
 }
 
 // Web Share API gate. Returns true when we should use the native share sheet
@@ -7710,9 +7715,10 @@ function om(id, _opts){
   modalPushedHistory = false;
   if (!_opts?.fromUrl) {
     const currentParams = new URLSearchParams(window.location.search);
-    if (currentParams.get('event') !== id) {
+    const ref = e.slug || id;                 // short ?event=<slug> when the event has one
+    if (currentParams.get('event') !== ref && currentParams.get('event') !== id) {
       urlRoutingSelfDriven = true;
-      const newUrl = eventCanonicalUrl(id);
+      const newUrl = eventCanonicalUrl(ref);
       history.pushState({ event: id }, '', newUrl);
       modalPushedHistory = true;
       // Update page title for browser tab + share previews
@@ -7788,7 +7794,8 @@ window.addEventListener('popstate', () => {
   const eventId = params.get('event');
   const modal = document.getElementById('mov');
   if (eventId) {
-    om(eventId, { fromUrl: true });
+    const hit = findEvByRef(eventId);
+    om(hit ? hit.id : eventId, { fromUrl: true });
   } else if (modal?.classList.contains('on')) {
     modal.classList.remove('on');
     document.title = 'shou — live tonight';
@@ -7817,21 +7824,24 @@ async function maybeOpenEventFromUrl() {
   const eventId = new URLSearchParams(window.location.search).get('event');
   if (!eventId) return;
   deepLinkHandled = true;  // claim immediately to avoid concurrent double-open
-  // Already in the loaded catalog → open straight away.
-  if (all.some(x => x.id === eventId)) { om(eventId, { fromUrl: true }); return; }
-  // Otherwise fetch just this event — doesn't depend on the catalog being ready.
+  // ?event= is the short slug, or a uuid in older links. Already in the
+  // loaded catalog → open straight away.
+  const known = all.find(x => x.id === eventId || x.slug === eventId);
+  if (known) { om(known.id, { fromUrl: true }); return; }
+  // Otherwise fetch just this event (the API takes a uuid or a slug) — doesn't
+  // depend on the catalog being ready.
   try {
     const r = await fetch(API_BASE + '/api/events?' + new URLSearchParams({ lang, id: eventId }));
     if (r.ok) {
       const d = await r.json();
-      const ev = (d.events || []).find(x => x.id === eventId);
+      const ev = (d.events || []).find(x => x.id === eventId || x.slug === eventId);
       if (ev) {
         // Re-check AFTER the await: the catalog fetch may have landed (and
         // included this event) while we were fetching — pushing blindly would
         // put the same id in `all` twice (same stale-guard race as
         // hydrateEventsByIds).
-        if (!all.some(x => x.id === eventId)) all.push(shapeCatalogEvent(ev));
-        om(eventId, { fromUrl: true, singleEvent: true });
+        if (!all.some(x => x.id === ev.id)) all.push(shapeCatalogEvent(ev));
+        om(ev.id, { fromUrl: true, singleEvent: true });
         return;
       }
     }
@@ -7893,7 +7903,7 @@ function findCurrentEventIndex() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('event');
   if (!id) return -1;
-  return filtered.findIndex(e => e.id === id);
+  return filtered.findIndex(e => e.id === id || e.slug === id);   // ?event= is the slug (or an old uuid)
 }
 
 // Show/hide the prev/next nav arrows based on the current event's position
@@ -7913,7 +7923,7 @@ function updateNavArrows(eventId) {
     const params = new URLSearchParams(window.location.search);
     eventId = params.get('event');
   }
-  const idx = eventId ? filtered.findIndex(e => e.id === eventId) : -1;
+  const idx = eventId ? filtered.findIndex(e => e.id === eventId || e.slug === eventId) : -1;
   if (idx < 0) {
     // Event not in filtered list (e.g. opened from a shared URL while a
     // category filter is active and the event doesn't match). Hide both.
@@ -10613,5 +10623,16 @@ renderAuthSurface();
      Vercel project dashboard to collect. -->
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
+<script>
+// The modal overlays are written inside .main-wrap, whose z-index:2 makes it a
+// stacking context — so however high their own z-index, the top nav (z 100)
+// painted over them and hid the top of every modal (the event poster, sign-in…).
+// Lift them to <body> once the page is parsed; their own CSS doesn't depend on
+// where they sit.
+['mov', 'signinMov', 'profileMov', 'feedbackMov', 'likedByMov', 'goingMov'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (el && el.parentNode !== document.body) document.body.appendChild(el);
+});
+</script>
 </body>
 </html>
