@@ -2131,7 +2131,18 @@ html.deeplink .dl-cover {
 .mph span { filter: drop-shadow(0 0 20px rgba(255,153,102,0.3)); }
 
 /* ── Redesigned modal: hero overlay + details card + static venue map ── */
-.mhero { position: relative; }
+.mhero { position: relative; overflow: hidden; border-radius: var(--radius) var(--radius) 0 0; }
+/* Poster mode (set by mimgFit when cover would crop a tall flyer/poster):
+   show the image whole, over a blurred, darkened copy of itself — the same
+   treatment as the guest guide's event card. Photos keep the full-bleed cover. */
+.mth-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; filter: blur(22px) brightness(0.55); transform: scale(1.2);
+  display: none;
+}
+.mhero.is-poster .mth-bg { display: block; }
+.mhero.is-poster .mth { position: relative; height: 380px; object-fit: contain; background: transparent; }
+@media (max-width: 600px) { .mhero.is-poster .mth { height: 340px; } }
 .mhero-scrim {
   position: absolute; left: 0; right: 0; bottom: 0; height: 58%;
   pointer-events: none; border-radius: 0;
@@ -6777,7 +6788,19 @@ function imgFail(id,cls,tc,em){
 }
 function mimgFail(id,tc,em){
   const el=document.getElementById(id);if(!el)return;
+  const bg=el.parentNode&&el.parentNode.querySelector('.mth-bg'); if(bg)bg.remove();
   el.outerHTML=`<div class="mph ${tc}"><span>${em}</span></div>`;
+}
+// Tall images (event posters, flyers) lose their text under object-fit:cover in
+// the wide hero. When cover would crop more than about a quarter of the image's
+// height, switch the hero to poster mode: the whole image over a blurred copy.
+function mimgFit(img,tries){
+  const hero=img&&img.closest('.mhero'); if(!hero||!img.naturalWidth||!img.naturalHeight)return;
+  // Loaded before the modal is laid out (hidden / animating in): measure once it has a size.
+  if(!hero.clientWidth){ if((tries||0)<30) requestAnimationFrame(()=>mimgFit(img,(tries||0)+1)); return; }
+  if(hero.classList.contains('is-poster'))return;
+  const frame=hero.clientWidth/(img.clientHeight||320);
+  if(img.naturalWidth/img.naturalHeight < frame*0.75) hero.classList.add('is-poster');
 }
 function bigCard(e){
   const cl=segCls(e.categorySlug),isL=lk.has(e.id),isG=gn.has(e.id),pop=Math.min(99,Math.round(e.pop));
@@ -7579,7 +7602,7 @@ function buildEventCardHTML(e) {
   const isG=gn.has(e.id);
   const fid='mimg_'+e.id.replace(/[^a-z0-9]/gi,'');
   const bigTh=e.img
-    ? `<img id="${fid}" class="mth" src="${e.img}" decoding="async" onerror="mimgFail('${fid}','${segThumb(e.categorySlug)}','${segEmoji(e.categorySlug)}')">`
+    ? `<img class="mth-bg" src="${e.img}" alt="" aria-hidden="true" decoding="async" onerror="this.remove()"><img id="${fid}" class="mth" src="${e.img}" decoding="async" onload="mimgFit(this)" onerror="mimgFail('${fid}','${segThumb(e.categorySlug)}','${segEmoji(e.categorySlug)}')">`
     : `<div class="mph ${segThumb(e.categorySlug)}"><span>${segEmoji(e.categorySlug)}</span></div>`;
   const _dir = directionsUrl(e);
   const _dist = (typeof eventDistanceLabel === 'function') ? eventDistanceLabel(e) : null;
