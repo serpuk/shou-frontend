@@ -1799,6 +1799,24 @@ body.ai-active .filters { position: static; box-shadow: none; }
 .pv-ss-tool svg { width: 16px; height: 16px; }
 .pv-ss-tool.on { color: var(--cyan); }
 .pv-ss-tool.on svg path:first-child { fill: currentColor; }
+.pv-ss-item { display: flex; flex-direction: column; gap: 6px; }
+/* Email frequency menu under a row (bell): Weekly / Daily / Off. */
+.pv-ss-freq {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px 10px; margin-left: 12px;
+  border-left: 2px solid rgba(255,153,102,0.35);
+}
+.pv-ss-freq-l { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--bone3); margin-right: 2px; }
+.pv-ss-fopt {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 6px 12px; border-radius: 10px; cursor: pointer; text-align: left;
+  background: transparent; color: var(--bone2); border: 1px solid rgba(255,255,255,0.12);
+  font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700;
+}
+.pv-ss-fopt small { font-size: 10.5px; font-weight: 500; color: var(--bone3); }
+.pv-ss-fopt:hover { border-color: rgba(255,153,102,0.5); color: var(--bone); }
+.pv-ss-fopt.on { border-color: var(--cyan); color: var(--cyan); background: rgba(255,153,102,0.10); }
+.pv-ss-fopt:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .pv-saved-note { font-size: 11.5px; color: var(--bone3); line-height: 1.5; margin-top: 8px; }
 .pv-saved-msg { font-size: 12.5px; color: var(--bone2); margin-top: 8px; min-height: 0; }
 .pv-saved-msg button {
@@ -4153,7 +4171,17 @@ const T={
     it:{ssSaveAs:'Salva come',ssAnyDay:'qualsiasi giorno',ssAsTyped:'così com’è',ssTimeHint:'Parole come «stasera» limitano una ricerca salvata a quel solo giorno: senza, continua a trovare nuovi eventi.'},
     uk:{ssSaveAs:'Зберегти як',ssAnyDay:'будь-який день',ssAsTyped:'як введено',ssTimeHint:'Слова на кшталт «сьогодні ввечері» обмежують збережений пошук одним днем — без них він і далі знаходитиме нові події.'},
   };
-  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en, S3[l] || S3.en));
+  // Email frequency menu (weekly / daily / off).
+  const S4 = {
+    en:{ssEmailMe:'Email me',ssWeeklyShort:'Weekly',ssWeeklySub:'Thursdays',ssDailyShort:'Daily',ssDailySub:'only when there’s something new',ssFreqOff:'Off',ssEmailFor:m=>`Email for this search: ${m}`,ssEmailStartedDaily:e=>`We’ll email ${e} each afternoon when there’s something new.`,ssEmailNote:'🔔 Get a weekly (Thursday) or daily email per search — only when there’s something new. Turn it off anytime.'},
+    fr:{ssEmailMe:'M’envoyer un e-mail',ssWeeklyShort:'Hebdo',ssWeeklySub:'le jeudi',ssDailyShort:'Quotidien',ssDailySub:'seulement s’il y a du nouveau',ssFreqOff:'Désactivé',ssEmailFor:m=>`E-mail pour cette recherche : ${m}`,ssEmailStartedDaily:e=>`Nous écrirons à ${e} chaque après-midi quand il y a du nouveau.`,ssEmailNote:'🔔 Un e-mail hebdomadaire (jeudi) ou quotidien par recherche — seulement s’il y a du nouveau. Désactivable à tout moment.'},
+    nl:{ssEmailMe:'Mail me',ssWeeklyShort:'Wekelijks',ssWeeklySub:'op donderdag',ssDailyShort:'Dagelijks',ssDailySub:'alleen als er iets nieuws is',ssFreqOff:'Uit',ssEmailFor:m=>`E-mail voor deze zoekopdracht: ${m}`,ssEmailStartedDaily:e=>`We mailen ${e} elke namiddag als er iets nieuws is.`,ssEmailNote:'🔔 Een wekelijkse (donderdag) of dagelijkse e-mail per zoekopdracht — alleen als er iets nieuws is. Altijd uit te zetten.'},
+    de:{ssEmailMe:'E-Mail an mich',ssWeeklyShort:'Wöchentlich',ssWeeklySub:'donnerstags',ssDailyShort:'Täglich',ssDailySub:'nur wenn es Neues gibt',ssFreqOff:'Aus',ssEmailFor:m=>`E-Mail für diese Suche: ${m}`,ssEmailStartedDaily:e=>`Wir schreiben ${e} jeden Nachmittag, wenn es Neues gibt.`,ssEmailNote:'🔔 Wöchentliche (Donnerstag) oder tägliche E-Mail pro Suche — nur wenn es Neues gibt. Jederzeit abschaltbar.'},
+    es:{ssEmailMe:'Enviarme un correo',ssWeeklyShort:'Semanal',ssWeeklySub:'los jueves',ssDailyShort:'Diario',ssDailySub:'solo si hay novedades',ssFreqOff:'Desactivado',ssEmailFor:m=>`Correo para esta búsqueda: ${m}`,ssEmailStartedDaily:e=>`Escribiremos a ${e} cada tarde cuando haya novedades.`,ssEmailNote:'🔔 Un correo semanal (jueves) o diario por búsqueda, solo si hay novedades. Desactívalo cuando quieras.'},
+    it:{ssEmailMe:'Inviami un’email',ssWeeklyShort:'Settimanale',ssWeeklySub:'il giovedì',ssDailyShort:'Giornaliera',ssDailySub:'solo se c’è qualcosa di nuovo',ssFreqOff:'Disattivata',ssEmailFor:m=>`Email per questa ricerca: ${m}`,ssEmailStartedDaily:e=>`Scriveremo a ${e} ogni pomeriggio quando c’è qualcosa di nuovo.`,ssEmailNote:'🔔 Un’email settimanale (giovedì) o giornaliera per ricerca, solo quando c’è qualcosa di nuovo. Disattivabile in qualsiasi momento.'},
+    uk:{ssEmailMe:'Надсилати лист',ssWeeklyShort:'Щотижня',ssWeeklySub:'у четвер',ssDailyShort:'Щодня',ssDailySub:'лише коли є щось нове',ssFreqOff:'Вимкнено',ssEmailFor:m=>`Лист для цього пошуку: ${m}`,ssEmailStartedDaily:e=>`Ми писатимемо на ${e} щодня після обіду, коли буде щось нове.`,ssEmailNote:'🔔 Щотижневий (четвер) або щоденний лист для кожного пошуку — лише коли є щось нове. Можна вимкнути будь-коли.'},
+  };
+  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en, S3[l] || S3.en, S4[l] || S4.en));
 })();
 
 // Initial language resolution: localStorage (explicit user choice from previous
@@ -4622,8 +4650,8 @@ let savedSearches = [];          // signed-in user's rows, newest first
 let aiNewIds = new Set();        // current results not yet seen for this saved search
 let savedSearchBusy = false;     // guards double-taps on the save toggle
 const SAVED_SEEN_MAX = 300;      // seen_ids cap per saved search (newest first)
-const SAVED_SEARCH_SELECT = 'id, query, area, near_me, lang, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at';
-const SAVED_PAUSE_AFTER = 3;     // = PAUSE_AFTER in the backend digest
+const SAVED_SEARCH_SELECT = 'id, query, area, near_me, lang, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, last_opened_at, created_at';
+const SAVED_PAUSE_AFTER = { weekly: 3, daily: 7 };   // = PAUSE in the backend digest
 // Weekly-email switch: hidden until the digest goes live (SS_EMAIL_LIVE), except
 // for testers who opened the app once with ?ssmail=1 (remembered per browser).
 const SS_EMAIL_LIVE = false;
@@ -4834,35 +4862,48 @@ async function undoRemoveSavedSearch() {
   savedUndo = null;
   setSavedMsg('');
   // Re-insert the same row (same id, seen/pending lists) so nothing is lost.
-  const { id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at } = row;
+  const { id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, last_opened_at, created_at } = row;
   const { data, error } = await sb.from('saved_searches')
-    .insert({ id, user_id: currentSession.user.id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, digests_since_open, last_opened_at, created_at })
+    .insert({ id, user_id: currentSession.user.id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency: email_frequency || 'weekly', digests_since_open, last_opened_at, created_at })
     .select(SAVED_SEARCH_SELECT).single();
   if (error) { console.warn('undo remove failed:', error.message); await loadSavedSearches(); return; }
   savedSearches = [data, ...savedSearches].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   refreshSavedSearchSurfaces();
 }
 
-// Weekly digest opt-in, per saved search. Turning it on also un-pauses it.
-async function toggleSavedSearchEmail(id) {
+// Digest email per saved search: Off / Weekly (Thursdays) / Daily (only when
+// there's something new). The bell opens a small menu under the row; turning
+// email on (or changing frequency) also un-pauses it.
+let savedEmailMenuFor = null;    // id of the row whose email menu is open
+
+const savedEmailMode = s => (!s.notify_email ? 'off' : (s.email_frequency === 'daily' ? 'daily' : 'weekly'));
+
+function toggleSavedEmailMenu(id) {
+  savedEmailMenuFor = savedEmailMenuFor === id ? null : id;
+  renderSavedSearchesSection();
+  if (savedEmailMenuFor) document.querySelector(`#pvSaved .pv-ss-freq [aria-checked="true"]`)?.focus();
+}
+
+async function setSavedSearchEmail(id, mode) {
   const s = savedSearches.find(x => x.id === id);
   if (!s || !currentSession) return;
-  const on = !s.notify_email;
-  const prev = { notify_email: s.notify_email, digests_since_open: s.digests_since_open };
-  s.notify_email = on;
-  if (on) s.digests_since_open = 0;
+  const prev = { notify_email: s.notify_email, email_frequency: s.email_frequency, digests_since_open: s.digests_since_open };
+  const patch = mode === 'off'
+    ? { notify_email: false }
+    : { notify_email: true, email_frequency: mode, digests_since_open: 0 };
+  Object.assign(s, patch);
+  savedEmailMenuFor = null;
   renderSavedSearchesSection();
-  const patch = on ? { notify_email: true, digests_since_open: 0 } : { notify_email: false };
   const { error } = await sb.from('saved_searches').update(patch).eq('id', id);
   if (error) {
-    console.warn('saved search email toggle failed:', error.message);
+    console.warn('saved search email change failed:', error.message);
     Object.assign(s, prev);
     renderSavedSearchesSection();
     return;
   }
-  if (on) setSavedMsg(escapeHtml(t('ssEmailStarted')(currentSession.user.email || '')));
-  else setSavedMsg('');
-  try { window.va && window.va('event', { name: on ? 'Saved search email on' : 'Saved search email off' }); } catch (e) {}
+  if (mode === 'off') setSavedMsg('');
+  else setSavedMsg(escapeHtml(t(mode === 'daily' ? 'ssEmailStartedDaily' : 'ssEmailStarted')(currentSession.user.email || '')));
+  try { window.va && window.va('event', { name: 'Saved search email', data: { mode } }); } catch (e) {}
 }
 
 // Called when a search's results land, before applyF() so the cards get
@@ -4918,13 +4959,28 @@ function renderSavedSearchesSection() {
   const emailOn = ssEmailEnabled();
   const rm = escapeHtml(t('ssRemove'));
   box.innerHTML = head + `<div class="pv-saved-list">${savedSearches.map(s => {
-    const paused = s.notify_email && (s.digests_since_open || 0) >= SAVED_PAUSE_AFTER;
-    const scope = escapeHtml(savedScopeLabel(s)) + (emailOn && paused ? ` · <span class="paused">${escapeHtml(t('ssPaused'))}</span>` : '');
-    const mailLabel = escapeHtml(s.notify_email ? t('ssEmailOn') : t('ssEmailOff'));
+    const mode = savedEmailMode(s);
+    const paused = mode !== 'off' && (s.digests_since_open || 0) >= (SAVED_PAUSE_AFTER[mode] || 3);
+    const emailTag = !emailOn || mode === 'off' ? ''
+      : paused ? ` · <span class="paused">${escapeHtml(t('ssPaused'))}</span>`
+      : ` · 🔔 ${escapeHtml(t(mode === 'daily' ? 'ssDailyShort' : 'ssWeeklyShort'))}`;
+    const scope = escapeHtml(savedScopeLabel(s)) + emailTag;
+    const menuOpen = emailOn && savedEmailMenuFor === s.id;
+    const mailLabel = escapeHtml(t('ssEmailFor')(t(mode === 'daily' ? 'ssDailyShort' : mode === 'weekly' ? 'ssWeeklyShort' : 'ssFreqOff')));
     const mailBtn = emailOn
-      ? `<button class="pv-ss-tool${s.notify_email ? ' on' : ''}" onclick="toggleSavedSearchEmail('${s.id}')" aria-pressed="${!!s.notify_email}" aria-label="${mailLabel}" title="${mailLabel}">${ICON_BELL}</button>`
+      ? `<button class="pv-ss-tool${mode !== 'off' ? ' on' : ''}" onclick="toggleSavedEmailMenu('${s.id}')" aria-haspopup="true" aria-expanded="${menuOpen}" aria-label="${mailLabel}" title="${mailLabel}">${ICON_BELL}</button>`
+      : '';
+    const opt = (m, label, sub) => `<button role="menuitemradio" aria-checked="${mode === m}" class="pv-ss-fopt${mode === m ? ' on' : ''}" onclick="setSavedSearchEmail('${s.id}','${m}')"><span>${escapeHtml(label)}</span>${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</button>`;
+    const menu = menuOpen
+      ? `<div class="pv-ss-freq" role="menu" aria-label="${escapeHtml(t('ssEmailMe'))}">
+          <span class="pv-ss-freq-l">${escapeHtml(t('ssEmailMe'))}</span>
+          ${opt('weekly', t('ssWeeklyShort'), t('ssWeeklySub'))}
+          ${opt('daily', t('ssDailyShort'), t('ssDailySub'))}
+          ${opt('off', t('ssFreqOff'), '')}
+        </div>`
       : '';
     return `
+    <div class="pv-ss-item">
     <div class="pv-ss-row">
       <button class="pv-ss-run" onclick="runSavedSearch('${s.id}')" aria-label="${escapeHtml(t('ssRunLabel')(s.query))}">
         <span class="pv-ss-ico">${ICON_BOOKMARK}</span>
@@ -4939,6 +4995,8 @@ function renderSavedSearchesSection() {
         ${mailBtn}
         <button class="pv-ss-tool" onclick="removeSavedSearch('${s.id}')" aria-label="${rm}" title="${rm}">✕</button>
       </div>
+    </div>
+    ${menu}
     </div>`;
   }).join('')}</div>`
     + (emailOn ? `<div class="pv-saved-note">${escapeHtml(t('ssEmailNote'))}</div>` : '')
