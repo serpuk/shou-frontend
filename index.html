@@ -1727,6 +1727,20 @@ body.ai-active .filters { position: static; box-shadow: none; }
 .ai-save-btn.on { background: rgba(255,153,102,0.14); border-color: var(--cyan); }
 .ai-save-btn.on svg path { fill: currentColor; }
 .ai-new-line { font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 10px; }
+/* "Save as" choice for searches with a time word ("tonight"): any day vs as typed. */
+.ai-save-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.ai-save-choice-l { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--bone3); }
+.ai-save-opt {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 7px 14px; border-radius: 14px; cursor: pointer; text-align: left;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700;
+  background: transparent; color: var(--cyan); border: 1px solid rgba(255,153,102,0.35);
+}
+.ai-save-opt small { font-size: 10.5px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; opacity: .75; }
+.ai-save-opt.primary { background: var(--cyan); color: #1a0f1f; border-color: var(--cyan); }
+.ai-save-opt:hover { filter: brightness(1.08); }
+.ai-save-opt:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.ai-save-hint { flex-basis: 100%; font-size: 12px; color: var(--bone3); line-height: 1.5; }
 .ai-save-msg { font-size: 12px; color: var(--bone3); margin-top: 10px; }
 .pv-saved { margin: 4px 0 14px; }
 .pv-saved-h {
@@ -4129,7 +4143,17 @@ const T={
     it:{ssRunLabel:q=>`Cerca di nuovo: ${q}`,ssEmailOn:'Email settimanale attiva — disattiva',ssEmailOff:'Ricevi un’email settimanale per questa ricerca',ssEmailNote:'🔔 Un’email il giovedì quando c’è qualcosa di nuovo per quella ricerca. Disattivabile in qualsiasi momento.',ssEmailStarted:e=>`Scriveremo a ${e} il giovedì quando c’è qualcosa di nuovo.`,ssPaused:'Email in pausa — apri questa ricerca per riprendere',ssRemoved:q=>`«${q}» rimossa.`,ssUndo:'Annulla'},
     uk:{ssRunLabel:q=>`Шукати знову: ${q}`,ssEmailOn:'Щотижневий лист увімкнено — вимкнути',ssEmailOff:'Отримувати щотижневий лист для цього пошуку',ssEmailNote:'🔔 Лист у четвер, коли для цього пошуку є щось нове. Можна вимкнути будь-коли.',ssEmailStarted:e=>`Ми писатимемо на ${e} у четвер, коли буде щось нове.`,ssPaused:'Листи призупинено — відкрийте цей пошук, щоб відновити',ssRemoved:q=>`«${q}» видалено.`,ssUndo:'Скасувати'},
   };
-  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en));
+  // "Save as" choice when the search has a time word ("tonight").
+  const S3 = {
+    en:{ssSaveAs:'Save as',ssAnyDay:'any day',ssAsTyped:'as typed',ssTimeHint:'Time words like “tonight” limit a saved search to that one day — without them it keeps finding new events.'},
+    fr:{ssSaveAs:'Enregistrer comme',ssAnyDay:'n’importe quel jour',ssAsTyped:'tel quel',ssTimeHint:'Les mots comme « ce soir » limitent une recherche enregistrée à ce seul jour — sans eux, elle continue de trouver de nouveaux événements.'},
+    nl:{ssSaveAs:'Bewaren als',ssAnyDay:'elke dag',ssAsTyped:'zoals getypt',ssTimeHint:'Woorden als “vanavond” beperken een bewaarde zoekopdracht tot die ene dag — zonder blijft ze nieuwe events vinden.'},
+    de:{ssSaveAs:'Speichern als',ssAnyDay:'jeder Tag',ssAsTyped:'wie eingegeben',ssTimeHint:'Wörter wie „heute Abend“ beschränken eine gespeicherte Suche auf diesen einen Tag — ohne sie findet sie weiter neue Events.'},
+    es:{ssSaveAs:'Guardar como',ssAnyDay:'cualquier día',ssAsTyped:'tal cual',ssTimeHint:'Palabras como «esta noche» limitan una búsqueda guardada a ese único día; sin ellas sigue encontrando eventos nuevos.'},
+    it:{ssSaveAs:'Salva come',ssAnyDay:'qualsiasi giorno',ssAsTyped:'così com’è',ssTimeHint:'Parole come «stasera» limitano una ricerca salvata a quel solo giorno: senza, continua a trovare nuovi eventi.'},
+    uk:{ssSaveAs:'Зберегти як',ssAnyDay:'будь-який день',ssAsTyped:'як введено',ssTimeHint:'Слова на кшталт «сьогодні ввечері» обмежують збережений пошук одним днем — без них він і далі знаходитиме нові події.'},
+  };
+  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en, S3[l] || S3.en));
 })();
 
 // Initial language resolution: localStorage (explicit user choice from previous
@@ -4614,11 +4638,53 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const ICON_BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
 const ICON_BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" fill="none"/></svg>';
 
-function findSavedSearch(q) {
+// Exact match on the query text (+ region). `loose` also accepts the saved
+// "any day" version of a query with a time word ("techno" for "techno
+// tonight") — used for the Save button state only, never for "New" marks
+// (those compare against the exact search's own seen list).
+function findSavedSearch(q, loose) {
   const k = String(q || '').trim().toLowerCase();
   if (!k) return null;
   const area = aiSearchArea || null;
-  return savedSearches.find(s => s.query.trim().toLowerCase() === k && (s.area || null) === area) || null;
+  const hit = key => savedSearches.find(s => s.query.trim().toLowerCase() === key && (s.area || null) === area) || null;
+  const exact = hit(k);
+  if (exact || !loose) return exact;
+  const timeless = stripTimeWords(q).toLowerCase();
+  return timeless && timeless !== k ? hit(timeless) : null;
+}
+
+// Relative time words in the 7 app languages. A saved search keeps them
+// literally, so "techno tonight" only ever finds that one night's events —
+// when saving, the user may drop them (saveSearchAs 'any'). Weekday names are
+// kept on purpose: "jazz friday" still means something every week.
+const TIME_WORDS = [
+  // en
+  'tomorrow night', 'tomorrow evening', 'this evening', 'this afternoon', 'this morning', 'this weekend', 'next weekend',
+  'this week', 'next week', 'right now', 'later today', 'tonight', 'today', 'tomorrow', 'now',
+  // fr
+  'demain soir', 'ce soir', 'cet après-midi', 'ce matin', 'ce week-end', 'ce weekend', 'le week-end prochain',
+  'le weekend prochain', 'cette semaine', 'la semaine prochaine', "aujourd'hui", 'aujourd’hui', 'demain', 'maintenant',
+  // nl
+  'morgenavond', 'vanavond', 'vanmiddag', 'vanochtend', 'vandaag', 'dit weekend', 'volgend weekend', 'deze week',
+  'volgende week', 'morgen', 'nu',
+  // de
+  'morgen abend', 'heute abend', 'heute nachmittag', 'dieses wochenende', 'am wochenende', 'nächstes wochenende',
+  'diese woche', 'nächste woche', 'heute', 'jetzt',
+  // es
+  'mañana por la noche', 'esta noche', 'esta tarde', 'este fin de semana', 'el próximo fin de semana', 'esta semana',
+  'la próxima semana', 'hoy', 'mañana', 'ahora',
+  // it
+  'domani sera', 'stasera', 'oggi pomeriggio', 'questo weekend', 'questo fine settimana', 'il prossimo weekend',
+  'questa settimana', 'la prossima settimana', 'oggi', 'domani', 'adesso',
+  // uk
+  'сьогодні ввечері', 'завтра ввечері', 'ці вихідні', 'на вихідних', 'цього тижня', 'наступного тижня', 'сьогодні', 'завтра', 'зараз',
+].sort((a, b) => b.length - a.length);
+const TIME_WORDS_RE = new RegExp('(?<![\\p{L}\\p{N}])(?:' + TIME_WORDS.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
+// Little words left dangling once the time word is gone ("concerts for tonight").
+const TIME_TAIL_RE = /(?:\s+(?:for|on|pour|voor|op|für|am|para|per|на))+\s*$/iu;
+
+function stripTimeWords(q) {
+  return String(q || '').replace(TIME_WORDS_RE, ' ').replace(/\s+/g, ' ').trim().replace(TIME_TAIL_RE, '').replace(/^[\s,.;:!?-]+|[\s,.;:!?-]+$/g, '').trim();
 }
 
 function savedScopeLabel(s) {
@@ -4652,7 +4718,7 @@ function refreshSavedSearchSurfaces() {
 
 function saveSearchBtnHTML() {
   if (!aiQ) return '';
-  const on = !!findSavedSearch(aiQ);
+  const on = !!findSavedSearch(aiQ, true);
   return `<button class="ai-save-btn${on ? ' on' : ''}" id="aiSaveBtn" onclick="toggleSaveSearch()" aria-pressed="${on}">${ICON_BOOKMARK}<span>${escapeHtml(on ? t('ssSaved') : t('ssSave'))}</span></button>`;
 }
 
@@ -4670,15 +4736,42 @@ async function toggleSaveSearch() {
   const q = aiQ;
   if (!q || savedSearchBusy) return;
   if (!currentSession) { openSignInModal({ context: 'signInToSaveSearch' }); return; }
+  const msg = document.getElementById('aiSaveMsg');
+  if (msg && msg.querySelector('.ai-save-choice')) { setSaveSearchMsg(''); return; }   // tap again = close the choice
   setSaveSearchMsg('');
-  const existing = findSavedSearch(q);
+  const existing = findSavedSearch(q, true);
   if (existing) { await removeSavedSearch(existing.id); return; }
 
+  // A time word ("tonight") would pin the saved search to one day: offer to
+  // save it without, as the first (recommended) choice.
+  const timeless = stripTimeWords(q);
+  if (timeless.length >= 2 && timeless.toLowerCase() !== q.trim().toLowerCase() && msg) {
+    msg.innerHTML = `<div class="ai-save-choice" role="group" aria-label="${escapeHtml(t('ssSaveAs'))}">
+      <span class="ai-save-choice-l">${escapeHtml(t('ssSaveAs'))}</span>
+      <button class="ai-save-opt primary" onclick="saveSearchAs('any')">“${escapeHtml(timeless)}”<small>${escapeHtml(t('ssAnyDay'))}</small></button>
+      <button class="ai-save-opt" onclick="saveSearchAs('typed')">“${escapeHtml(q)}”<small>${escapeHtml(t('ssAsTyped'))}</small></button>
+      <div class="ai-save-hint">${escapeHtml(t('ssTimeHint'))}</div>
+    </div>`;
+    msg.querySelector('.ai-save-opt.primary')?.focus();
+    return;
+  }
+  await saveSearchQuery(q);
+}
+
+function saveSearchAs(which) {
+  const q = aiQ;
+  if (!q) return;
+  setSaveSearchMsg('');
+  return saveSearchQuery(which === 'any' ? stripTimeWords(q) : q, which === 'any');
+}
+
+async function saveSearchQuery(queryText, timeless) {
+  if (!queryText || savedSearchBusy || !currentSession) return;
   const area = aiSearchArea || null;
   const nearMe = !area && actC === 'near';
   const row = {
     user_id: currentSession.user.id,
-    query: q.slice(0, 200),
+    query: queryText.slice(0, 200),
     area,
     near_me: nearMe,
     lang: lang || 'en',
@@ -4701,7 +4794,7 @@ async function toggleSaveSearch() {
     }
     savedSearches.unshift(data);
     refreshSavedSearchSurfaces();
-    try { window.va && window.va('event', { name: 'Search saved', data: { scope: area || (nearMe ? 'near' : 'all') } }); } catch (e) {}
+    try { window.va && window.va('event', { name: 'Search saved', data: { scope: area || (nearMe ? 'near' : 'all'), timeless: !!timeless } }); } catch (e) {}
   } finally {
     savedSearchBusy = false;
   }
