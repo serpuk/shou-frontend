@@ -22,6 +22,15 @@ credentials, or personal data.
 - Display-side de-duplication (`dedupeByContent`, `collapseSeries`) folds same-title
   variants; keep it when changing list rendering.
 - Analytics stays cookieless; anything that stores data on the device needs consent.
+- **Event URLs are short**: `?event=<slug>`, falling back to the uuid; `findEvByRef`
+  resolves either. Anything that writes an event URL uses `e.slug || id`.
+- **Overlays** (`mov`, `signinMov`, `profileMov`, …) are moved to `<body>` by the hoist
+  script before `</body>` — `.main-wrap` is a stacking context below the nav, so a new
+  full-screen overlay must be added to that list.
+- **Saved searches**: `savedSearches` + `renderSavedSearchesSection()`; the email bell
+  stays hidden until `SS_EMAIL_LIVE` (testers open `?ssmail=1`); `?q=<search>` runs a search.
+- **Dates**: compare with the local date (`todayLocalISO()`), never
+  `toISOString().slice(0, 10)` (UTC).
 
 ## Workflow
 
