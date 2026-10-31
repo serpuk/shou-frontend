@@ -5073,8 +5073,9 @@ function isEventLive(e) {
   //   start_time is within ±4 hours of now (covers about-to-start AND in-progress)
   //   OR (no time, just date) and date is today
   if (!e.time) {
-    const today = now.toISOString().slice(0,10);
-    return e.date === today;
+    // Local calendar date, not the UTC one (which lags 1–2 h after midnight in
+    // Belgium and made yesterday's all-day events "live" until 01:00/02:00).
+    return e.date === todayLocalISO();
   }
   const diff = eventStart.getTime() - now.getTime();
   return diff >= -4 * HOUR && diff <= 4 * HOUR;
