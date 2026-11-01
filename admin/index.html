@@ -374,14 +374,14 @@
       <div class="chart-wrap tall"><canvas id="chart-trans-per-day"></canvas></div>
     </div>
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">Coverage by language</div><div class="panel-meta">% of live events</div></div>
+      <div class="panel-head"><div class="panel-title">Coverage by language</div><div class="panel-meta">events in the next 7 days</div></div>
       <div id="bars-coverage" class="loading">loading…</div>
     </div>
   </div>
 
   <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">Translation jobs by status</div><div class="panel-meta">queue snapshot</div></div>
+      <div class="panel-head"><div class="panel-title">Translation health</div><div class="panel-meta">worker activity · last 24 h</div></div>
       <div id="tbl-jobs" class="loading">loading…</div>
     </div>
     <div class="panel">
@@ -767,41 +767,35 @@ ORDER BY day, language;
 -- Exact RPC definition:
 SELECT pg_get_functiondef('admin_translations_per_day'::regproc);`,
 
-  'bars-coverage': `-- % of live events with a translation, per language (bar list)
--- Dashboard runs 6 parallel COUNT queries. Combined view:
-WITH live AS (
-  SELECT COUNT(*) AS total FROM events
-  WHERE status='published' AND start_date >= CURRENT_DATE
-),
-per_lang AS (
-  SELECT language, COUNT(DISTINCT event_id) AS translated
-  FROM event_translations
-  WHERE language IN ('en','fr','nl','de','es','it')
-  GROUP BY language
+  'bars-coverage': `-- Coverage per language for published events starting in the next 7 days:
+-- an event counts as covered when it's already in that language OR has a
+-- translation with a title. Computed in shou-backend api/admin-rpc.js
+-- (fn admin_translation_health) with small parallel queries — as one SQL
+-- statement it hits the statement timeout. Equivalent SQL (slow, ~6-8 s):
+WITH win AS (
+  SELECT id, language FROM events
+  WHERE status = 'published'
+    AND start_date >= CURRENT_DATE AND start_date < CURRENT_DATE + 7
 )
-SELECT
-  per_lang.language,
-  per_lang.translated,
-  ROUND(per_lang.translated::numeric / NULLIF(live.total, 0) * 100, 1) AS pct
-FROM per_lang CROSS JOIN live
-ORDER BY per_lang.language;`,
+SELECT l.code AS language, COUNT(*) AS events,
+       COUNT(*) FILTER (WHERE w.language = l.code OR EXISTS (
+         SELECT 1 FROM event_translations t
+         WHERE t.event_id = w.id AND t.language = l.code AND t.title IS NOT NULL)) AS covered
+FROM win w CROSS JOIN supported_languages l
+GROUP BY l.code ORDER BY l.code;`,
 
-  'tbl-jobs': `-- Translation jobs counted by status
--- Backed by RPC: admin_translation_jobs_counts()
+  'tbl-jobs': `-- Translation health: queue snapshot + worker activity in the last 24 h.
+-- Computed in shou-backend api/admin-rpc.js (fn admin_translation_health).
 -- Equivalent SQL:
-SELECT status, COUNT(*) AS count
-FROM translation_jobs
-GROUP BY status
-ORDER BY CASE status
-  WHEN 'pending'    THEN 1
-  WHEN 'processing' THEN 2
-  WHEN 'completed'  THEN 3
-  WHEN 'failed'     THEN 4
-  ELSE 5
-END;
-
--- Exact RPC definition:
-SELECT pg_get_functiondef('admin_translation_jobs_counts'::regproc);`,
+SELECT
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'pending')    AS waiting,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'processing') AS in_progress,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'completed' AND processed_at >= now() - interval '24 hours') AS done_24h,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed'    AND processed_at >= now() - interval '24 hours') AS failed_24h,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed')     AS failed_all_time,
+  (SELECT MIN(created_at) FROM translation_jobs WHERE status = 'pending') AS oldest_waiting,
+  (SELECT COUNT(*) FROM event_translations WHERE translated_at >= now() - interval '24 hours') AS written_24h,
+  (SELECT MAX(translated_at) FROM event_translations) AS last_written;`,
 
   'cache-summary': `-- Translation cache stats (summary + top reused pairs)
 -- Backed by RPCs:
@@ -834,8 +828,9 @@ SELECT pg_get_functiondef('admin_translation_cache_top'::regproc);`,
   'tbl-runs': `-- Recent ingestion runs (last 20)
 -- Backed by RPC: admin_ingestion_runs(p_limit => 20)
 -- Equivalent SQL:
+-- (Translation runs in its own worker — see "Translation health" above.)
 SELECT source, started_at, finished_at, status,
-       events_fetched, events_created, events_updated, translations_created
+       events_fetched, events_created, events_updated
 FROM ingestion_runs
 ORDER BY started_at DESC
 LIMIT 20;
@@ -1230,33 +1225,49 @@ async function loadTranslations() {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 }, grid: { color: '#f1f3f4' }, beginAtZero: true } } }
   });
 
-  await loadCoverage();
-  await loadTransJobs();
+  await loadTransHealth();
   await loadCacheStats();
 }
 
-async function loadCoverage() {
-  const today = new Date().toISOString().slice(0, 10);
-  const liveRes = await safeQuery('coverage:live', () => sb.from('events').select('id', { count: 'exact', head: true }).eq('status','published').gte('start_date',today));
-  const totalLive = liveRes.count ?? 0;
-  const langs = ['en','fr','nl','de','es','it'];
-  const counts = await Promise.all(langs.map(l => safeQuery('coverage:'+l, () => sb.from('event_translations').select('event_id', { count: 'exact', head: true }).eq('language', l))));
-  const el = document.getElementById('bars-coverage');
-  if (!totalLive) { el.innerHTML = '<div class="empty">no live events</div>'; return; }
-  el.innerHTML = langs.map((l, i) => {
-    const c = counts[i].count ?? 0, p = c/totalLive;
-    return `<div class="bar-row"><div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,p*100)}%"></div></div><div class="bar-num">${fmt(c)} <span class="pct">${pct(p)}</span></div></div>`;
-  }).join('');
-}
+// Translation health + coverage come from ONE call: admin_translation_health,
+// computed in shou-backend api/admin-rpc.js. Coverage = published events starting
+// in the next 7 days that are already in a language OR have a translation with
+// a title — the old bars divided all translations ever made by today's live
+// events (past events counted, Ukrainian missing).
+async function loadTransHealth() {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date());
+  const res = await safeQuery('translation health', () => adminRpc('admin_translation_health', { p_today: today }));
+  const h = res.data || null;
+  const covEl = document.getElementById('bars-coverage');
+  const jobsEl = document.getElementById('tbl-jobs');
+  if (!h) {
+    covEl.innerHTML = jobsEl.innerHTML = '<div class="empty">unavailable</div>';
+    return;
+  }
+  const n = v => Number(v) || 0;
+  const cov = Array.isArray(h.coverage) ? h.coverage : [];
+  covEl.innerHTML = !n(h.window_events) ? '<div class="empty">no events in the next 7 days</div>'
+    : cov.map(c => {
+        const p = n(c.covered) / Math.max(1, n(c.events));
+        return `<div class="bar-row"><div class="bar-label">${escapeHtml(c.language)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, p * 100)}%"></div></div><div class="bar-num">${fmt(n(c.covered))} <span class="pct">${pct(p)}</span></div></div>`;
+      }).join('') + `<div class="muted" style="font-size:11px;margin-top:6px;">of ${fmt(n(h.window_events))} events · missing ones show in their source language</div>`;
 
-async function loadTransJobs() {
-  const statuses = ['pending','processing','completed','failed'];
-  const res = await safeQuery('jobs counts', () => adminRpc('admin_translation_jobs_counts'));
-  const byStatus = Object.fromEntries((res.data || []).map(r => [r.status, Number(r.count) || 0]));
-  document.getElementById('tbl-jobs').innerHTML = `<table><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody>${statuses.map(s => {
-    const k = s==='completed'?'ok':(s==='failed'?'err':(s==='processing'?'run':'warn'));
-    return `<tr><td><span class="pill ${k}">${s}</span></td><td class="num">${fmt(byStatus[s] ?? 0)}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  const pending = n(h.pending), failed24 = n(h.failed_24h);
+  const stale = h.last_written_at && (Date.now() - Date.parse(h.last_written_at)) > 6 * 3600e3;
+  const stat = (label, value, cls) => `<div><div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">${label}</div><div style="font-family:'Roboto Mono',monospace;font-size:20px;${cls ? `color:var(--${cls});` : ''}">${value}</div></div>`;
+  jobsEl.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:24px;padding:8px 0 16px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+      ${stat('Waiting', fmt(pending), pending > 1000 ? 'red' : (pending > 100 ? 'orange' : ''))}
+      ${stat('Done · 24 h', fmt(n(h.completed_24h)), 'green')}
+      ${stat('Failed · 24 h', fmt(failed24), failed24 ? 'red' : '')}
+      ${stat('Written · 24 h', fmt(n(h.written_24h)))}
+    </div>
+    <table><tbody>
+      <tr><td>Last translation written</td><td class="num${stale ? '' : ' muted'}">${h.last_written_at ? ago(h.last_written_at) : '—'}${stale ? ' <span class="pill err">stalled?</span>' : ''}</td></tr>
+      <tr><td>Oldest waiting job</td><td class="num muted">${h.oldest_pending ? ago(h.oldest_pending) : 'none'}</td></tr>
+      <tr><td>In progress</td><td class="num muted">${fmt(n(h.processing))}</td></tr>
+      <tr><td>Failed · all time</td><td class="num muted">${fmt(n(h.failed_total))}</td></tr>
+    </tbody></table>`;
 }
 
 async function loadCacheStats() {
@@ -1286,9 +1297,9 @@ async function loadIngestion() {
   const rows = res.data || [];
   const el = document.getElementById('tbl-runs');
   if (!rows.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; return; }
-  el.innerHTML = `<table><thead><tr><th>Source</th><th>Started</th><th>Status</th><th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th><th class="num">Translated</th></tr></thead><tbody>${rows.map(r => {
+  el.innerHTML = `<table><thead><tr><th>Source</th><th>Started</th><th>Status</th><th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th></tr></thead><tbody>${rows.map(r => {
     const k = r.status==='success'?'ok':(r.status==='running'?'run':(r.status==='error'?'err':'neutral'));
-    return `<tr><td>${escapeHtml(r.source)}</td><td class="muted">${ago(r.started_at)}</td><td><span class="pill ${k}">${r.status || '—'}</span></td><td class="num">${fmt(r.events_fetched)}</td><td class="num">${fmt(r.events_created)}</td><td class="num">${fmt(r.events_updated)}</td><td class="num">${fmt(r.translations_created)}</td></tr>`;
+    return `<tr><td>${escapeHtml(r.source)}</td><td class="muted">${ago(r.started_at)}</td><td><span class="pill ${k}">${r.status || '—'}</span></td><td class="num">${fmt(r.events_fetched)}</td><td class="num">${fmt(r.events_created)}</td><td class="num">${fmt(r.events_updated)}</td></tr>`;
   }).join('')}</tbody></table>`;
 }
 
