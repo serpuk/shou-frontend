@@ -604,10 +604,15 @@ function rangeStartISO() {
   const d = new Date(); d.setDate(d.getDate() - RANGE_DAYS); d.setHours(0,0,0,0);
   return d.toISOString();
 }
+// Day labels for the per-day charts, ending TODAY. Everything on this page
+// buckets by UTC day (the admin_* RPCs' date_trunc and dayKey()), so the labels
+// are UTC dates too. They used to come from LOCAL midnight → toISOString(),
+// which in Belgium is always the previous UTC day: every chart ended yesterday
+// and today's bar was dropped.
 function rangeDays() {
   const n = RANGE_DAYS === 'all' ? 90 : RANGE_DAYS;
-  const out = []; const d = new Date(); d.setHours(0,0,0,0);
-  for (let i = n - 1; i >= 0; i--) { const t = new Date(d); t.setDate(t.getDate() - i); out.push(t.toISOString().slice(0,10)); }
+  const out = []; const d = new Date(); d.setUTCHours(0,0,0,0);
+  for (let i = n - 1; i >= 0; i--) { const t = new Date(d); t.setUTCDate(t.getUTCDate() - i); out.push(t.toISOString().slice(0,10)); }
   return out;
 }
 function escapeHtml(s) {
