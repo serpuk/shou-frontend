@@ -5623,7 +5623,7 @@ function setLang(l) {
     // events with translated content. Returns early — showAI handles its
     // own applyF.
     if (aiQ && aiQ.length > 0) {
-      showAI(aiQ);
+      if (aiListQs) showList(aiQ, aiListQs); else showAI(aiQ);
       return;
     }
     // Re-load the active filter's events in the new language — they were dropped
@@ -6266,7 +6266,7 @@ function syncGeoState() {
   updateCityPillLabel();
   // Re-run an in-flight AI search so it picks up the new lat/lng signal.
   if (aiQ && aiQ.length > 0) {
-    showAI(aiQ);
+    if (aiListQs) showList(aiQ, aiListQs); else showAI(aiQ);
     return;
   }
   // Geo mode changed → re-pull the catalog so candidate SELECTION reflects it:
@@ -8433,8 +8433,74 @@ function maybeSurpriseFromUrl() {
 // email). The param is removed so a reload doesn't re-run it; an ?event= deep
 // link on the same URL wins.
 let urlSearchHandled = false;
+// ?list=<kind>&city=&from=&to=&win=[&evening=1][&rest=1]&title=… — the "More in
+// the app" links on shou.be. Shows exactly the events that page's rail counts
+// (the backend's ?format=list, same rules and rows), in date order, instead of
+// an AI search, which picks 5–15 and never matched the page's number.
+const LIST_NOTE = {
+  en: (n, m) => `${n} events in date order — the same list as on shou.be${m < n ? `; showing the first ${m}` : ''}.`,
+  fr: (n, m) => `${n} événements par date — la même liste que sur shou.be${m < n ? ` ; voici les ${m} premiers` : ''}.`,
+  nl: (n, m) => `${n} evenementen op datum — dezelfde lijst als op shou.be${m < n ? `; de eerste ${m}` : ''}.`,
+  de: (n, m) => `${n} Events nach Datum — dieselbe Liste wie auf shou.be${m < n ? `; die ersten ${m}` : ''}.`,
+  es: (n, m) => `${n} eventos por fecha — la misma lista que en shou.be${m < n ? `; se muestran los primeros ${m}` : ''}.`,
+  it: (n, m) => `${n} eventi per data — lo stesso elenco di shou.be${m < n ? `; ecco i primi ${m}` : ''}.`,
+  uk: (n, m) => `${n} подій за датою — той самий список, що й на shou.be${m < n ? `; показано перші ${m}` : ''}.`,
+};
+const LIST_MAX = 300;   // events loaded into the app list (3 × 100-id requests)
+// The active list's request, so a language switch or the location arriving
+// re-runs it as a LIST (they re-run the current search) — not as an AI search.
+let aiListQs = null;
+function maybeListFromUrl() {
+  let p;
+  try { p = new URLSearchParams(location.search); } catch (_) { return false; }
+  const kind = (p.get('list') || '').trim();
+  if (!kind || p.get('event')) return false;
+  urlSearchHandled = true;
+  const title = (p.get('title') || '').trim().slice(0, 120) || kind;
+  const qs = new URLSearchParams({ format: 'list', kind });
+  for (const k of ['city', 'from', 'to', 'win', 'evening', 'rest']) if (p.get(k)) qs.set(k, p.get(k));
+  try {
+    const u = new URL(location.href);
+    for (const k of ['list', 'city', 'from', 'to', 'win', 'evening', 'rest', 'title']) u.searchParams.delete(k);
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (_) {}
+  showList(title, qs);
+  return true;
+}
+async function showList(title, qs) {
+  if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
+  aiListQs = qs;
+  aiQ = title; vis = 12;
+  aiNewIds = new Set(); aiSuggestedIds = new Set(); aiSuggestionChips = []; aiResultsAreFallback = false; aiSearchArea = null;
+  if (actF !== 'all') {
+    actF = 'all';
+    document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+    const allBtn = document.querySelector('.fb[data-c="all"]');
+    if (allBtn) allBtn.classList.add('on');
+  }
+  const input = document.getElementById('ai');
+  if (input) input.value = title;
+  aiResultIds = new Set(); aiSearching = true; syncAiActiveClass();
+  renderAIBanner({ searching: true, query: title, reasoning: '', count: 0 });
+  let ids = [], count = 0;
+  try {
+    const r = await fetch(API_BASE + '/api/this-week?' + qs);
+    if (!r.ok) throw new Error('list ' + r.status);
+    const d = await r.json();
+    count = Number(d.count) || 0;
+    ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, LIST_MAX);
+    await hydrateEventsByIds(ids);
+  } catch (e) { console.warn('showList failed:', e && e.message); }
+  if (aiQ !== title) return;   // another search started meanwhile
+  aiResultIds = new Set(ids);   // date order = the backend's order (applyF keeps it)
+  aiReasoning = ids.length ? (LIST_NOTE[lang] || LIST_NOTE.en)(count, ids.length) : '';
+  aiSearching = false; syncAiActiveClass();
+  applyF();
+  renderAIBanner({ searching: false, query: title, reasoning: aiReasoning, count: filtered.length });
+}
 function maybeSearchFromUrl() {
   if (urlSearchHandled) return;
+  if (maybeListFromUrl()) return;
   let q = '';
   try {
     const p = new URLSearchParams(location.search);
@@ -9073,7 +9139,7 @@ function surpriseMe() {
 }
 function clearAI(){
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
-  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; aiResultsAreFallback=false; aiSuggestionChips=[]; aiNewIds=new Set(); vis=6;
+  aiQ=''; aiResultIds=null; aiSuggestedIds=new Set(); aiReasoning=''; aiSearching=false; aiSearchArea=null; aiResultsAreFallback=false; aiSuggestionChips=[]; aiNewIds=new Set(); vis=6; aiListQs=null;
   voiceUsedForCurrentQuery = false;
   syncAiActiveClass();
   const aiInput = document.getElementById('ai');
@@ -9265,6 +9331,7 @@ function useSuggestionChip(query) {
 async function showAI(q) {
   q = String(q || '').trim();
   if (!q) return;
+  aiListQs = null;
 
   aiQ = q;
   vis = 6;
