@@ -792,10 +792,18 @@ SELECT
   (SELECT COUNT(*) FROM translation_jobs WHERE status = 'processing') AS in_progress,
   (SELECT COUNT(*) FROM translation_jobs WHERE status = 'completed' AND processed_at >= now() - interval '24 hours') AS done_24h,
   (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed'    AND processed_at >= now() - interval '24 hours') AS failed_24h,
-  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed')     AS failed_all_time,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed'
+     AND COALESCE(error_message, '') !~* 'event already ended|event no longer exists') AS failed_all_time,
+  (SELECT COUNT(*) FROM translation_jobs WHERE status = 'failed'
+     AND error_message ~* 'event already ended|event no longer exists') AS skipped_event_over,
   (SELECT MIN(created_at) FROM translation_jobs WHERE status = 'pending') AS oldest_waiting,
   (SELECT COUNT(*) FROM event_translations WHERE translated_at >= now() - interval '24 hours') AS written_24h,
-  (SELECT MAX(translated_at) FROM event_translations) AS last_written;`,
+  (SELECT MAX(translated_at) FROM event_translations) AS last_written;
+
+-- Why jobs failed (grouped in admin-rpc.js into readable reasons):
+SELECT LEFT(error_message, 90) AS error, COUNT(*) AS jobs, MAX(processed_at) AS last_seen
+FROM translation_jobs WHERE status = 'failed'
+GROUP BY 1 ORDER BY 2 DESC LIMIT 20;`,
 
   'cache-summary': `-- Translation cache stats (summary + top reused pairs)
 -- Backed by RPCs:
@@ -1267,7 +1275,35 @@ async function loadTransHealth() {
       <tr><td>Oldest waiting job</td><td class="num muted">${h.oldest_pending ? ago(h.oldest_pending) : 'none'}</td></tr>
       <tr><td>In progress</td><td class="num muted">${fmt(n(h.processing))}</td></tr>
       <tr><td>Failed · all time</td><td class="num muted">${fmt(n(h.failed_total))}</td></tr>
-    </tbody></table>`;
+      <tr><td>Skipped (event already over) · all time</td><td class="num muted">${fmt(n(h.skipped_total))}</td></tr>
+    </tbody></table>
+    ${failureReasonsHtml(h.failure_reasons)}`;
+}
+
+// Why translation jobs failed, grouped by reason (computed in admin-rpc.js).
+// "ended" is not a failure — jobs for events that are already over get filed
+// as failed by bury_past_event_jobs(); it's listed last as skipped.
+const FAIL_REASON_LABELS = {
+  region:      'Gemini: region not supported',
+  bad_request: 'Gemini rejected the request',
+  rate:        'Gemini rate limit / quota',
+  count:       'Gemini returned the wrong number of items',
+  malformed:   'Gemini reply malformed / empty title',
+  blocked:     'Gemini safety filter blocked it',
+  network:     'Network error',
+  other:       'Other',
+  ended:       'Skipped — event already over',
+};
+function failureReasonsHtml(list) {
+  const rows = (Array.isArray(list) ? list : []).slice()
+    .sort((a, b) => (a.reason === 'ended') - (b.reason === 'ended') || (Number(b.total) || 0) - (Number(a.total) || 0));
+  if (!rows.length) return '';
+  return `<div style="font-size:11px;color:var(--text-2);margin:16px 0 6px;">Why jobs failed</div>
+    <table><thead><tr><th>Reason</th><th class="num">30 d</th><th class="num">All time</th><th class="num">Last seen</th></tr></thead><tbody>${rows.map(r => {
+      const label = FAIL_REASON_LABELS[r.reason] || r.reason;
+      const recent = (Number(r.last_30d) || 0) > 0 && r.reason !== 'ended';
+      return `<tr title="${escapeHtml(r.example || '')}"><td>${r.reason === 'ended' ? `<span class="muted">${escapeHtml(label)}</span>` : escapeHtml(label)}</td><td class="num${recent ? '' : ' muted'}">${fmt(Number(r.last_30d) || 0)}</td><td class="num muted">${fmt(Number(r.total) || 0)}</td><td class="num muted">${r.last_at ? ago(r.last_at) : '—'}</td></tr>`;
+    }).join('')}</tbody></table>`;
 }
 
 async function loadCacheStats() {
