@@ -2335,6 +2335,7 @@ html.deeplink .dl-cover {
 .mdesc {
   font-size: 14px; color: var(--bone2); line-height: 1.65;
   margin: 0;
+  white-space: pre-line;   /* keep the source's paragraphs and line breaks */
 }
 .mdet {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
@@ -8131,7 +8132,9 @@ function staticMapUrl(e){
 // heuristic so it works during innerHTML render + swipe re-renders without any
 // post-render measurement.
 function mDescHtml(e){
-  const d=e.desc||'';
+  // .mdesc keeps line breaks (white-space: pre-line); tidy them first: no
+  // leading/trailing blank lines, at most one empty line between paragraphs.
+  const d=String(e.desc||'').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
   if(!d) return '';
   if(d.length<=220) return `<p class="mdesc">${d}</p>`;
   return `<div class="mdesc-wrap"><p class="mdesc clamped">${d}</p><button class="mdesc-toggle" onclick="event.stopPropagation();toggleDesc(this)">See more</button></div>`;
