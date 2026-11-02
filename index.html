@@ -10157,6 +10157,26 @@ async function handleAuthStateChange(event, session) {
   // Other transitions (TOKEN_REFRESHED on already-signed-in session,
   // USER_UPDATED, etc.) need no UI work — currentSession was already updated
   // at the top of this handler, and the avatar/profile haven't changed.
+  maybeProfileFromUrl(event);
+}
+
+// ?profile=1 (the saved-search digest's "Manage them in your profile" link):
+// open the profile sheet once the session is known — signed out, the sheet
+// asks to sign in first.
+let profileUrlHandled = false;
+function maybeProfileFromUrl(event) {
+  if (profileUrlHandled) return;
+  let has = false;
+  try { has = new URLSearchParams(location.search).has('profile'); } catch (_) {}
+  if (!has) { profileUrlHandled = true; return; }
+  if (!currentSession && event !== 'INITIAL_SESSION') return;
+  profileUrlHandled = true;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('profile');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (_) {}
+  openProfileSheet();
 }
 
 // Wrap any promise with a hard timeout. Lets us protect Supabase calls
