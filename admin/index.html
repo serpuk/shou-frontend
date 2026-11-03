@@ -275,6 +275,33 @@
   .src-spark { display: block; }
   .src-spark polyline { fill: none; stroke: var(--blue); stroke-width: 1.5; }
 
+  /* Event submissions (shou.be/add-your-events) */
+  .vs-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; background: var(--bg); }
+  .vs-card:last-child { margin-bottom: 0; }
+  .vs-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin-bottom: 4px; }
+  .vs-name { font-size: 16px; font-weight: 500; color: var(--text); }
+  .vs-where, .vs-when { font-size: 12px; color: var(--text-2); }
+  .vs-ai { font-size: 13px; color: var(--text-2); margin: 4px 0 10px; }
+  .vs-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; }
+  @media (max-width: 860px) { .vs-grid { grid-template-columns: minmax(0, 1fr); } }
+  .vs-facts { font-size: 13px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; align-content: start; }
+  .vs-facts dt { color: var(--text-2); }
+  .vs-facts dd { margin: 0; overflow-wrap: anywhere; }
+  .vs-sig { list-style: none; margin: 0; padding: 0; font-size: 13px; display: grid; gap: 4px; }
+  .vs-sig li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; }
+  .vs-sig .i-ok { color: var(--green); } .vs-sig .i-warn { color: #c47a00; } .vs-sig .i-bad { color: var(--red); } .vs-sig .i-info { color: var(--text-3); }
+  .vs-sample { margin-top: 12px; overflow-x: auto; }
+  .vs-sample table { font-size: 12px; }
+  .vs-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .vs-actions input { flex: 1 1 220px; min-width: 0; font: 13px 'Roboto', sans-serif; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+  .vs-btn { font: 500 13px 'Roboto', sans-serif; padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); }
+  .vs-btn.approve { background: var(--green); border-color: var(--green); color: #fff; }
+  .vs-btn.reject { color: var(--red); }
+  .vs-btn[disabled] { opacity: .5; cursor: progress; }
+  .vs-mail { font-size: 13px; }
+  #vs-list .muted { color: var(--text-2); }
+  #vs-list .mono { font-family: 'Roboto Mono', monospace; font-size: 12px; }
+
   .empty, .loading { text-align: center; padding: 24px 0; color: var(--text-3); font-size: 13px; }
   .loading { font-style: italic; }
   /* Panels start as <div class="loading">loading…</div> and the loaders only swap the
@@ -413,6 +440,13 @@
       <div class="panel-head"><div class="panel-title">Translation cache</div><div class="panel-meta">reuse statistics</div></div>
       <div id="cache-summary" class="loading">loading…</div>
     </div>
+  </div>
+
+  <div class="sec-head" id="submissions"><div class="sec-title">Event submissions</div><div class="sec-meta">calendars sent via shou.be/add-your-events</div></div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">To review</div><div class="panel-meta" id="vs-meta">approve = trial import at the next daily venue-feed run</div></div>
+    <div id="vs-list" class="loading">loading…</div>
   </div>
 
   <div class="sec-head"><div class="sec-title">Ingestion pipeline</div><div class="sec-meta">every source, problems first</div></div>
@@ -1417,6 +1451,80 @@ document.getElementById('tbl-runs').addEventListener('keydown', e => {
   if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleSource(tr); }
 });
 
+// Event submissions: venues ask to connect their calendar (api/add-your-events.js
+// stores each with an automatic check report). Approve creates a venue_sources
+// row in 'probation'; the daily venue-feed run trials it, then imports it.
+let vsData = null;
+const VS_PILL = { green: 'ok', amber: 'warn', red: 'err' };
+const VS_ICON = { ok: '✓', info: 'i', warn: '!', bad: '✕' };
+const VS_KIND = { ics: 'iCal feed', tribe: 'WordPress events calendar', jsonld: 'schema.org event pages' };
+const safeHref = u => /^https?:\/\//i.test(String(u || '')) ? escapeHtml(u) : '#';
+const vsLink = u => u ? `<a href="${safeHref(u)}" target="_blank" rel="noopener noreferrer">${escapeHtml(u)}</a>` : '—';
+async function loadSubmissions() {
+  const el = document.getElementById('vs-list');
+  const res = await adminRpc('admin_venue_submissions');
+  if (res.error) {
+    el.innerHTML = /venue_submissions/.test(res.error.message || '')
+      ? '<div class="empty">Not set up yet — run schema-venue-submissions.sql in Supabase.</div>'
+      : `<div class="empty">Couldn't load submissions: ${escapeHtml(res.error.message)}</div>`;
+    return;
+  }
+  vsData = res.data || { pending: [], decided: [] };
+  renderSubmissions();
+}
+function vsCard(s) {
+  const r = s.report || {};
+  const facts = [
+    ['Website', vsLink(s.website)],
+    ['Calendar', vsLink(s.feed_url) + (s.detected_url && s.detected_url !== s.feed_url ? `<br><span class="muted">reads ${vsLink(s.detected_url)}</span>` : '')],
+    ['Format', escapeHtml(VS_KIND[s.kind] || s.kind || '—') + (s.link_re ? ` <span class="muted mono">${escapeHtml(s.link_re)}</span>` : '')],
+    ['Language', escapeHtml(s.lang || '—')],
+    ['Contact', `${escapeHtml(s.contact_name)}${s.contact_role ? ` · ${escapeHtml(s.contact_role)}` : ''}<br><a href="mailto:${escapeHtml(s.contact_email)}">${escapeHtml(s.contact_email)}</a>`],
+    ['Address', escapeHtml([s.address, s.postal_code, s.city, s.country].filter(Boolean).join(', '))],
+  ];
+  if (s.message) facts.push(['Message', escapeHtml(s.message)]);
+  const sig = (r.signals || []).map(x => `<li><span class="i-${escapeHtml(x.level)}" aria-label="${escapeHtml(x.level)}">${VS_ICON[x.level] || '·'}</span><span>${escapeHtml(x.text)}</span></li>`).join('');
+  const sample = (r.sample || []).map(e => `<tr><td class="muted">${escapeHtml(e.date)}${e.time ? ' ' + escapeHtml(e.time) : ''}</td><td>${e.url ? `<a href="${safeHref(e.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(e.title)}</a>` : escapeHtml(e.title)}</td><td class="muted">${escapeHtml(e.place || '')}</td><td>${e.image ? '🖼' : ''}</td></tr>`).join('');
+  const ai = r.ai ? `<div class="vs-ai"><b>AI read: ${escapeHtml(r.ai.verdict)}</b> — ${escapeHtml(r.ai.summary || '')}${(r.ai.reasons || []).length ? `<br>${r.ai.reasons.map(escapeHtml).join(' · ')}` : ''}</div>` : '<div class="vs-ai">No AI read.</div>';
+  const mailSubject = encodeURIComponent(`Your calendar on shou — ${s.venue_name}`);
+  return `<div class="vs-card" data-id="${escapeHtml(s.id)}">
+    <div class="vs-top"><span class="pill ${VS_PILL[s.verdict] || 'neutral'}">${escapeHtml(s.verdict || '?')}</span><span class="vs-name">${escapeHtml(s.venue_name)}</span>
+      <span class="vs-where">${escapeHtml([s.city, s.country].filter(Boolean).join(', '))}</span><span class="vs-when">· ${fmt(r.events)} upcoming events · ${r.importable ? 'importable' : '<b>would not pass the trial</b>'} · submitted ${ago(s.created_at)}</span></div>
+    ${ai}
+    <div class="vs-grid"><dl class="vs-facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl><ul class="vs-sig">${sig}</ul></div>
+    ${sample ? `<div class="vs-sample"><table><thead><tr><th>When</th><th>Event</th><th>Place</th><th></th></tr></thead><tbody>${sample}</tbody></table></div>` : ''}
+    <div class="vs-actions">
+      <input type="text" maxlength="500" placeholder="Note (optional, kept with the decision)" aria-label="Note">
+      <button type="button" class="vs-btn approve" data-act="approve">Approve</button>
+      <button type="button" class="vs-btn reject" data-act="reject">Reject</button>
+      <a class="vs-mail" href="mailto:${escapeHtml(s.contact_email)}?subject=${mailSubject}">Email the contact</a>
+    </div></div>`;
+}
+function renderSubmissions() {
+  const el = document.getElementById('vs-list');
+  const { pending = [], decided = [] } = vsData || {};
+  document.getElementById('vs-meta').textContent = pending.length ? `${pending.length} to review · approve = trial import at the next daily venue-feed run` : 'nothing to review';
+  const recent = decided.length ? `<div style="margin-top:14px"><div class="panel-meta" style="margin-bottom:6px">Recently decided</div><div class="src-wrap"><table><thead><tr><th>Venue</th><th>Decision</th><th>When</th><th>Feed source</th><th>Note</th></tr></thead><tbody>${decided.map(d =>
+    `<tr><td>${escapeHtml(d.venue_name)} <span class="muted">${escapeHtml(d.city || '')}</span></td><td><span class="pill ${d.status === 'approved' ? 'ok' : 'neutral'}">${escapeHtml(d.status)}</span></td><td class="muted">${ago(d.reviewed_at)}</td><td class="mono">${escapeHtml(d.source_slug || '—')}</td><td class="muted">${escapeHtml(d.review_note || '')}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+  el.innerHTML = (pending.length ? pending.map(vsCard).join('') : '<div class="empty">No calendars waiting for review.</div>') + recent;
+}
+document.getElementById('vs-list').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const card = b.closest('.vs-card'); const id = card.dataset.id;
+  const sub = (vsData?.pending || []).find(x => x.id === id); if (!sub) return;
+  const act = b.dataset.act;
+  const msg = act === 'approve'
+    ? `Approve "${sub.venue_name}"?\n\nIt becomes a venue feed in trial: the next daily run (06:00 UTC) reads it again without publishing, and imports it if it passes.`
+    : `Reject "${sub.venue_name}"? Nothing is imported; the submission is kept with your note.`;
+  if (!confirm(msg)) return;
+  card.querySelectorAll('button').forEach(x => { x.disabled = true; });
+  const note = card.querySelector('input').value.trim();
+  const res = await adminRpc('admin_venue_submission_decide', { id, decision: act, note: note || null });
+  if (res.error) { alert(`Couldn't ${act}: ${res.error.message}`); card.querySelectorAll('button').forEach(x => { x.disabled = false; }); return; }
+  await loadSubmissions();
+  document.getElementById('vs-meta').textContent = act === 'approve' ? `Approved — feed ${res.data?.source_slug || ''} starts its trial at the next daily run.` : 'Rejected.';
+});
+
 async function loadAudience() {
   if (!sb) return;
   const days = rangeDays();
@@ -1551,7 +1659,7 @@ async function reloadAll() {
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue(), loadAptUsage()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadSubmissions(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue(), loadAptUsage()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }
