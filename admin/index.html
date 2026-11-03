@@ -277,6 +277,10 @@
 
   .empty, .loading { text-align: center; padding: 24px 0; color: var(--text-3); font-size: 13px; }
   .loading { font-style: italic; }
+  /* Panels start as <div class="loading">loading…</div> and the loaders only swap the
+     content, so once real content (an element) is in, drop the placeholder look —
+     it made every table italic and centred under left-aligned headers. */
+  .loading:has(> *) { font-style: normal; text-align: left; padding: 0; color: inherit; font-size: inherit; }
 
   .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .bar-row:last-child { margin-bottom: 0; }
@@ -869,7 +873,8 @@ SELECT pg_get_functiondef('admin_translation_cache_top'::regproc);`,
 --   interval = median of the last 5 gaps between run sessions (runs < 1 h apart = one)
 --   stale    = no run for max(1.5 x interval, interval + 3 h); inactive after 7 days
 --   drop     = last successful fetch < 50% of the median of the previous 20 (if >= 20)
--- Runs / created / updated / trend cover the selected range (trend = max fetched per UTC day).
+-- Runs / created / trend cover the selected range (trend = max fetched per UTC day);
+-- Fetched and Updated are the last successful run's own figures.
 SELECT source, started_at, finished_at, status,
        events_fetched, events_created, events_updated, error_message
 FROM ingestion_runs
@@ -1384,7 +1389,7 @@ function renderSources() {
     const k = h.status === 'success' ? 'ok' : (h.status === 'running' ? 'run' : (h.status === 'failed' ? 'err' : 'neutral'));
     return `<tr><td class="muted" title="${escapeHtml(new Date(h.started_at).toLocaleString())}">${ago(h.started_at)}</td><td><span class="pill ${k}">${escapeHtml(h.status || '—')}</span></td><td class="num">${fmt(h.fetched)}</td><td class="num">${fmt(h.created)}</td><td class="num">${fmt(h.updated)}</td><td class="muted src-err" title="${escapeHtml(h.error || '')}">${escapeHtml(h.error || '')}</td></tr>`;
   }).join('')}</tbody></table>` : '<div class="empty">no runs recorded</div>';
-  document.getElementById('tbl-runs').innerHTML = rows.length ? `<div class="src-wrap"><table><thead><tr><th>Source</th><th>Last run</th><th>Health</th><th class="num">Runs</th><th class="num">Fetched · usual</th><th class="num">Created</th><th class="num">Updated</th><th class="src-trend">Trend</th></tr></thead><tbody>${rows.map(r => {
+  document.getElementById('tbl-runs').innerHTML = rows.length ? `<div class="src-wrap"><table><thead><tr><th>Source</th><th>Last run</th><th>Health</th><th class="num">Runs</th><th class="num">Fetched · usual</th><th class="num">Created</th><th class="num" title="Events the last successful run re-saved">Updated · last run</th><th class="src-trend">Trend</th></tr></thead><tbody>${rows.map(r => {
     const sub = [r.type, r.feed_status, r.last_status ? every(r.interval_h) : ''].filter(Boolean).join(' · ');
     const open = srcOpen.has(r.source);
     return `<tr class="src-row" tabindex="0" aria-expanded="${open}" data-src="${escapeHtml(r.source)}"><td><div class="src-name">${escapeHtml(r.source)}</div><div class="src-sub">${escapeHtml(sub)}</div></td>`
@@ -1392,7 +1397,7 @@ function renderSources() {
       + `<td><span class="pill ${SRC_PILL[r.health] || 'neutral'}">${escapeHtml(r.health)}</span>${r.reason ? `<div class="src-sub" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div>` : ''}</td>`
       + `<td class="num">${fmt(r.runs)}${r.failures ? ` <span class="src-bad">· ${fmt(r.failures)} failed</span>` : ''}</td>`
       + `<td class="num">${fmt(r.fetched_last)}${r.fetched_usual != null ? ` <span class="muted">· ${fmt(r.fetched_usual)}</span>` : ''}</td>`
-      + `<td class="num">${fmt(r.created)}</td><td class="num">${fmt(r.updated)}</td><td class="src-trend">${spark(r.spark)}</td></tr>`
+      + `<td class="num">${fmt(r.created)}</td><td class="num">${fmt(r.updated_last ?? null)}</td><td class="src-trend">${spark(r.spark)}</td></tr>`
       + (open ? `<tr class="src-detail"><td colspan="8">${histRows(r)}</td></tr>` : '');
   }).join('')}</tbody></table></div>` : '<div class="empty">nothing in this filter</div>';
 }
