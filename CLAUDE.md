@@ -19,6 +19,9 @@ credentials, or personal data.
   rather than SQL (Translation health, and the **Sources** panel = `admin_sources_overview`:
   one row per ingest source with health, range totals and its last 10 runs — keep it
   per source, never a "last N runs" list, which hides daily sources).
+  **Event submissions** (`#submissions`): calendars venues sent via shou.be/add-your-events, each
+  with its automatic check (verdict, signals, AI read, sample events); Approve / Reject call
+  `admin_venue_submission_decide`. Escape every submitted field and only link http(s) URLs.
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
