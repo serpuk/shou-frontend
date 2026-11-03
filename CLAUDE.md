@@ -31,6 +31,11 @@ credentials, or personal data.
   stays hidden until `SS_EMAIL_LIVE` (testers open `?ssmail=1`); `?q=<search>` runs a search.
 - **Dates**: compare with the local date (`todayLocalISO()`), never
   `toISOString().slice(0, 10)` (UTC).
+- **LIVE badge** = on right now: `eventWindow(e)` → start until its end time (no end, the
+  "23:59" placeholder or > 12 h → start + 3 h); `isEventLive` also drives the "Live now"
+  filter. Starting within 2 h → a quiet `soon-badge` ("In 45 min" / "At 20:00", strings
+  `soonIn` / `soonAt`). `hasPassed` waits for the end (or 4 h), so a live show is never hidden.
+- `?profile=1` opens the profile sheet (the saved-search digest's "Manage" link).
 
 ## Workflow
 
