@@ -254,6 +254,27 @@
   .pill.neutral { background: var(--bg-soft);     color: var(--text-2); border: 1px solid var(--border); }
   .pill.run     { background: var(--blue-light);  color: var(--blue); }
 
+  .src-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+  .src-chip {
+    border: 1px solid var(--border); background: var(--bg-soft); color: var(--text-2);
+    font: 500 12px 'Roboto', sans-serif; padding: 4px 10px; border-radius: 100px; cursor: pointer;
+  }
+  .src-chip:hover { color: var(--text); }
+  .src-chip.on { background: var(--blue-light); color: var(--blue); border-color: transparent; }
+  .src-wrap { overflow-x: auto; }
+  tr.src-row { cursor: pointer; }
+  tr.src-row:focus-visible td { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .src-name { font-weight: 500; }
+  .src-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .src-bad { color: var(--red); }
+  tr.src-detail > td { background: var(--bg-soft); padding: 8px 12px; }
+  tr.src-detail table { font-size: 12px; }
+  tr.src-detail th, tr.src-detail td { padding-right: 16px; }
+  .src-err { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .src-trend { padding-left: 16px !important; }
+  .src-spark { display: block; }
+  .src-spark polyline { fill: none; stroke: var(--blue); stroke-width: 1.5; }
+
   .empty, .loading { text-align: center; padding: 24px 0; color: var(--text-3); font-size: 13px; }
   .loading { font-style: italic; }
 
@@ -390,10 +411,11 @@
     </div>
   </div>
 
-  <div class="sec-head"><div class="sec-title">Ingestion pipeline</div><div class="sec-meta">recent scraper runs</div></div>
+  <div class="sec-head"><div class="sec-title">Ingestion pipeline</div><div class="sec-meta">every source, problems first</div></div>
 
   <div class="panel" style="margin-bottom: 12px;">
-    <div class="panel-head"><div class="panel-title">Recent runs</div><div class="panel-meta">last 20</div></div>
+    <div class="panel-head"><div class="panel-title">Sources</div><div class="panel-meta" id="src-meta">one row per source · click for its runs</div></div>
+    <div class="src-chips" id="src-chips"></div>
     <div id="tbl-runs" class="loading">loading…</div>
   </div>
 
@@ -838,18 +860,21 @@ SELECT pg_get_functiondef('admin_translation_cache_stats'::regproc);
 SELECT pg_get_functiondef('admin_translation_cache_top'::regproc);`,
 
   // ── Ingestion pipeline ───────────────────────────────────────────────────
-  'tbl-runs': `-- Recent ingestion runs (last 20)
--- Backed by RPC: admin_ingestion_runs(p_limit => 20)
--- Equivalent SQL:
--- (Translation runs in its own worker — see "Translation health" above.)
+  'tbl-runs': `-- One row per ingest source (worst health first)
+-- Computed in api/admin-rpc.js admin_sources_overview(p_since => '{{since}}')
+-- (shou-backend api/_shared/sources-overview.js), not a database function.
+-- Inputs: 90+ days of ingestion_runs + venue_sources (feeds without runs).
+-- Health: failed / stuck / empty -> stale / drop -> running / probation -> ok
+--         -> inactive / covered / disabled.
+--   interval = median of the last 5 gaps between run sessions (runs < 1 h apart = one)
+--   stale    = no run for max(1.5 x interval, interval + 3 h); inactive after 7 days
+--   drop     = last successful fetch < 50% of the median of the previous 20 (if >= 20)
+-- Runs / created / updated / trend cover the selected range (trend = max fetched per UTC day).
 SELECT source, started_at, finished_at, status,
-       events_fetched, events_created, events_updated
+       events_fetched, events_created, events_updated, error_message
 FROM ingestion_runs
-ORDER BY started_at DESC
-LIMIT 20;
-
--- Exact RPC definition:
-SELECT pg_get_functiondef('admin_ingestion_runs'::regproc);`,
+WHERE started_at >= now() - interval '90 days'
+ORDER BY source, started_at DESC;`,
 
   // ── Audience ─────────────────────────────────────────────────────────────
   'chart-actions-per-day': `-- User actions per day, stacked by action type
@@ -1332,17 +1357,60 @@ async function loadCacheStats() {
     <table><thead><tr><th>Pair</th><th class="num">Hits</th><th class="num">Used</th></tr></thead><tbody>${(topRes.data || []).map(r => `<tr><td>${r.source_lang} → ${r.target_lang}</td><td class="num">${fmt(r.hit_count)}</td><td class="num muted">${ago(r.last_used_at)}</td></tr>`).join('')}</tbody></table>`;
 }
 
+// Sources: one row per ingest source (admin_sources_overview, computed in admin-rpc.js).
+const SRC_PILL = { ok: 'ok', running: 'run', probation: 'run', failed: 'err', stuck: 'err', empty: 'err', stale: 'warn', drop: 'warn', inactive: 'neutral', covered: 'neutral', disabled: 'neutral' };
+const SRC_PROBLEM = new Set(['failed', 'stuck', 'empty', 'stale', 'drop']);
+let srcData = null, srcFilter = 'all';
+const srcOpen = new Set();
 async function loadIngestion() {
   if (!sb) return;
-  const res = await safeQuery('ingestion runs', () => adminRpc('admin_ingestion_runs', { p_limit: 20 }));
-  const rows = res.data || [];
   const el = document.getElementById('tbl-runs');
-  if (!rows.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; return; }
-  el.innerHTML = `<table><thead><tr><th>Source</th><th>Started</th><th>Status</th><th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th></tr></thead><tbody>${rows.map(r => {
-    const k = r.status==='success'?'ok':(r.status==='running'?'run':(r.status==='error'?'err':'neutral'));
-    return `<tr><td>${escapeHtml(r.source)}</td><td class="muted">${ago(r.started_at)}</td><td><span class="pill ${k}">${r.status || '—'}</span></td><td class="num">${fmt(r.events_fetched)}</td><td class="num">${fmt(r.events_created)}</td><td class="num">${fmt(r.events_updated)}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  const res = await safeQuery('sources overview', () => adminRpc('admin_sources_overview', { p_since: rangeStartISO() }));
+  srcData = res.data;
+  if (!srcData || !srcData.sources?.length) { el.innerHTML = '<div class="empty">no runs yet</div>'; document.getElementById('src-chips').innerHTML = ''; return; }
+  renderSources();
 }
+function renderSources() {
+  const all = srcData.sources;
+  const problems = all.filter(r => SRC_PROBLEM.has(r.health)).length;
+  const count = t => all.filter(r => r.type === t).length;
+  const chips = [['all', `All ${all.length}`], ['problems', `Problems ${problems}`], ['api', `APIs ${count('api')}`], ['scraper', `Scrapers ${count('scraper')}`], ['feed', `Feeds ${count('feed')}`]];
+  document.getElementById('src-chips').innerHTML = chips.map(([k, label]) => `<button type="button" class="src-chip${srcFilter === k ? ' on' : ''}" data-f="${k}">${label}</button>`).join('');
+  document.getElementById('src-meta').textContent = problems ? `${problems} need${problems === 1 ? 's' : ''} attention · click a row for its runs` : 'all healthy · click a row for its runs';
+  const rows = all.filter(r => srcFilter === 'all' ? true : srcFilter === 'problems' ? SRC_PROBLEM.has(r.health) : r.type === srcFilter);
+  const every = h => h >= 22 && h <= 26 ? 'daily' : h >= 44 ? `every ${Math.round(h / 24)} d` : `every ${h} h`;
+  const spark = vals => { const v = (vals || []).filter(x => x != null); const pts = sparkPath(v); return pts ? `<svg class="src-spark" width="80" height="24" viewBox="0 0 80 24" aria-hidden="true"><polyline points="${pts}"/></svg>` : '<span class="muted">—</span>'; };
+  const histRows = r => r.history.length ? `<table><thead><tr><th>Started</th><th>Status</th><th class="num">Fetched</th><th class="num">Created</th><th class="num">Updated</th><th>Error</th></tr></thead><tbody>${r.history.map(h => {
+    const k = h.status === 'success' ? 'ok' : (h.status === 'running' ? 'run' : (h.status === 'failed' ? 'err' : 'neutral'));
+    return `<tr><td class="muted" title="${escapeHtml(new Date(h.started_at).toLocaleString())}">${ago(h.started_at)}</td><td><span class="pill ${k}">${escapeHtml(h.status || '—')}</span></td><td class="num">${fmt(h.fetched)}</td><td class="num">${fmt(h.created)}</td><td class="num">${fmt(h.updated)}</td><td class="muted src-err" title="${escapeHtml(h.error || '')}">${escapeHtml(h.error || '')}</td></tr>`;
+  }).join('')}</tbody></table>` : '<div class="empty">no runs recorded</div>';
+  document.getElementById('tbl-runs').innerHTML = rows.length ? `<div class="src-wrap"><table><thead><tr><th>Source</th><th>Last run</th><th>Health</th><th class="num">Runs</th><th class="num">Fetched · usual</th><th class="num">Created</th><th class="num">Updated</th><th class="src-trend">Trend</th></tr></thead><tbody>${rows.map(r => {
+    const sub = [r.type, r.feed_status, r.last_status ? every(r.interval_h) : ''].filter(Boolean).join(' · ');
+    const open = srcOpen.has(r.source);
+    return `<tr class="src-row" tabindex="0" aria-expanded="${open}" data-src="${escapeHtml(r.source)}"><td><div class="src-name">${escapeHtml(r.source)}</div><div class="src-sub">${escapeHtml(sub)}</div></td>`
+      + `<td class="muted">${ago(r.last_started_at)}</td>`
+      + `<td><span class="pill ${SRC_PILL[r.health] || 'neutral'}">${escapeHtml(r.health)}</span>${r.reason ? `<div class="src-sub" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</div>` : ''}</td>`
+      + `<td class="num">${fmt(r.runs)}${r.failures ? ` <span class="src-bad">· ${fmt(r.failures)} failed</span>` : ''}</td>`
+      + `<td class="num">${fmt(r.fetched_last)}${r.fetched_usual != null ? ` <span class="muted">· ${fmt(r.fetched_usual)}</span>` : ''}</td>`
+      + `<td class="num">${fmt(r.created)}</td><td class="num">${fmt(r.updated)}</td><td class="src-trend">${spark(r.spark)}</td></tr>`
+      + (open ? `<tr class="src-detail"><td colspan="8">${histRows(r)}</td></tr>` : '');
+  }).join('')}</tbody></table></div>` : '<div class="empty">nothing in this filter</div>';
+}
+document.getElementById('src-chips').addEventListener('click', e => {
+  const b = e.target.closest('.src-chip'); if (!b || !srcData) return;
+  srcFilter = b.dataset.f; renderSources();
+});
+function toggleSource(tr) {
+  const k = tr.dataset.src;
+  if (srcOpen.has(k)) srcOpen.delete(k); else srcOpen.add(k);
+  renderSources();
+  document.querySelector(`tr.src-row[data-src="${CSS.escape(k)}"]`)?.focus();
+}
+document.getElementById('tbl-runs').addEventListener('click', e => { const tr = e.target.closest('tr.src-row'); if (tr) toggleSource(tr); });
+document.getElementById('tbl-runs').addEventListener('keydown', e => {
+  const tr = e.target.closest('tr.src-row');
+  if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleSource(tr); }
+});
 
 async function loadAudience() {
   if (!sb) return;

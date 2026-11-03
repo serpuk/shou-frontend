@@ -15,7 +15,10 @@ credentials, or personal data.
   fields with `innerHTML` elsewhere.
 - **Admin:** `admin/` reads `admin_*` data only through the backend's authenticated
   admin endpoint. Never call `admin_*` database functions with the public (anon) key
-  and never grant them to anon.
+  and never grant them to anon. Some panels are computed in the backend's `admin-rpc.js`
+  rather than SQL (Translation health, and the **Sources** panel = `admin_sources_overview`:
+  one row per ingest source with health, range totals and its last 10 runs — keep it
+  per source, never a "last N runs" list, which hides daily sources).
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
