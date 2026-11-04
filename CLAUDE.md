@@ -22,6 +22,8 @@ credentials, or personal data.
   **Event submissions** (`#submissions`): calendars venues sent via shou.be/add-your-events, each
   with its automatic check (verdict, signals, AI read, sample events); Approve / Reject call
   `admin_venue_submission_decide`. Escape every submitted field and only link http(s) URLs.
+  Sources shows the last run's Fetched and Updated (not range sums). Panels start as
+  `<div class="loading">`; `.loading:has(> *)` drops that placeholder look once content renders.
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
