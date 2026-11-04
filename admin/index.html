@@ -1478,7 +1478,7 @@ function vsCard(s) {
     ['Website', vsLink(s.website)],
     ['Calendar', vsLink(s.feed_url) + (s.detected_url && s.detected_url !== s.feed_url ? `<br><span class="muted">reads ${vsLink(s.detected_url)}</span>` : '')],
     ['Format', escapeHtml(VS_KIND[s.kind] || s.kind || '—') + (s.link_re ? ` <span class="muted mono">${escapeHtml(s.link_re)}</span>` : '')],
-    ['Language', escapeHtml(s.lang || '—')],
+    ['Language', s.lang ? `${escapeHtml(s.lang)} <span class="muted">(detected${r.language && r.language.by === 'ai' ? ' by the AI read' : r.language && r.language.by === 'text' ? ' from the text' : ''})</span>` : '<span class="muted">not detected → imported as English</span>'],
     ['Contact', `${escapeHtml(s.contact_name)}${s.contact_role ? ` · ${escapeHtml(s.contact_role)}` : ''}<br><a href="mailto:${escapeHtml(s.contact_email)}">${escapeHtml(s.contact_email)}</a>`],
     ['Address', escapeHtml([s.address, s.postal_code, s.city, s.country].filter(Boolean).join(', '))],
   ];
