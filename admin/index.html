@@ -422,7 +422,7 @@
 
   <div class="two-col" style="margin-bottom: 12px;">
     <div class="panel">
-      <div class="panel-head"><div class="panel-title">Translations completed per day</div><div class="panel-meta">by target language</div></div>
+      <div class="panel-head"><div class="panel-title">Translations per day</div><div class="panel-meta">Gemini, by target language · source texts not counted</div></div>
       <div class="chart-wrap tall"><canvas id="chart-trans-per-day"></canvas></div>
     </div>
     <div class="panel">
@@ -820,12 +820,13 @@ LIMIT 15;
 SELECT pg_get_functiondef('admin_other_candidates'::regproc);`,
 
   // ── Translation pipeline ─────────────────────────────────────────────────
-  'chart-trans-per-day': `-- Translations completed per day, stacked by target language
--- Backed by RPC: admin_translations_per_day(p_since)
--- Server-side aggregate (returns ~days × languages rows).
+  'chart-trans-per-day': `-- Gemini translations per day, stacked by target language
+-- Backed by RPC: admin_machine_translations_per_day(p_since) (falls back to
+-- admin_translations_per_day, every written row, until that function exists).
+-- Source-provided texts (agenda.brussels NL / EN, is_machine = false) are left out.
 SELECT date_trunc('day', translated_at)::date AS day, language, COUNT(*) AS translations
 FROM event_translations
-WHERE translated_at >= '{{since}}'
+WHERE translated_at >= '{{since}}' AND is_machine
 GROUP BY day, language
 ORDER BY day, language;
 
@@ -1281,7 +1282,10 @@ async function loadTranslations() {
 
   // Server-side aggregation via RPC. The previous raw .select() was capped
   // at 1000 rows by PostgREST, undercounting translation activity.
-  const res = await safeQuery('translations per day', () => adminRpc('admin_translations_per_day', { p_since: sinceISO }));
+  // Gemini translations only (admin_machine_translations_per_day, schema-admin-machine-translations.sql);
+  // until that function exists, the old count of every written row.
+  let res = await adminRpc('admin_machine_translations_per_day', { p_since: sinceISO });
+  if (res.error) res = await safeQuery('translations per day', () => adminRpc('admin_translations_per_day', { p_since: sinceISO }));
   // RPC rows: [{day, language, translations}, ...]
   // Build {language: {day: count}} then flatten to {language: [counts per day]}
   // following the dayLabels order so missing buckets become zero.
