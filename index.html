@@ -39,7 +39,8 @@
         // not our code and not fixable from here.
         var msg = (hint && hint.originalException && hint.originalException.message) || '';
         if (typeof msg === 'string' &&
-            (msg.indexOf('ResizeObserver loop') !== -1 || msg.indexOf('messageHandlers') !== -1)) return null;
+            (msg.indexOf('ResizeObserver loop') !== -1 || msg.indexOf('messageHandlers') !== -1 ||
+             msg.indexOf('shou: reloading') === 0)) return null;
         var frames = (((event.exception || {}).values || [])[0] || {}).stacktrace;
         if (frames && frames.frames && frames.frames.some(function (f) {
           return /extensions?\//i.test(f.filename || '') ||
@@ -3997,11 +3998,27 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // The supabase-js UMD bundle exposes a global `supabase` namespace.
 // We rename our client to `sb` to avoid collision with that namespace.
-// If BOTH the primary and fallback CDNs failed (e.g. an aggressive content
-// blocker, or an offline load), window.supabase is undefined and calling
-// .createClient would throw a cryptic "Cannot read properties of undefined"
-// that white-screens the app. Show a clear, actionable message instead.
+// If the self-hosted bundle (/vendor/supabase-js.min.js) didn't run (a content
+// blocker, a dropped connection, offline), window.supabase is undefined and
+// calling .createClient would throw a cryptic "Cannot read properties of
+// undefined" that white-screens the app. A transient failure gets ONE automatic
+// reload (sessionStorage flag, only while online); after that, show a clear,
+// actionable message and report what the browser saw for the file.
+const SB_RETRY_KEY = 'shou.sbRetry';
 if (!(window.supabase && window.supabase.createClient)) {
+  let sbDiag = 'no request (blocked before fetch?)';
+  try {
+    const ent = performance.getEntriesByName(location.origin + '/vendor/supabase-js.min.js')[0];
+    if (ent) sbDiag = 'HTTP ' + (ent.responseStatus || '?') + ', ' + (ent.transferSize || 0) + ' B transferred, ' + (ent.encodedBodySize || 0) + ' B body';
+  } catch (e) {}
+  if (!navigator.onLine) sbDiag += ', offline';
+  let sbRetried = true;
+  try { sbRetried = sessionStorage.getItem(SB_RETRY_KEY) === '1'; if (!sbRetried) sessionStorage.setItem(SB_RETRY_KEY, '1'); } catch (e) {}
+  if (!sbRetried && navigator.onLine) {
+    location.reload();
+    // Stop init; beforeSend drops this one (the reload is the handling).
+    throw new Error('shou: reloading after supabase-js load failure');
+  }
   const showLoadError = () => {
     document.body.innerHTML = '<div style="max-width:520px;margin:16vh auto;padding:0 24px;text-align:center;font:500 16px/1.6 Inter,system-ui,sans-serif;color:#cfc7d6">'
       + '<p style="font-size:22px;font-weight:700;margin-bottom:10px">Couldn’t load shou</p>'
@@ -4012,8 +4029,9 @@ if (!(window.supabase && window.supabase.createClient)) {
   if (document.body) showLoadError(); else document.addEventListener('DOMContentLoaded', showLoadError);
   // Halt init here — a descriptive error is far more useful in logs than the
   // downstream undefined-createClient TypeError, and avoids a blank page.
-  throw new Error('supabase-js failed to load (CDN blocked or offline)');
+  throw new Error('supabase-js failed to load (' + sbDiag + (sbRetried ? ', after a reload' : '') + ')');
 }
+try { sessionStorage.removeItem(SB_RETRY_KEY); } catch (e) {}
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     autoRefreshToken: true,
