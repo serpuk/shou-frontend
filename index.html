@@ -4762,6 +4762,7 @@ async function loadSavedSearches() {
     .order('created_at', { ascending: false });
   if (error) { console.warn('saved searches load failed:', error.message); return; }
   savedSearches = data || [];
+  syncSavedSearchLang();
   refreshSavedSearchSurfaces();
   // A search that finished before the list arrived (e.g. opened from a digest
   // link while the session was still restoring) gets its "New" marks now.
@@ -4772,6 +4773,18 @@ async function loadSavedSearches() {
       renderAIBanner({ searching: false, query: aiQ, reasoning: aiReasoning, count: filtered.length });
     }
   }
+}
+
+// Saved-search emails follow the app's language (2026-11-09: a search saved while
+// trying the app in Ukrainian kept sending Ukrainian emails). Runs when the list
+// loads and after a language switch: one update for the rows in another language.
+function syncSavedSearchLang() {
+  const uid = currentSession?.user?.id;
+  if (!uid || !savedSearches.length || savedSearches.every(s => s.lang === lang)) return;
+  const l = lang;
+  savedSearches.forEach(s => { s.lang = l; });
+  sb.from('saved_searches').update({ lang: l }).eq('user_id', uid)   // ≤ 10 rows; also fills old NULL langs
+    .then(({ error }) => { if (error) console.warn('saved search language sync failed:', error.message); });
 }
 
 function refreshSavedSearchSurfaces() {
@@ -5632,6 +5645,7 @@ function setLang(l) {
         if (error) console.warn('setLang profile sync failed:', error.message);
         else if (currentProfile) currentProfile.preferred_language = l;
       });
+    syncSavedSearchLang();
   }
   // If voice recording is active, stop it. The recognizer is bound to the
   // previous locale and continuing would produce mismatched transcripts.
