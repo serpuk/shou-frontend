@@ -24,6 +24,8 @@ credentials, or personal data.
   `admin_venue_submission_decide`. Escape every submitted field and only link http(s) URLs.
   Sources shows the last run's Fetched and Updated (not range sums). Panels start as
   `<div class="loading">`; `.loading:has(> *)` drops that placeholder look once content renders.
+  The Translations chart counts Gemini translations only (`admin_machine_translations_per_day`,
+  falling back to `admin_translations_per_day`): agenda.brussels's own NL/EN texts aren't work.
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
@@ -53,3 +55,8 @@ credentials, or personal data.
   a `main` commit touching only `*.md` / `*.sql` / `test/` / `docs/` doesn't deploy —
   verify on production after merging.
 - Preview with `.claude/launch.json`; check at 375 px width and in the browser console.
+- **Vercel Firewall** (dashboard, since 2026-11-09): Bot Protection = Challenge plus Deny/Challenge
+  rules for useless crawlers and cloud-server networks (same as shou.be). Every app load calls the
+  backend (`/api/categories`, `/api/events`), so bot loads cost database time: ~25k fake loads a day
+  from Tencent Cloud from 2026-11-05 helped overload the database. Analytics before 2026-11-09 is
+  mostly bots. `curl` against app.shou.be now gets 429 (challenge); use the browser pane.
