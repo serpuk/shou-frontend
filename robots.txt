@@ -1,0 +1,15 @@
+# app.shou.be — the shou app.
+# Links that open the app with a question (?q=), a list (?list=) or a surprise
+# (?surprise=) run a live AI search, so crawlers skip them (2026-11-09: bots
+# following them ran up the Gemini bill). Event deep links (?event=) stay
+# crawlable: they canonicalise to the app home, and each event's page for search
+# engines is shou.be/e/<slug>.
+User-agent: *
+Disallow: /*?q=
+Disallow: /*&q=
+Disallow: /*?list=
+Disallow: /*&list=
+Disallow: /*?surprise=
+Disallow: /*&surprise=
+Disallow: /admin
+Allow: /

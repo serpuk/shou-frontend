@@ -28,6 +28,8 @@ credentials, or personal data.
   falling back to `admin_translations_per_day`): agenda.brussels's own NL/EN texts aren't work.
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
+  `?q=` (and `?list=`, `?surprise=`) RUN a paid AI search on load (`maybeSearchFromUrl`), so
+  `robots.txt` disallows them for crawlers; `?event=` links stay crawlable (canonical).
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
 - Display-side de-duplication (`dedupeByContent`, `collapseSeries`) folds same-title
   variants; keep it when changing list rendering.
