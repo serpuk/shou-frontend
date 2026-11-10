@@ -47,6 +47,7 @@ credentials, or personal data.
   "23:59" placeholder or > 12 h → start + 3 h); `isEventLive` also drives the "Live now"
   filter. Starting within 2 h → a quiet `soon-badge` ("In 45 min" / "At 20:00", strings
   `soonIn` / `soonAt`). `hasPassed` waits for the end (or 4 h), so a live show is never hidden.
+- **Browse chips** (`#browseChips`, 2026-11-10): guided tours / workshops / talks & debates / markets open the EXACT list of the shou.be interest page (`browseKind` → `showList`, `?format=list&kind=…`, next 14 days; no AI search). Talks & markets hide outside their months (`data-months`). Their "Guided tour"/"Workshop"/… pill comes from the API's `seg` (backend `segLabel`).
 - `?profile=1` opens the profile sheet (the saved-search digest's "Manage" link).
 
 ## Workflow
