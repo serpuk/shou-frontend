@@ -4362,6 +4362,7 @@ function fallbackUuid() {
 }
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing(),ni=loadNI();
+let aiListQs = null;   // the open shou.be list's request (showList), else null
 let mineView='upcoming';   // "My events" sub-view: 'upcoming' (default) | 'past'
 let rsvpMenuId=null;   // event id the shared RSVP popover currently targets
 // Trending shelf source — kept SEPARATE from `all`. `all` is proximity-/
@@ -5943,6 +5944,12 @@ async function fetchEvts(){
     if (forYouIds && forYouIds.size > 0) {
       try { await hydrateEventsByIds([...forYouIds.keys()]); } catch (_) {}
     }
+    // Same for an open search or shou.be list (?list=): when "Near you" settles
+    // after it loaded, this reload dropped every result outside the popular set —
+    // "7 events" in the banner, 1 card in the grid (2026-11-10).
+    if (aiQ && aiResultIds && aiResultIds.size > 0) {
+      try { await hydrateEventsByIds([...aiResultIds]); } catch (_) {}
+    }
     applyF();
     renderTabCounts();
     // If the page was loaded with ?event=<id>, auto-open that event's modal.
@@ -7179,7 +7186,8 @@ function renderAll(){
         if (aiSearchArea) {
           const ar = AREAS.find(a => a.id === aiSearchArea);
           if (ar) suffix = ` · ${ar.label}`;
-        } else if (actC === 'near') {
+        } else if (actC === 'near' && !aiListQs) {
+          // A shou.be list (?list=, browse chips) is never distance-filtered.
           suffix = ` · ${t('nearMeLabel')}`;
         }
       }
@@ -8514,7 +8522,7 @@ const LIST_NOTE = {
 const LIST_MAX = 300;   // events loaded into the app list (3 × 100-id requests)
 // The active list's request, so a language switch or the location arriving
 // re-runs it as a LIST (they re-run the current search) — not as an AI search.
-let aiListQs = null;
+// (Declared with the globals near the top: applyF reads it.)
 function maybeListFromUrl() {
   let p;
   try { p = new URLSearchParams(location.search); } catch (_) { return false; }
