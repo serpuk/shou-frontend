@@ -41,6 +41,8 @@ credentials, or personal data.
   full-screen overlay must be added to that list.
 - **Saved searches**: `savedSearches` + `renderSavedSearchesSection()`; the email bell
   stays hidden until `SS_EMAIL_LIVE` (testers open `?ssmail=1`); `?q=<search>` runs a search.
+  `syncSavedSearchLang()` (on load and in `setLang`) sets every saved search of the signed-in user
+  to the app's current language — the digest email follows it (2026-11-09).
 - **Dates**: compare with the local date (`todayLocalISO()`), never
   `toISOString().slice(0, 10)` (UTC).
 - **LIVE badge** = on right now: `eventWindow(e)` → start until its end time (no end, the
