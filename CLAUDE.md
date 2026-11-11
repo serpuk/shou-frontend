@@ -34,6 +34,10 @@ credentials, or personal data.
 - Display-side de-duplication (`dedupeByContent`, `collapseSeries`) folds same-title
   variants; keep it when changing list rendering.
 - Analytics stays cookieless; anything that stores data on the device needs consent.
+  Vercel Web Analytics loads only on the first REAL tap / click / key / wheel (2026-11-11; trusted
+  events, not scroll): ~2,800 bot loads a day (desktop Windows, US/CN/BR/CO, 97% bounce) were most
+  of the visitors and billed page views. Numbers from 2026-11-11 on = engaged visitors; don't
+  compare them with earlier days.
 - **Event URLs are short**: `?event=<slug>`, falling back to the uuid; `findEvByRef`
   resolves either. Anything that writes an event URL uses `e.slug || id`.
 - **Overlays** (`mov`, `signinMov`, `profileMov`, …) are moved to `<body>` by the hoist
