@@ -11399,7 +11399,27 @@ renderAuthSurface();
      /api/track engagement system. Requires Web Analytics enabled in the
      Vercel project dashboard to collect. -->
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
-<script defer src="/_vercel/insights/script.js"></script>
+<script>
+// Count ENGAGED visitors only (2026-11-11): the script loads on the first real
+// tap / click / key / wheel, not on page load. ~2,800 bot loads a day (desktop
+// Windows, US / CN / BR / CO, 97% bounce, nothing clicked) were most of the
+// visitors and billed page views. A person who opens the app and leaves without
+// touching anything isn't counted. Not on 'scroll': programmatic scrolls and
+// scroll restoration fire it too. Custom events queued in window.vaq before the
+// script loads are sent once it does.
+(function () {
+  var done = false, evs = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+  function load(e) {
+    if (done || (e && e.isTrusted === false)) return;
+    done = true;
+    evs.forEach(function (n) { window.removeEventListener(n, load, true); });
+    var s = document.createElement('script');
+    s.defer = true; s.src = '/_vercel/insights/script.js';
+    document.head.appendChild(s);
+  }
+  evs.forEach(function (n) { window.addEventListener(n, load, { capture: true, passive: true }); });
+})();
+</script>
 <script>
 // The modal overlays are written inside .main-wrap, whose z-index:2 makes it a
 // stacking context — so however high their own z-index, the top nav (z 100)
