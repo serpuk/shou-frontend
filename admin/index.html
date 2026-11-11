@@ -486,6 +486,17 @@
     <div id="tbl-search-detail" class="loading">loading…</div>
   </div>
 
+  <div class="sec-head" id="ai-usage"><div class="sec-title">AI usage (Gemini)</div><div class="sec-meta">searches and Gemini tokens per Brussels day · since 2026-11-11</div></div>
+
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Searches</div><div class="panel-meta">cached = answered from the 30-min cache, no AI</div></div>
+    <div id="ai-searches" class="loading">loading…</div>
+  </div>
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Gemini calls &amp; tokens (search only)</div><div class="panel-meta">output includes thinking · Google's spend page counts Pacific days</div></div>
+    <div id="ai-models" class="loading">loading…</div>
+  </div>
+
   <div class="sec-head"><div class="sec-title">Concierge (hotel demo)</div><div class="sec-meta">sample page usage · app.shou.be/hotels/sample</div></div>
 
   <div class="stat-grid">
@@ -1464,6 +1475,32 @@ const VS_ICON = { ok: '✓', info: 'i', warn: '!', bad: '✕' };
 const VS_KIND = { ics: 'iCal feed', tribe: 'WordPress events calendar', jsonld: 'schema.org event pages' };
 const safeHref = u => /^https?:\/\//i.test(String(u || '')) ? escapeHtml(u) : '#';
 const vsLink = u => u ? `<a href="${safeHref(u)}" target="_blank" rel="noopener noreferrer">${escapeHtml(u)}</a>` : '—';
+// AI usage (backend api/_shared/ai-meter.js → admin_ai_usage): daily counters kept
+// in Redis — searches by kind, and Gemini calls / tokens per model from search.
+async function loadAiUsage() {
+  const sEl = document.getElementById('ai-searches'), mEl = document.getElementById('ai-models');
+  const res = await adminRpc('admin_ai_usage', { p_days: 14 });
+  if (res.error || !res.data) {
+    const msg = `<div class="empty">Couldn't load AI usage: ${escapeHtml((res.error && res.error.message) || 'no data')}</div>`;
+    sEl.innerHTML = msg; mEl.innerHTML = msg; return;
+  }
+  if (!res.data.available) { sEl.innerHTML = mEl.innerHTML = '<div class="empty">Redis (Upstash) is not configured, so nothing is counted.</div>'; return; }
+  const days = (res.data.days || []).filter(d => Object.keys(d.searches).length || Object.keys(d.models).length);
+  if (!days.length) { sEl.innerHTML = mEl.innerHTML = '<div class="empty">Nothing counted yet: counting started 2026-11-11.</div>'; return; }
+  const v = (o, k) => o[k] || 0;
+  sEl.innerHTML = `<table><thead><tr><th>Day</th><th class="num">Searches</th><th class="num">Cached</th><th class="num">Live (AI)</th>
+    <th class="num">Anonymous</th><th class="num">Signed in</th><th class="num">App</th><th class="num">Hotels</th><th class="num">Apartments</th><th class="num">Saved-search matcher</th><th class="num">Rank on Flash / failed</th></tr></thead><tbody>${days.map(d => {
+      const s = d.searches;
+      return `<tr><td>${escapeHtml(d.day)}</td><td class="num">${fmt(v(s, 'search'))}</td><td class="num">${fmt(v(s, 'search_cached'))}</td><td class="num">${fmt(v(s, 'search') - v(s, 'search_cached'))}</td>
+        <td class="num">${fmt(v(s, 'search_anon'))}</td><td class="num">${fmt(v(s, 'search_signed_in'))}</td><td class="num">${fmt(v(s, 'search_src:app'))}</td><td class="num">${fmt(v(s, 'search_src:hotels'))}</td><td class="num">${fmt(v(s, 'search_src:apartments'))}</td><td class="num">${fmt(v(s, 'search_src:saved'))}</td><td class="num">${fmt(v(s, 'rank_fallback'))} / ${fmt(v(s, 'rank_failed'))}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  const rows = [];
+  for (const d of days) for (const [model, u] of Object.entries(d.models).sort((a, b) => b[1].in - a[1].in)) rows.push({ day: d.day, model, ...u });
+  mEl.innerHTML = rows.length ? `<table><thead><tr><th>Day</th><th>Model</th><th class="num">Calls</th><th class="num">Input tokens</th><th class="num">Output tokens</th><th class="num">Input / call</th></tr></thead><tbody>${rows.map(r =>
+    `<tr><td>${escapeHtml(r.day)}</td><td>${escapeHtml(r.model)}</td><td class="num">${fmt(r.calls)}</td><td class="num">${r.in ? fmt(r.in) : '—'}</td><td class="num">${r.out ? fmt(r.out) : '—'}</td><td class="num">${r.in && r.calls ? fmt(Math.round(r.in / r.calls)) : '—'}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">No Gemini calls counted yet.</div>';
+}
+
 async function loadSubmissions() {
   const el = document.getElementById('vs-list');
   const res = await adminRpc('admin_venue_submissions');
@@ -1663,7 +1700,7 @@ async function reloadAll() {
   document.getElementById('refreshBtn').textContent = '⟲ Loading…';
   try {
     await loadOverview();
-    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadSubmissions(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue(), loadAptUsage()]);
+    await Promise.all([loadCatalog(), loadTranslations(), loadIngestion(), loadSubmissions(), loadAiUsage(), loadAudience(), loadConcierge(), loadApplications(), loadTiqetsRevenue(), loadViatorRevenue(), loadAptUsage()]);
     lastReload = new Date();
     document.getElementById('lastLoaded').textContent = 'Loaded ' + lastReload.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (err) { console.error('reload failed:', err); }

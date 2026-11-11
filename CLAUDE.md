@@ -24,6 +24,8 @@ credentials, or personal data.
   `admin_venue_submission_decide`. Escape every submitted field and only link http(s) URLs.
   Sources shows the last run's Fetched and Updated (not range sums). Panels start as
   `<div class="loading">`; `.loading:has(> *)` drops that placeholder look once content renders.
+  **AI usage** (`#ai-usage`, 2026-11-11): searches per day by kind and Gemini calls / tokens per model
+  from the backend's Redis counters (`admin_ai_usage`, backend `api/_shared/ai-meter.js`); search only.
   The Translations chart counts Gemini translations only (`admin_machine_translations_per_day`,
   falling back to `admin_translations_per_day`): agenda.brussels's own NL/EN texts aren't work.
 - **SEO:** the app canonicals every URL to `https://app.shou.be/`; per-event SEO lives
