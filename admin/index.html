@@ -497,6 +497,12 @@
     <div id="ai-models" class="loading">loading…</div>
   </div>
 
+  <div class="panel" style="margin-bottom: 12px;">
+    <div class="panel-head"><div class="panel-title">Live searches — who asks</div><div class="panel-meta">last 200 live (not cached) searches, kept 3 days · no IP stored</div></div>
+    <div id="ai-sample-sum" class="loading">loading…</div>
+    <div id="ai-sample" style="max-height: 420px; overflow: auto;"></div>
+  </div>
+
   <div class="sec-head"><div class="sec-title">Concierge (hotel demo)</div><div class="sec-meta">sample page usage · app.shou.be/hotels/sample</div></div>
 
   <div class="stat-grid">
@@ -1489,16 +1495,44 @@ async function loadAiUsage() {
   if (!days.length) { sEl.innerHTML = mEl.innerHTML = '<div class="empty">Nothing counted yet: counting started 2026-11-11.</div>'; return; }
   const v = (o, k) => o[k] || 0;
   sEl.innerHTML = `<table><thead><tr><th>Day</th><th class="num">Searches</th><th class="num">Cached</th><th class="num">Live (AI)</th>
+    <th class="num">Prefetch (typing)</th><th class="num">Near me</th>
     <th class="num">Anonymous</th><th class="num">Signed in</th><th class="num">App</th><th class="num">Hotels</th><th class="num">Apartments</th><th class="num">Saved-search matcher</th><th class="num">Rank on Flash / failed</th></tr></thead><tbody>${days.map(d => {
       const s = d.searches;
       return `<tr><td>${escapeHtml(d.day)}</td><td class="num">${fmt(v(s, 'search'))}</td><td class="num">${fmt(v(s, 'search_cached'))}</td><td class="num">${fmt(v(s, 'search') - v(s, 'search_cached'))}</td>
+        <td class="num">${fmt(v(s, 'search_prefetch'))}</td><td class="num">${fmt(v(s, 'search_located'))}</td>
         <td class="num">${fmt(v(s, 'search_anon'))}</td><td class="num">${fmt(v(s, 'search_signed_in'))}</td><td class="num">${fmt(v(s, 'search_src:app'))}</td><td class="num">${fmt(v(s, 'search_src:hotels'))}</td><td class="num">${fmt(v(s, 'search_src:apartments'))}</td><td class="num">${fmt(v(s, 'search_src:saved'))}</td><td class="num">${fmt(v(s, 'rank_fallback'))} / ${fmt(v(s, 'rank_failed'))}</td></tr>`;
     }).join('')}</tbody></table>`;
+  renderAiSample(res.data.sample || []);
   const rows = [];
   for (const d of days) for (const [model, u] of Object.entries(d.models).sort((a, b) => b[1].in - a[1].in)) rows.push({ day: d.day, model, ...u });
   mEl.innerHTML = rows.length ? `<table><thead><tr><th>Day</th><th>Model</th><th class="num">Calls</th><th class="num">Input tokens</th><th class="num">Output tokens</th><th class="num">Input / call</th></tr></thead><tbody>${rows.map(r =>
     `<tr><td>${escapeHtml(r.day)}</td><td>${escapeHtml(r.model)}</td><td class="num">${fmt(r.calls)}</td><td class="num">${r.in ? fmt(r.in) : '—'}</td><td class="num">${r.out ? fmt(r.out) : '—'}</td><td class="num">${r.in && r.calls ? fmt(Math.round(r.in / r.calls)) : '—'}</td></tr>`).join('')}</tbody></table>`
     : '<div class="empty">No Gemini calls counted yet.</div>';
+}
+
+// Diagnostic sample of live searches: tallies (where from, how started, client,
+// country) on top, then the rows. Every field is escaped — queries come from strangers.
+function renderAiSample(rows) {
+  const sum = document.getElementById('ai-sample-sum'), el = document.getElementById('ai-sample');
+  if (!rows.length) { sum.innerHTML = '<div class="empty">No live searches sampled yet.</div>'; el.innerHTML = ''; return; }
+  const tally = key => {
+    const m = new Map();
+    for (const r of rows) { const k = String(r[key] == null ? '' : r[key]) || '—'; m.set(k, (m.get(k) || 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) => `${escapeHtml(k)} <b>${n}</b>`).join(' · ');
+  };
+  const distinct = new Set(rows.map(r => String(r.q || '').toLowerCase())).size;
+  sum.innerHTML = `<table><tbody>
+    <tr><td>Origin (page that sent it)</td><td>${tally('origin')}</td></tr>
+    <tr><td>Started by</td><td>${tally('via')}</td></tr>
+    <tr><td>Client</td><td>${tally('ua')}</td></tr>
+    <tr><td>Country</td><td>${tally('cc')}</td></tr>
+    <tr><td>Language</td><td>${tally('lang')}</td></tr>
+    <tr><td>Different questions</td><td><b>${distinct}</b> of ${rows.length}</td></tr>
+  </tbody></table>`;
+  el.innerHTML = `<table><thead><tr><th>When</th><th>Question</th><th>Started by</th><th>Origin</th><th>Client</th><th>Country</th><th>Lang</th></tr></thead><tbody>${rows.map(r => {
+    const t = r.t ? new Date(r.t).toLocaleString('en-GB', { timeZone: 'Europe/Brussels', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    return `<tr><td>${escapeHtml(t)}</td><td>${escapeHtml(r.q || '')}</td><td>${escapeHtml(r.via || '')}${r.near ? ' · near' : ''}</td><td>${escapeHtml(r.origin || '')}</td><td>${escapeHtml(r.ua || '')}</td><td>${escapeHtml(r.cc || '')}</td><td>${escapeHtml(r.lang || '')}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 
 async function loadSubmissions() {

@@ -8587,6 +8587,7 @@ function maybeSearchFromUrl() {
     u.searchParams.delete('q');
     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   } catch (_) {}
+  aiNextVia = 'url';
   qAI(q);
 }
 
@@ -9124,6 +9125,10 @@ function doAI(){
   const q=document.getElementById('ai').value.trim();
   if(q)showAI(q);
 }
+// How the next search started, for the backend's diagnostic sample
+// (api/_shared/ai-meter.js): 'url' = a ?q= link, 'chip' = a suggestion chip.
+// Typed / Ask button searches send nothing ('ask'); prefetches say so themselves.
+let aiNextVia = '';
 function qAI(q){
   // Chip taps shouldn't carry a hot mic into results either.
   if (voiceRecActive) stopVoiceInput();
@@ -9211,7 +9216,7 @@ function browseKind(kind) {
 
 function qChip(id) {
   const q = (CHIP_QUERIES[id] && CHIP_QUERIES[id][lang]) || CHIP_QUERIES[id]?.en || '';
-  if (q) qAI(q);
+  if (q) { aiNextVia = 'chip'; qAI(q); }
 }
 
 // "Surprise me" — the signature AI move. Instead of a literal keyword filter,
@@ -9537,6 +9542,7 @@ async function showAI(q) {
       // Stays 'voice' even if the user edited the transcript before submitting.
       inputMethod: voiceUsedForCurrentQuery ? 'voice' : 'text',
     };
+    if (aiNextVia) { body.via = aiNextVia; aiNextVia = ''; }
     // Include user location when the city pill is set to "Near me" — the
     // pill is now the single location control for both browse and AI search.
     if (aiShouldUseLocation()) {
