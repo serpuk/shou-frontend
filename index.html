@@ -4363,6 +4363,10 @@ function fallbackUuid() {
 
 let all=[],filtered=[],actF='all',actC='all',aiQ='',vis=6,lk=loadLikes(),gn=loadGoing(),ni=loadNI();
 let aiListQs = null;   // the open shou.be list's request (showList), else null
+// The date each list event should show, from the backend list (?format=list → dates):
+// 'YYYY-MM-DD' = a repeat seen on that date, 'YYYY-MM-DD/YYYY-MM-DD' = a run (its range),
+// the way the shou.be city / interest pages show them. Only read while aiListQs is set.
+let aiListDates = new Map();
 let mineView='upcoming';   // "My events" sub-view: 'upcoming' (default) | 'past'
 let rsvpMenuId=null;   // event id the shared RSVP popover currently targets
 // Trending shelf source — kept SEPARATE from `all`. `all` is proximity-/
@@ -5778,6 +5782,20 @@ function applyI18n(){
 function segCls(slug){const s=(slug||'').toLowerCase();if(s==='music'||s==='festival'||s==='carnival')return'cm';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'ca';if(s==='sports'||s==='sport')return'cs';if(s==='family')return'cfa';return'cx';}
 function segEmoji(slug){const s=(slug||'').toLowerCase();if(s==='music')return'🎵';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'🎭';if(s==='sports'||s==='sport')return'⚽';if(s==='family')return'🎠';return'✨';}
 function segThumb(slug){const s=(slug||'').toLowerCase();if(s==='music')return'tc1';if(s==='theatre'||s==='comedy'||s==='exhibition'||s==='dance')return'tc2';if(s==='sports'||s==='sport')return'tc3';if(s==='family')return'tc4';return'tc5';}
+// A list card's date line (run range or the date in view), else '' → the card's own date.
+function listDateLine(e) {
+  if (!aiListQs || !aiListDates.size) return '';
+  const v = aiListDates.get(e.id);
+  if (!v || !/^\d{4}-\d{2}-\d{2}(\/\d{4}-\d{2}-\d{2})?$/.test(v)) return '';
+  const tm = fmtTime(e) ? ' · ' + fmtTime(e) : '';
+  if (!v.includes('/')) return fmtD(v) + tm;
+  const [a, b] = v.split('/');
+  const loc = ({fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', it:'it-IT', uk:'uk-UA', en:'en-GB'})[lang] || 'en-GB';
+  const thisYear = new Date().getFullYear();
+  const f = (d, yr) => { try { return new Date(d + 'T12:00:00').toLocaleDateString(loc, yr ? {day:'numeric', month:'short', year:'numeric'} : {day:'numeric', month:'short'}); } catch (_) { return d; } };
+  const yb = Number(b.slice(0, 4));
+  return f(a, Number(a.slice(0, 4)) !== yb) + ' – ' + f(b, yb !== thisYear) + tm;
+}
 function fmtD(d){
   if(!d) return 'TBA';
   const localeMap = {fr:'fr-BE', nl:'nl-BE', de:'de-DE', es:'es-ES', it:'it-IT', uk:'uk-UA', en:'en-GB'};
@@ -7442,7 +7460,7 @@ function bigCard(e){
       <p class="feat-desc">${e.desc}</p>
       <div class="feat-meta">
         <span class="feat-meta-item"><span class="mi">📍</span>${e.venue}, ${e.city}</span>
-        <span class="feat-meta-item"><span class="mi">📅</span>${fmtD(e.date)}${fmtTime(e) ? ' · '+fmtTime(e) : ''}</span>
+        <span class="feat-meta-item"><span class="mi">📅</span>${listDateLine(e) || fmtD(e.date) + (fmtTime(e) ? ' · '+fmtTime(e) : '')}</span>
         ${hasRealPrice?`<span class="feat-meta-item"><span class="mi">🎫</span>${priceText}</span>`:''}
       </div>
       <div class="feat-actions">
@@ -7477,7 +7495,7 @@ function smCard(e){
 <div class="cdesc">${e.desc}</div>
 <div class="emeta" style="margin-bottom:10px">
 <div class="mr"><span class="mi">📍</span><span class="mr-tx">${e.venue && e.venue !== e.city ? `<span class="vn">${e.venue}</span> · ` : ''}${e.city || ''}${(()=>{ const d = eventDistanceLabel(e); return d ? ` · <span class="cdist">${d}</span>` : ''; })()}</span></div>
-<div class="mr"><span class="mi">📅</span>${fmtD(e.date)}${timeStr}</div>
+<div class="mr"><span class="mi">📅</span>${listDateLine(e) || fmtD(e.date) + timeStr}</div>
 ${hasRealPrice?`<div class="mr"><span class="mi">🎫</span>${priceText}</div>`:''}
 </div>
 <div class="cf2">
@@ -8575,6 +8593,7 @@ async function showList(title, qs) {
     const d = await r.json();
     count = Number(d.count) || 0;
     ids = (Array.isArray(d.ids) ? d.ids : []).slice(0, LIST_MAX);
+    aiListDates = new Map(Object.entries(d.dates && typeof d.dates === 'object' ? d.dates : {}));
     await hydrateEventsByIds(ids);
   } catch (e) { console.warn('showList failed:', e && e.message); }
   if (aiQ !== title) return;   // another search started meanwhile
