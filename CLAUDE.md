@@ -32,6 +32,9 @@ credentials, or personal data.
   on `shou.be/e/<slug>` (shou-landing / shou-backend). Don't make app deep links indexable.
   `?q=` (and `?list=`, `?surprise=`) RUN a paid AI search on load (`maybeSearchFromUrl`), so
   `robots.txt` disallows them for crawlers; `?event=` links stay crawlable (canonical).
+  Since 2026-11-13 shou.be pages never link `?q=`: their Ask buttons use `?ask=<question>` (`maybeAskFromUrl`:
+  box pre-filled + hint, NO search until the visitor taps Ask Shou), and `?surprise=1` only highlights the
+  Surprise chip. `?q=` still runs at once — only the saved-search email uses it.
 - `fetchEvts()` rebuilds the global `all` array — re-add lazily loaded events after it.
 - Display-side de-duplication (`dedupeByContent`, `collapseSeries`) folds same-title
   variants; keep it when changing list rendering.
