@@ -8519,7 +8519,7 @@ const LIST_NOTE = {
   it: (n, m) => `${n} eventi per data — lo stesso elenco di shou.be${m < n ? `; ecco i primi ${m}` : ''}.`,
   uk: (n, m) => `${n} подій за датою — той самий список, що й на shou.be${m < n ? `; показано перші ${m}` : ''}.`,
 };
-// "More nearby" (?list=nearby&event=&date=, from a shou.be event page): other events
+// "More nearby" (?list=nearby&near=<slug>&date=, from a shou.be event page): other events
 // that day near the venue, by start time — no AI (backend this-week.js nearbyList).
 const NEAR_NOTE = {
   en: n => n ? `${n} other events nearby that day, by start time.` : 'Nothing else listed nearby that day.',
@@ -8542,10 +8542,12 @@ function maybeListFromUrl() {
   urlSearchHandled = true;
   const title = (p.get('title') || '').trim().slice(0, 120) || kind;
   const qs = new URLSearchParams({ format: 'list', kind });
-  for (const k of ['city', 'from', 'to', 'win', 'evening', 'rest', 'event', 'date']) if (p.get(k)) qs.set(k, p.get(k));
+  for (const k of ['city', 'from', 'to', 'win', 'evening', 'rest', 'date']) if (p.get(k)) qs.set(k, p.get(k));
+  // "More nearby" links carry the anchor event as near=<slug> (event= opens the event pop-up).
+  if (p.get('near')) qs.set('event', p.get('near'));
   try {
     const u = new URL(location.href);
-    for (const k of ['list', 'city', 'from', 'to', 'win', 'evening', 'rest', 'title', 'event', 'date']) u.searchParams.delete(k);
+    for (const k of ['list', 'city', 'from', 'to', 'win', 'evening', 'rest', 'title', 'near', 'date']) u.searchParams.delete(k);
     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   } catch (_) {}
   showList(title, qs);
