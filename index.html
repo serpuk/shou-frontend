@@ -8519,6 +8519,17 @@ const LIST_NOTE = {
   it: (n, m) => `${n} eventi per data — lo stesso elenco di shou.be${m < n ? `; ecco i primi ${m}` : ''}.`,
   uk: (n, m) => `${n} подій за датою — той самий список, що й на shou.be${m < n ? `; показано перші ${m}` : ''}.`,
 };
+// "More nearby" (?list=nearby&event=&date=, from a shou.be event page): other events
+// that day near the venue, by start time — no AI (backend this-week.js nearbyList).
+const NEAR_NOTE = {
+  en: n => n ? `${n} other events nearby that day, by start time.` : 'Nothing else listed nearby that day.',
+  fr: n => n ? `${n} autres événements à proximité ce jour-là, par heure de début.` : 'Rien d’autre à proximité ce jour-là.',
+  nl: n => n ? `${n} andere evenementen in de buurt die dag, op beginuur.` : 'Niets anders in de buurt die dag.',
+  de: n => n ? `${n} weitere Events in der Nähe an diesem Tag, nach Beginn sortiert.` : 'Sonst nichts in der Nähe an diesem Tag.',
+  es: n => n ? `${n} eventos más cerca ese día, por hora de inicio.` : 'Nada más cerca ese día.',
+  it: n => n ? `${n} altri eventi nei dintorni quel giorno, per ora di inizio.` : 'Nient’altro nei dintorni quel giorno.',
+  uk: n => n ? `${n} інших подій поруч того дня, за часом початку.` : 'Більше нічого поруч того дня.',
+};
 const LIST_MAX = 300;   // events loaded into the app list (3 × 100-id requests)
 // The active list's request, so a language switch or the location arriving
 // re-runs it as a LIST (they re-run the current search) — not as an AI search.
@@ -8531,10 +8542,10 @@ function maybeListFromUrl() {
   urlSearchHandled = true;
   const title = (p.get('title') || '').trim().slice(0, 120) || kind;
   const qs = new URLSearchParams({ format: 'list', kind });
-  for (const k of ['city', 'from', 'to', 'win', 'evening', 'rest']) if (p.get(k)) qs.set(k, p.get(k));
+  for (const k of ['city', 'from', 'to', 'win', 'evening', 'rest', 'event', 'date']) if (p.get(k)) qs.set(k, p.get(k));
   try {
     const u = new URL(location.href);
-    for (const k of ['list', 'city', 'from', 'to', 'win', 'evening', 'rest', 'title']) u.searchParams.delete(k);
+    for (const k of ['list', 'city', 'from', 'to', 'win', 'evening', 'rest', 'title', 'event', 'date']) u.searchParams.delete(k);
     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   } catch (_) {}
   showList(title, qs);
@@ -8566,7 +8577,8 @@ async function showList(title, qs) {
   } catch (e) { console.warn('showList failed:', e && e.message); }
   if (aiQ !== title) return;   // another search started meanwhile
   aiResultIds = new Set(ids);   // date order = the backend's order (applyF keeps it)
-  aiReasoning = ids.length ? (LIST_NOTE[lang] || LIST_NOTE.en)(count, ids.length) : '';
+  aiReasoning = qs.get('kind') === 'nearby' ? (NEAR_NOTE[lang] || NEAR_NOTE.en)(ids.length)
+    : ids.length ? (LIST_NOTE[lang] || LIST_NOTE.en)(count, ids.length) : '';
   aiSearching = false; syncAiActiveClass();
   applyF();
   renderAIBanner({ searching: false, query: title, reasoning: aiReasoning, count: filtered.length });
