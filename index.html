@@ -4588,6 +4588,10 @@ let aiSuggestionChips = [];  // clickable {label, query} pairs for dead-end resu
 let aiAbortController = null;    // in-flight /api/search AbortController, or null
 let aiReasoning = '';        // LLM-written explanation for the suggestions banner
 let aiSearching = false;     // true while /api/search is in flight
+// The language the open search / list was run in. setLang re-runs it only when the
+// language really changed (2026-11-14: the language applied at start-up re-ran every
+// search opened from a link — two paid searches each, the first aborted).
+let aiSearchLang = '';
 let aiPrefetchCache = new Map();  // query string → { ids, reasoning }, capped
 // AI-detected geo intent from the current query (e.g. "music in Antwerp" → 'antwerp').
 // Decoupled from actC: the user's pill preference is still 'all' or 'near', but
@@ -5699,7 +5703,7 @@ function setLang(l) {
     // events with translated content. Returns early — showAI handles its
     // own applyF.
     if (aiQ && aiQ.length > 0) {
-      if (aiListQs) showList(aiQ, aiListQs); else showAI(aiQ);
+      if (aiSearchLang !== lang) { if (aiListQs) showList(aiQ, aiListQs); else showAI(aiQ); }
       return;
     }
     // Re-load the active filter's events in the new language — they were dropped
@@ -8590,6 +8594,7 @@ function maybeListFromUrl() {
   return true;
 }
 async function showList(title, qs) {
+  aiSearchLang = lang;
   if (aiAbortController) { aiAbortController.abort(); aiAbortController = null; }
   aiListQs = qs;
   aiQ = title; vis = 12;
@@ -9514,6 +9519,7 @@ function useSuggestionChip(query) {
 // If we already have a cached prefetched result for this exact query, use
 // that for instant rendering instead of re-fetching.
 async function showAI(q) {
+  aiSearchLang = lang;
   { const h = document.getElementById('askHint'); if (h) h.remove(); }
   q = String(q || '').trim();
   if (!q) return;
