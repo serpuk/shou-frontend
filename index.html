@@ -6360,9 +6360,14 @@ function syncGeoState() {
   // location-sending behavior and may now have stale candidate orderings.
   if (typeof aiPrefetchCache !== 'undefined') aiPrefetchCache.clear();
   updateCityPillLabel();
-  // Re-run an in-flight AI search so it picks up the new lat/lng signal.
-  if (aiQ && aiQ.length > 0) {
-    if (aiListQs) showList(aiQ, aiListQs); else showAI(aiQ);
+  // Re-run an in-flight AI search so it picks up the new lat/lng signal — but not when
+  // only the automatic, city-level location arrived and the search already answered
+  // (2026-11-13: that doubled every search opened from a link, and the second one,
+  // carrying a location, was never cached). A shou.be list has no location: never re-run.
+  const roughGeo = !(userGeo && userGeo.precision === 'precise');
+  const answered = !aiSearching && aiResultIds && aiResultIds.size > 0;
+  if (aiQ && aiQ.length > 0 && !aiListQs && !(roughGeo && answered)) {
+    showAI(aiQ);
     return;
   }
   // Geo mode changed → re-pull the catalog so candidate SELECTION reflects it:
@@ -8623,11 +8628,16 @@ async function showList(title, qs) {
 // search on open — for every crawler too. (?q= stays for the saved-search email.)
 function maybeAskFromUrl() {
   let a = '';
-  try { const p = new URLSearchParams(location.search); if (p.get('event')) return false; a = (p.get('ask') || '').trim().slice(0, 200); }
-  catch (_) { return false; }
+  // A ?q= WITHOUT run=1 is treated the same (2026-11-13): only the saved-search email
+  // marks its link to run on open; old shou.be links that bots keep replaying don't.
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.get('event')) return false;
+    a = (p.get('ask') || (p.get('run') === '1' ? '' : p.get('q')) || '').trim().slice(0, 200);
+  } catch (_) { return false; }
   if (a.length < 2) return false;
   urlSearchHandled = true;
-  try { const u = new URL(location.href); u.searchParams.delete('ask'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (_) {}
+  try { const u = new URL(location.href); for (const k of ['ask', 'q', 'run']) u.searchParams.delete(k); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (_) {}
   const input = document.getElementById('ai');
   if (!input) return true;
   input.value = a + ' ';
@@ -8659,6 +8669,7 @@ function maybeSearchFromUrl() {
   try {
     const u = new URL(location.href);
     u.searchParams.delete('q');
+    u.searchParams.delete('run');
     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   } catch (_) {}
   aiNextVia = 'url';
@@ -9623,6 +9634,9 @@ async function showAI(q) {
     if (aiShouldUseLocation()) {
       body.lat = Number(userGeo.latitude);
       body.lng = Number(userGeo.longitude);
+      // 'ip' = the automatic, city-level location: the backend may share the answer
+      // (coordinates rounded to ~10 km); 'precise' stays personal.
+      body.geo = userGeo.precision === 'precise' ? 'precise' : 'ip';
     }
     // Pass the area filter to the backend so the LLM scopes its search to
     // the user's selected region. For 'all' or 'near' we omit it (LLM is
@@ -9756,6 +9770,7 @@ function aiPrefetch(q) {
   if (aiShouldUseLocation()) {
     body.lat = Number(userGeo.latitude);
     body.lng = Number(userGeo.longitude);
+    body.geo = userGeo.precision === 'precise' ? 'precise' : 'ip';
   }
   // Area scoping mirrors showAI: extract geo intent from the query itself,
   // not from the pill. Prefetch agrees with the real call so the cache hit
