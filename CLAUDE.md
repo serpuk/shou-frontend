@@ -79,8 +79,10 @@ credentials, or personal data.
 - **Pages:** shou.be and app.shou.be challenge cloud-server traffic (Vercel Firewall), so checks from the cloud
   may get a 429 challenge; use `shou-backend.vercel.app` URLs or headless Chrome and say when a page could not
   be checked.
-- **Strybai Build:** reference tasks with `build#N` and close them with `closes build#N` in the PR; editing the
-  board itself needs the user's login.
+- **Strybai Build:** this repo syncs into the workspace "shou Apartments": `build#N` starts its task N and
+  `closes build#N` in the PR closes it. Tasks of the workspace "theshou.com" (the global plan, which numbers
+  its tasks separately) need its slug: `build#theshou/N` / `closes build#theshou/N` — a plain `build#N` would
+  move the shou Apartments task with that number. Editing the board itself needs the user's login.
 
 ## Workflow
 
