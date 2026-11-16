@@ -282,6 +282,7 @@
   .vs-name { font-size: 16px; font-weight: 500; color: var(--text); }
   .vs-where, .vs-when { font-size: 12px; color: var(--text-2); }
   .vs-ai { font-size: 13px; color: var(--text-2); margin: 4px 0 10px; }
+  .vs-note { font-size: 12px; color: #8a5a00; background: #fff4e0; border-radius: var(--radius-sm); padding: 2px 8px; }
   .vs-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; }
   @media (max-width: 860px) { .vs-grid { grid-template-columns: minmax(0, 1fr); } }
   .vs-facts { font-size: 13px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; align-content: start; }
@@ -1418,7 +1419,7 @@ async function loadCacheStats() {
 }
 
 // Sources: one row per ingest source (admin_sources_overview, computed in admin-rpc.js).
-const SRC_PILL = { ok: 'ok', running: 'run', probation: 'run', failed: 'err', stuck: 'err', empty: 'err', stale: 'warn', drop: 'warn', inactive: 'neutral', covered: 'neutral', disabled: 'neutral' };
+const SRC_PILL = { ok: 'ok', running: 'run', probation: 'run', waiting: 'run', failed: 'err', stuck: 'err', empty: 'err', stale: 'warn', drop: 'warn', inactive: 'neutral', covered: 'neutral', disabled: 'neutral' };
 const SRC_PROBLEM = new Set(['failed', 'stuck', 'empty', 'stale', 'drop']);
 let srcData = null, srcFilter = 'all';
 const srcOpen = new Set();
@@ -1434,9 +1435,13 @@ function renderSources() {
   const all = srcData.sources;
   const problems = all.filter(r => SRC_PROBLEM.has(r.health)).length;
   const count = t => all.filter(r => r.type === t).length;
-  const chips = [['all', `All ${all.length}`], ['problems', `Problems ${problems}`], ['api', `APIs ${count('api')}`], ['scraper', `Scrapers ${count('scraper')}`], ['feed', `Feeds ${count('feed')}`]];
+  // 'collect' = venue feeds outside Belgium, kept for theshou.com (backend global-collect.js), not shown on shou.be.
+  const chips = [['all', `All ${all.length}`], ['problems', `Problems ${problems}`], ['api', `APIs ${count('api')}`], ['scraper', `Scrapers ${count('scraper')}`], ['feed', `Feeds ${count('feed')}`]]
+    .concat(count('collect') ? [['collect', `Collect ${count('collect')}`]] : []);
   document.getElementById('src-chips').innerHTML = chips.map(([k, label]) => `<button type="button" class="src-chip${srcFilter === k ? ' on' : ''}" data-f="${k}">${label}</button>`).join('');
-  document.getElementById('src-meta').textContent = problems ? `${problems} need${problems === 1 ? 's' : ''} attention · click a row for its runs` : 'all healthy · click a row for its runs';
+  const held = (srcData.collect_countries || []).map(c => `${c.country} ${fmt(c.records)}`).join(' · ');
+  document.getElementById('src-meta').textContent = (problems ? `${problems} need${problems === 1 ? 's' : ''} attention · click a row for its runs` : 'all healthy · click a row for its runs')
+    + (held ? ` · collected for theshou.com: ${held}` : '');
   const rows = all.filter(r => srcFilter === 'all' ? true : srcFilter === 'problems' ? SRC_PROBLEM.has(r.health) : r.type === srcFilter);
   const every = h => h >= 22 && h <= 26 ? 'daily' : h >= 44 ? `every ${Math.round(h / 24)} d` : `every ${h} h`;
   const spark = vals => { const v = (vals || []).filter(x => x != null); const pts = sparkPath(v); return pts ? `<svg class="src-spark" width="80" height="24" viewBox="0 0 80 24" aria-hidden="true"><polyline points="${pts}"/></svg>` : '<span class="muted">—</span>'; };
@@ -1445,7 +1450,8 @@ function renderSources() {
     return `<tr><td class="muted" title="${escapeHtml(new Date(h.started_at).toLocaleString())}">${ago(h.started_at)}</td><td><span class="pill ${k}">${escapeHtml(h.status || '—')}</span></td><td class="num">${fmt(h.fetched)}</td><td class="num">${fmt(h.created)}</td><td class="num">${fmt(h.updated)}</td><td class="muted src-err" title="${escapeHtml(h.error || '')}">${escapeHtml(h.error || '')}</td></tr>`;
   }).join('')}</tbody></table>` : '<div class="empty">no runs recorded</div>';
   document.getElementById('tbl-runs').innerHTML = rows.length ? `<div class="src-wrap"><table><thead><tr><th>Source</th><th>Last run</th><th>Health</th><th class="num">Runs</th><th class="num">Fetched · usual</th><th class="num">Created</th><th class="num" title="Events the last successful run re-saved">Updated · last run</th><th class="src-trend">Trend</th></tr></thead><tbody>${rows.map(r => {
-    const sub = [r.type, r.feed_status, r.last_status ? every(r.interval_h) : ''].filter(Boolean).join(' · ');
+    const sub = (r.label ? [r.label] : [r.type, r.feed_status]).concat(r.last_status ? every(r.interval_h) : '',
+      r.records_held != null ? `${fmt(r.records_held)} records held` : '', r.records_new_last != null ? `${fmt(r.records_new_last)} new last run` : '').filter(Boolean).join(' · ');
     const open = srcOpen.has(r.source);
     return `<tr class="src-row" tabindex="0" aria-expanded="${open}" data-src="${escapeHtml(r.source)}"><td><div class="src-name">${escapeHtml(r.source)}</div><div class="src-sub">${escapeHtml(sub)}</div></td>`
       + `<td class="muted">${ago(r.last_started_at)}</td>`
@@ -1564,7 +1570,8 @@ function vsCard(s) {
   const mailSubject = encodeURIComponent(`Your calendar on shou — ${s.venue_name}`);
   return `<div class="vs-card" data-id="${escapeHtml(s.id)}">
     <div class="vs-top"><span class="pill ${VS_PILL[s.verdict] || 'neutral'}">${escapeHtml(s.verdict || '?')}</span><span class="vs-name">${escapeHtml(s.venue_name)}</span>
-      <span class="vs-where">${escapeHtml([s.city, s.country].filter(Boolean).join(', '))}</span><span class="vs-when">· ${fmt(r.events)} upcoming events · ${r.importable ? 'importable' : '<b>would not pass the trial</b>'} · submitted ${ago(s.created_at)}</span></div>
+      <span class="vs-where">${escapeHtml([s.city, s.country].filter(Boolean).join(', '))}${s.country_code ? ` <span class="mono">${escapeHtml(s.country_code)}</span>` : ''}</span>
+      ${s.collect ? '<span class="vs-note">Collected for theshou.com, not shown on shou.be</span>' : s.country && s.country_code === null ? '<span class="vs-note">Country not recognised: treated as Belgium</span>' : ''}<span class="vs-when">· ${fmt(r.events)} upcoming events · ${r.importable ? 'importable' : '<b>would not pass the trial</b>'} · submitted ${ago(s.created_at)}</span></div>
     ${ai}
     <div class="vs-grid"><dl class="vs-facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl><ul class="vs-sig">${sig}</ul></div>
     ${sample ? `<div class="vs-sample"><table><thead><tr><th>When</th><th>Event</th><th>Place</th><th></th></tr></thead><tbody>${sample}</tbody></table></div>` : ''}
@@ -1580,7 +1587,7 @@ function renderSubmissions() {
   const { pending = [], decided = [] } = vsData || {};
   document.getElementById('vs-meta').textContent = pending.length ? `${pending.length} to review · approve = trial import at the next daily venue-feed run` : 'nothing to review';
   const recent = decided.length ? `<div style="margin-top:14px"><div class="panel-meta" style="margin-bottom:6px">Recently decided</div><div class="src-wrap"><table><thead><tr><th>Venue</th><th>Decision</th><th>When</th><th>Feed source</th><th>Note</th></tr></thead><tbody>${decided.map(d =>
-    `<tr><td>${escapeHtml(d.venue_name)} <span class="muted">${escapeHtml(d.city || '')}</span></td><td><span class="pill ${d.status === 'approved' ? 'ok' : 'neutral'}">${escapeHtml(d.status)}</span></td><td class="muted">${ago(d.reviewed_at)}</td><td class="mono">${escapeHtml(d.source_slug || '—')}</td><td class="muted">${escapeHtml(d.review_note || '')}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+    `<tr><td>${escapeHtml(d.venue_name)} <span class="muted">${escapeHtml([d.city, d.country_code].filter(Boolean).join(', '))}</span>${d.collect ? ' <span class="vs-note">theshou.com</span>' : ''}</td><td><span class="pill ${d.status === 'approved' ? 'ok' : 'neutral'}">${escapeHtml(d.status)}</span></td><td class="muted">${ago(d.reviewed_at)}</td><td class="mono">${escapeHtml(d.source_slug || '—')}</td><td class="muted">${escapeHtml(d.review_note || '')}</td></tr>`).join('')}</tbody></table></div></div>` : '';
   el.innerHTML = (pending.length ? pending.map(vsCard).join('') : '<div class="empty">No calendars waiting for review.</div>') + recent;
 }
 document.getElementById('vs-list').addEventListener('click', async e => {
@@ -1588,7 +1595,9 @@ document.getElementById('vs-list').addEventListener('click', async e => {
   const card = b.closest('.vs-card'); const id = card.dataset.id;
   const sub = (vsData?.pending || []).find(x => x.id === id); if (!sub) return;
   const act = b.dataset.act;
-  const msg = act === 'approve'
+  const msg = act === 'approve' && sub.collect
+    ? `Approve "${sub.venue_name}" (${sub.country_code})?\n\nOutside Belgium: it is COLLECTED for theshou.com from the next daily run (06:00 UTC), not shown on shou.be.`
+    : act === 'approve'
     ? `Approve "${sub.venue_name}"?\n\nIt becomes a venue feed in trial: the next daily run (06:00 UTC) reads it again without publishing, and imports it if it passes.`
     : `Reject "${sub.venue_name}"? Nothing is imported; the submission is kept with your note.`;
   if (!confirm(msg)) return;
@@ -1597,7 +1606,11 @@ document.getElementById('vs-list').addEventListener('click', async e => {
   const res = await adminRpc('admin_venue_submission_decide', { id, decision: act, note: note || null });
   if (res.error) { alert(`Couldn't ${act}: ${res.error.message}`); card.querySelectorAll('button').forEach(x => { x.disabled = false; }); return; }
   await loadSubmissions();
-  document.getElementById('vs-meta').textContent = act === 'approve' ? `Approved — feed ${res.data?.source_slug || ''} starts its trial at the next daily run.` : 'Rejected.';
+  const fs = res.data?.feed_status;
+  document.getElementById('vs-meta').textContent = act !== 'approve' ? 'Rejected.'
+    : fs === 'collect' ? `Approved — feed ${res.data?.source_slug || ''} is collected for theshou.com from the next daily run (not on shou.be).`
+    : fs === 'disabled' ? `Approved — feed ${res.data?.source_slug || ''} is parked (outside Belgium): run schema-global-collect.sql to collect it.`
+    : `Approved — feed ${res.data?.source_slug || ''} starts its trial at the next daily run.`;
 });
 
 async function loadAudience() {
