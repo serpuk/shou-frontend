@@ -22,6 +22,11 @@ credentials, or personal data.
   **Event submissions** (`#submissions`): calendars venues sent via shou.be/add-your-events, each
   with its automatic check (verdict, signals, AI read, sample events); Approve / Reject call
   `admin_venue_submission_decide`. Escape every submitted field and only link http(s) URLs.
+  **Outside Belgium** (2026-11-16): the backend adds `country_code` (ISO-2, null = not recognised →
+  treated as Belgium) and `collect` to each submission; a `collect` one shows "Collected for theshou.com,
+  not shown on shou.be" and approving it creates a `collect` feed (backend `global-collect.js`), not a trial.
+  Sources has a **Collect** chip (type `collect`, row label from the API's `label`, e.g. "feed · collect · GB",
+  with records held / new last run) and the meta line lists records per country (`collect_countries`).
   Sources shows the last run's Fetched and Updated (not range sums). Panels start as
   `<div class="loading">`; `.loading:has(> *)` drops that placeholder look once content renders.
   **AI usage** (`#ai-usage`, 2026-11-11): searches per day by kind and Gemini calls / tokens per model
