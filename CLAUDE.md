@@ -63,6 +63,25 @@ credentials, or personal data.
 - **Browse chips** (`#browseChips`, 2026-11-10): guided tours / workshops / talks & debates / markets open the EXACT list of the shou.be interest page (`browseKind` → `showList`, `?format=list&kind=…`, next 14 days; no AI search). Talks & markets hide outside their months (`data-months`). Their "Guided tour"/"Workshop"/… pill comes from the API's `seg` (backend `segLabel`).
 - `?profile=1` opens the profile sheet (the saved-search digest's "Manage" link).
 
+## Working from Claude Code in the cloud (claude.ai/code)
+
+- **No local memory there.** Project knowledge lives in the CLAUDE.md files of shou-backend, shou-frontend,
+  shou-landing and theshou.com, plus shou-backend `docs/project-notes.md` (product state, open follow-ups,
+  how-tos) and `docs/theshou-global-plan.md`. Put new durable facts there, not in a session.
+- **Pull requests:** the cloud GitHub proxy blocks `gh pr …` / `gh issue …` (GraphQL). Open the PR with the
+  session's **Create PR** button, or REST:
+  `gh api repos/serpuk/shou-frontend/pulls -f title='…' -f head=<branch> -f base=main -f body='…'`.
+  Merge (only when the user asks): `gh api -X PUT repos/serpuk/shou-frontend/pulls/<n>/merge -f merge_method=merge`.
+  Branch deletion and tags are refused by the proxy; leave merged branches.
+- **No production access:** no Fly login, no database keys, no Vercel / Supabase dashboards. Write dry-run
+  scripts and ask the user to run them; read public data through `https://shou-backend.vercel.app/api/…`.
+  Never put a secret in the environment's plain variables (the model can read them).
+- **Pages:** shou.be and app.shou.be challenge cloud-server traffic (Vercel Firewall), so checks from the cloud
+  may get a 429 challenge; use `shou-backend.vercel.app` URLs or headless Chrome and say when a page could not
+  be checked.
+- **Strybai Build:** reference tasks with `build#N` and close them with `closes build#N` in the PR; editing the
+  board itself needs the user's login.
+
 ## Workflow
 
 - One branch + PR per change; **commit / push / deploy only when the user asks**.
