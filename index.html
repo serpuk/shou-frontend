@@ -62,6 +62,7 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Open TLS to the backend + Supabase in parallel with HTML parsing.
@@ -1808,6 +1809,7 @@ body.ai-active .filters { position: static; box-shadow: none; }
 .pv-ss-tool svg { width: 16px; height: 16px; }
 .pv-ss-tool.on { color: var(--cyan); }
 .pv-ss-tool.on svg path:first-child { fill: currentColor; }
+.pv-ss-tool.on svg rect { fill: currentColor; fill-opacity: .25; }
 .pv-ss-item { display: flex; flex-direction: column; gap: 6px; }
 /* Email frequency menu under a row (bell): Weekly / Daily / Off. */
 .pv-ss-freq {
@@ -4233,7 +4235,17 @@ const T={
     it:{ssEmailMe:'Inviami un’email',ssWeeklyShort:'Settimanale',ssWeeklySub:'il giovedì',ssDailyShort:'Giornaliera',ssDailySub:'solo se c’è qualcosa di nuovo',ssFreqOff:'Disattivata',ssEmailFor:m=>`Email per questa ricerca: ${m}`,ssEmailStartedDaily:e=>`Scriveremo a ${e} ogni pomeriggio quando c’è qualcosa di nuovo.`,ssEmailNote:'🔔 Un’email settimanale (giovedì) o giornaliera per ricerca, solo quando c’è qualcosa di nuovo. Disattivabile in qualsiasi momento.'},
     uk:{ssEmailMe:'Надсилати лист',ssWeeklyShort:'Щотижня',ssWeeklySub:'у четвер',ssDailyShort:'Щодня',ssDailySub:'лише коли є щось нове',ssFreqOff:'Вимкнено',ssEmailFor:m=>`Лист для цього пошуку: ${m}`,ssEmailStartedDaily:e=>`Ми писатимемо на ${e} щодня після обіду, коли буде щось нове.`,ssEmailNote:'🔔 Щотижневий (четвер) або щоденний лист для кожного пошуку — лише коли є щось нове. Можна вимкнути будь-коли.'},
   };
-  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en, S3[l] || S3.en, S4[l] || S4.en));
+  // Web push for saved searches (phase 3).
+  const S5 = {
+    en:{ssPushOn:'Notifications on — turn off',ssPushOff:'Get a notification for new events',ssPushOffer:'Get a notification when there’s something new for this search?',ssPushYes:'Turn on notifications',ssPushSub:'at most one a day, never at night',ssPushNo:'No thanks',ssPushBlocked:'Notifications are blocked — allow them in your browser settings.',ssPushErr:'Couldn’t turn on notifications on this device.',ssPushStarted:'Done — at most one notification a day, never at night.',ssPushShort:'Push',ssPushPaused:'Notifications paused — open this search to resume',ssPushNote:'📲 A notification when there’s something new — at most one a day, never at night. Turn it off anytime.'},
+    fr:{ssPushOn:'Notifications activées — désactiver',ssPushOff:'Recevoir une notification pour les nouveautés',ssPushOffer:'Recevoir une notification quand il y a du nouveau pour cette recherche ?',ssPushYes:'Activer les notifications',ssPushSub:'une par jour au maximum, jamais la nuit',ssPushNo:'Non merci',ssPushBlocked:'Les notifications sont bloquées — autorisez-les dans les réglages du navigateur.',ssPushErr:'Impossible d’activer les notifications sur cet appareil.',ssPushStarted:'C’est fait — une notification par jour au maximum, jamais la nuit.',ssPushShort:'Push',ssPushPaused:'Notifications en pause — ouvrez cette recherche pour reprendre',ssPushNote:'📲 Une notification quand il y a du nouveau — une par jour au maximum, jamais la nuit. Désactivable à tout moment.'},
+    nl:{ssPushOn:'Meldingen staan aan — uitzetten',ssPushOff:'Ontvang een melding bij nieuwe evenementen',ssPushOffer:'Een melding als er iets nieuws is voor deze zoekopdracht?',ssPushYes:'Meldingen aanzetten',ssPushSub:'maximaal één per dag, nooit \'s nachts',ssPushNo:'Nee, bedankt',ssPushBlocked:'Meldingen zijn geblokkeerd — sta ze toe in de browserinstellingen.',ssPushErr:'Meldingen aanzetten op dit toestel is niet gelukt.',ssPushStarted:'Klaar — maximaal één melding per dag, nooit \'s nachts.',ssPushShort:'Push',ssPushPaused:'Meldingen gepauzeerd — open deze zoekopdracht om verder te gaan',ssPushNote:'📲 Een melding als er iets nieuws is — maximaal één per dag, nooit \'s nachts. Altijd uit te zetten.'},
+    de:{ssPushOn:'Benachrichtigungen an — ausschalten',ssPushOff:'Benachrichtigung bei neuen Events erhalten',ssPushOffer:'Benachrichtigung, wenn es Neues für diese Suche gibt?',ssPushYes:'Benachrichtigungen aktivieren',ssPushSub:'höchstens eine pro Tag, nie nachts',ssPushNo:'Nein danke',ssPushBlocked:'Benachrichtigungen sind blockiert — erlaube sie in den Browser-Einstellungen.',ssPushErr:'Benachrichtigungen konnten auf diesem Gerät nicht aktiviert werden.',ssPushStarted:'Fertig — höchstens eine Benachrichtigung pro Tag, nie nachts.',ssPushShort:'Push',ssPushPaused:'Benachrichtigungen pausiert — öffne diese Suche, um fortzufahren',ssPushNote:'📲 Eine Benachrichtigung, wenn es Neues gibt — höchstens eine pro Tag, nie nachts. Jederzeit abschaltbar.'},
+    es:{ssPushOn:'Notificaciones activadas — desactivar',ssPushOff:'Recibir una notificación de novedades',ssPushOffer:'¿Quieres una notificación cuando haya novedades para esta búsqueda?',ssPushYes:'Activar notificaciones',ssPushSub:'como máximo una al día, nunca de noche',ssPushNo:'No, gracias',ssPushBlocked:'Las notificaciones están bloqueadas — permítelas en los ajustes del navegador.',ssPushErr:'No se pudieron activar las notificaciones en este dispositivo.',ssPushStarted:'Listo — como máximo una notificación al día, nunca de noche.',ssPushShort:'Push',ssPushPaused:'Notificaciones en pausa — abre esta búsqueda para reanudarlas',ssPushNote:'📲 Una notificación cuando haya novedades — como máximo una al día, nunca de noche. Desactívalo cuando quieras.'},
+    it:{ssPushOn:'Notifiche attive — disattiva',ssPushOff:'Ricevi una notifica per le novità',ssPushOffer:'Vuoi una notifica quando c’è qualcosa di nuovo per questa ricerca?',ssPushYes:'Attiva le notifiche',ssPushSub:'al massimo una al giorno, mai di notte',ssPushNo:'No, grazie',ssPushBlocked:'Le notifiche sono bloccate — consentile nelle impostazioni del browser.',ssPushErr:'Impossibile attivare le notifiche su questo dispositivo.',ssPushStarted:'Fatto — al massimo una notifica al giorno, mai di notte.',ssPushShort:'Push',ssPushPaused:'Notifiche in pausa — apri questa ricerca per riprendere',ssPushNote:'📲 Una notifica quando c’è qualcosa di nuovo — al massimo una al giorno, mai di notte. Disattivabile in qualsiasi momento.'},
+    uk:{ssPushOn:'Сповіщення увімкнено — вимкнути',ssPushOff:'Отримувати сповіщення про новинки',ssPushOffer:'Надіслати сповіщення, коли для цього пошуку з’явиться щось нове?',ssPushYes:'Увімкнути сповіщення',ssPushSub:'не більше одного на день, ніколи вночі',ssPushNo:'Ні, дякую',ssPushBlocked:'Сповіщення заблоковано — дозвольте їх у налаштуваннях браузера.',ssPushErr:'Не вдалося увімкнути сповіщення на цьому пристрої.',ssPushStarted:'Готово — не більше одного сповіщення на день, ніколи вночі.',ssPushShort:'Push',ssPushPaused:'Сповіщення призупинено — відкрийте цей пошук, щоб відновити',ssPushNote:'📲 Сповіщення, коли є щось нове — не більше одного на день, ніколи вночі. Можна вимкнути будь-коли.'},
+  };
+  Object.keys(T).forEach(l => Object.assign(T[l], S[l] || S.en, S2[l] || S2.en, S3[l] || S3.en, S4[l] || S4.en, S5[l] || S5.en));
 })();
 
 // Initial language resolution: localStorage (explicit user choice from previous
@@ -4711,7 +4723,7 @@ let savedSearches = [];          // signed-in user's rows, newest first
 let aiNewIds = new Set();        // current results not yet seen for this saved search
 let savedSearchBusy = false;     // guards double-taps on the save toggle
 const SAVED_SEEN_MAX = 300;      // seen_ids cap per saved search (newest first)
-const SAVED_SEARCH_SELECT = 'id, query, area, near_me, lang, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, last_opened_at, created_at';
+const SAVED_SEARCH_SELECT = 'id, query, area, near_me, lang, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, notify_push, pushes_since_open, last_opened_at, created_at';
 const SAVED_PAUSE_AFTER = { weekly: 3, daily: 7 };   // = PAUSE in the backend digest
 // Weekly-email switch: hidden until the digest goes live (SS_EMAIL_LIVE), except
 // for testers who opened the app once with ?ssmail=1 (remembered per browser).
@@ -4726,6 +4738,8 @@ function ssEmailEnabled() {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ICON_BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
 const ICON_BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" fill="none"/></svg>';
+
+const ICON_PUSH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>';
 
 // Exact match on the query text (+ region). `loose` also accepts the saved
 // "any day" version of a query with a time word ("techno" for "techno
@@ -4790,6 +4804,9 @@ async function loadSavedSearches() {
   savedSearches = data || [];
   syncSavedSearchLang();
   refreshSavedSearchSurfaces();
+  pushInit();
+  ssOpen.list = true;
+  tryOpenSavedFromUrl();
   // A search that finished before the list arrived (e.g. opened from a digest
   // link while the session was still restoring) gets its "New" marks now.
   if (aiQ && aiResultIds && !aiSearching && !aiNewIds.size && findSavedSearch(aiQ)) {
@@ -4896,6 +4913,7 @@ async function saveSearchQuery(queryText, timeless) {
     }
     savedSearches.unshift(data);
     refreshSavedSearchSurfaces();
+    offerPushAfterSave(data);
     try { window.va && window.va('event', { name: 'Search saved', data: { scope: area || (nearMe ? 'near' : 'all'), timeless: !!timeless } }); } catch (e) {}
   } finally {
     savedSearchBusy = false;
@@ -4936,9 +4954,9 @@ async function undoRemoveSavedSearch() {
   savedUndo = null;
   setSavedMsg('');
   // Re-insert the same row (same id, seen/pending lists) so nothing is lost.
-  const { id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, last_opened_at, created_at } = row;
+  const { id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency, digests_since_open, notify_push, last_opened_at, created_at } = row;
   const { data, error } = await sb.from('saved_searches')
-    .insert({ id, user_id: currentSession.user.id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency: email_frequency || 'weekly', digests_since_open, last_opened_at, created_at })
+    .insert({ id, user_id: currentSession.user.id, query, area, near_me, lang: rl, seen_ids, pending_ids, new_count, notify_email, email_frequency: email_frequency || 'weekly', digests_since_open, notify_push: !!notify_push, last_opened_at, created_at })
     .select(SAVED_SEARCH_SELECT).single();
   if (error) { console.warn('undo remove failed:', error.message); await loadSavedSearches(); return; }
   savedSearches = [data, ...savedSearches].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
@@ -4980,6 +4998,135 @@ async function setSavedSearchEmail(id, mode) {
   try { window.va && window.va('event', { name: 'Saved search email', data: { mode } }); } catch (e) {}
 }
 
+// ── Web push (saved searches, phase 3) ───────────────────────────────────
+// Per saved search (notify_push) and per device (table push_subscriptions, own
+// rows via RLS). The browser's permission prompt appears only after the user
+// taps "Turn on notifications" — offered right after saving a search, or with
+// the phone button on a saved search in the profile. The backend sends at most
+// one push a day, never between 21:00 and 08:00 (api/cron/saved-search-push.js).
+// Hidden until the backend has VAPID keys (/api/push-config → key) and the
+// browser can do push (on iPhone: only once shou is added to the Home Screen).
+const SS_PUSH_PAUSE = 5;         // = PUSH_PAUSE in the backend
+let pushVapidKey = null;         // public key string once known
+let pushKeyLoading = null;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const pushAvailable = () => pushSupported() && !!pushVapidKey;
+
+function pushInit() {
+  if (!pushSupported() || pushKeyLoading) return pushKeyLoading;
+  pushKeyLoading = fetch(API_BASE + '/api/push-config')
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && typeof j.key === 'string' && j.key.length > 20) { pushVapidKey = j.key; renderSavedSearchesSection(); } })
+    .catch(() => {});
+  return pushKeyLoading;
+}
+
+function pushKeyBytes(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+const pushB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+// Make sure THIS device is subscribed and saved for the signed-in user.
+// Returns 'ok' | 'blocked' | 'error'. Must run from a tap (permission prompt).
+async function enablePushOnDevice() {
+  if (!pushAvailable() || !currentSession) return 'error';
+  if (Notification.permission === 'denied') return 'blocked';
+  try {
+    if (Notification.permission !== 'granted') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return perm === 'denied' ? 'blocked' : 'error';
+    }
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    const save = async sub => {
+      const j = sub.toJSON();
+      return sb.from('push_subscriptions').upsert({
+        user_id: currentSession.user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+        user_agent: String(navigator.userAgent || '').slice(0, 200),
+      }, { onConflict: 'endpoint' });
+    };
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushKeyBytes(pushVapidKey) });
+    let { error } = await save(sub);
+    if (error) {
+      // The endpoint belongs to another account on this browser: start a fresh one.
+      await sub.unsubscribe().catch(() => {});
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushKeyBytes(pushVapidKey) });
+      ({ error } = await save(sub));
+    }
+    if (error) { console.warn('push subscription save failed:', error.message); return 'error'; }
+    return 'ok';
+  } catch (e) {
+    console.warn('push enable failed:', e && e.message);
+    return 'error';
+  }
+}
+
+async function setSavedSearchPush(id, on) {
+  const s = savedSearches.find(x => x.id === id);
+  if (!s || !currentSession) return false;
+  if (on) {
+    const r = await enablePushOnDevice();
+    if (r !== 'ok') { setSavedMsg(escapeHtml(t(r === 'blocked' ? 'ssPushBlocked' : 'ssPushErr'))); return false; }
+  }
+  const prev = { notify_push: s.notify_push, pushes_since_open: s.pushes_since_open };
+  const patch = on ? { notify_push: true, pushes_since_open: 0 } : { notify_push: false };
+  Object.assign(s, patch);
+  renderSavedSearchesSection();
+  const { error } = await sb.from('saved_searches').update(patch).eq('id', id);
+  if (error) {
+    console.warn('saved search push change failed:', error.message);
+    Object.assign(s, prev);
+    renderSavedSearchesSection();
+    return false;
+  }
+  setSavedMsg(on ? escapeHtml(t('ssPushStarted')) : '');
+  try { window.va && window.va('event', { name: 'Saved search push', data: { on: !!on } }); } catch (e) {}
+  return true;
+}
+const toggleSavedSearchPush = id => {
+  const s = savedSearches.find(x => x.id === id);
+  return setSavedSearchPush(id, !(s && s.notify_push));
+};
+
+// Right after a search is saved: offer notifications (once per device unless
+// they say yes). The browser prompt only appears when they tap the button.
+function offerPushAfterSave(row) {
+  try {
+    if (!row || !pushAvailable() || Notification.permission === 'denied' || localStorage.getItem('shou_push_no') === '1') return;
+  } catch (e) { return; }
+  const msg = document.getElementById('aiSaveMsg');
+  if (!msg) return;
+  msg.innerHTML = `<div class="ai-save-choice" role="group" aria-label="${escapeHtml(t('ssPushOffer'))}">
+      <span class="ai-save-choice-l">${escapeHtml(t('ssPushOffer'))}</span>
+      <button class="ai-save-opt primary" onclick="acceptPushOffer('${row.id}')">${escapeHtml(t('ssPushYes'))}<small>${escapeHtml(t('ssPushSub'))}</small></button>
+      <button class="ai-save-opt" onclick="declinePushOffer()">${escapeHtml(t('ssPushNo'))}</button>
+    </div>`;
+}
+async function acceptPushOffer(id) {
+  setSaveSearchMsg('');
+  const ok = await setSavedSearchPush(id, true);
+  setSaveSearchMsg(ok ? t('ssPushStarted') : t(Notification.permission === 'denied' ? 'ssPushBlocked' : 'ssPushErr'));
+}
+function declinePushOffer() {
+  try { localStorage.setItem('shou_push_no', '1'); } catch (e) {}
+  setSaveSearchMsg('');
+}
+
+// ?ss=<saved search id> (a push notification's tap): once the app is ready AND
+// the signed-in user's saved searches are loaded, open that search.
+const ssOpen = { id: null, app: false, list: false };
+try { const v = new URLSearchParams(location.search).get('ss'); if (v && UUID_RE.test(v)) ssOpen.id = v; } catch (e) {}
+function tryOpenSavedFromUrl() {
+  if (!ssOpen.id || !ssOpen.app || !ssOpen.list) return;
+  const s = savedSearches.find(x => x.id === ssOpen.id);
+  ssOpen.id = null;
+  try { const u = new URL(location.href); u.searchParams.delete('ss'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+  if (s) { aiNextVia = 'url'; qAI(s.query); }
+}
+
 // Called when a search's results land, before applyF() so the cards get
 // their "New" chips. Only does anything when the query is a saved search.
 function noteSavedSearchResults(q) {
@@ -4998,9 +5145,10 @@ function noteSavedSearchResults(q) {
   s.pending_ids = [];
   s.new_count = 0;
   s.digests_since_open = 0;
+  s.pushes_since_open = 0;
   s.last_opened_at = new Date().toISOString();
   sb.from('saved_searches')
-    .update({ seen_ids: merged, pending_ids: [], new_count: 0, digests_since_open: 0, last_opened_at: s.last_opened_at })
+    .update({ seen_ids: merged, pending_ids: [], new_count: 0, digests_since_open: 0, pushes_since_open: 0, last_opened_at: s.last_opened_at })
     .eq('id', s.id)
     .then(({ error }) => { if (error) console.warn('saved search update failed:', error.message); });
 }
@@ -5038,8 +5186,15 @@ function renderSavedSearchesSection() {
     const emailTag = !emailOn || mode === 'off' ? ''
       : paused ? ` · <span class="paused">${escapeHtml(t('ssPaused'))}</span>`
       : ` · 🔔 ${escapeHtml(t(mode === 'daily' ? 'ssDailyShort' : 'ssWeeklyShort'))}`;
-    const scope = escapeHtml(savedScopeLabel(s)) + emailTag;
     const menuOpen = emailOn && savedEmailMenuFor === s.id;
+    const pushOn = !!s.notify_push;
+    const pushPaused = pushOn && (s.pushes_since_open || 0) >= SS_PUSH_PAUSE;
+    const pushTag = pushOn ? (pushPaused ? ` · <span class="paused">${escapeHtml(t('ssPushPaused'))}</span>` : ` · 📲 ${escapeHtml(t('ssPushShort'))}`) : '';
+    const pushLabel = escapeHtml(t(pushOn ? 'ssPushOn' : 'ssPushOff'));
+    const pushBtn = pushAvailable() || pushOn
+      ? `<button class="pv-ss-tool${pushOn ? ' on' : ''}" onclick="toggleSavedSearchPush('${s.id}')" aria-pressed="${pushOn}" aria-label="${pushLabel}" title="${pushLabel}">${ICON_PUSH}</button>`
+      : '';
+    const scope = escapeHtml(savedScopeLabel(s)) + emailTag + pushTag;
     const mailLabel = escapeHtml(t('ssEmailFor')(t(mode === 'daily' ? 'ssDailyShort' : mode === 'weekly' ? 'ssWeeklyShort' : 'ssFreqOff')));
     const mailBtn = emailOn
       ? `<button class="pv-ss-tool${mode !== 'off' ? ' on' : ''}" onclick="toggleSavedEmailMenu('${s.id}')" aria-haspopup="true" aria-expanded="${menuOpen}" aria-label="${mailLabel}" title="${mailLabel}">${ICON_BELL}</button>`
@@ -5066,7 +5221,7 @@ function renderSavedSearchesSection() {
         <span class="pv-ss-go" aria-hidden="true">›</span>
       </button>
       <div class="pv-ss-tools">
-        ${mailBtn}
+        ${pushBtn}${mailBtn}
         <button class="pv-ss-tool" onclick="removeSavedSearch('${s.id}')" aria-label="${rm}" title="${rm}">✕</button>
       </div>
     </div>
@@ -5074,6 +5229,7 @@ function renderSavedSearchesSection() {
     </div>`;
   }).join('')}</div>`
     + (emailOn ? `<div class="pv-saved-note">${escapeHtml(t('ssEmailNote'))}</div>` : '')
+    + (pushAvailable() ? `<div class="pv-saved-note">${escapeHtml(t('ssPushNote'))}</div>` : '')
     + msg;
 }
 
@@ -8660,6 +8816,7 @@ function maybeAskFromUrl() {
   return true;
 }
 function maybeSearchFromUrl() {
+  if (ssOpen.id) { ssOpen.app = true; urlSearchHandled = true; tryOpenSavedFromUrl(); return; }
   if (urlSearchHandled) return;
   if (maybeListFromUrl()) return;
   if (maybeAskFromUrl()) return;
